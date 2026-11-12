@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Takara AI</title>
+<meta name="description" content="Takara AI: a non-custodial treasury agent for small businesses on NEAR. The agent pays bills inside a signed policy and can never take the money.">
+<style>
+  :root { --bg:#f6f5f1; --panel:#fbfbf8; --ink:#14181f; --muted:#5d626a; --line:#e2dfd6; --accent:#0f6b5c; --accent-soft:#e3f1ee; --warn:#9a4f0f; --warn-soft:#fbf0dc; --bad:#a3262a; --bad-soft:#f9e4e4; --dark:#14181f; --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#111214; --panel:#1a1b1e; --ink:#ececef; --muted:#9a9aa3; --line:#2a2b30; --accent:#4cc3a8; --accent-soft:#15302b; --warn:#e3a341; --warn-soft:#33270f; --bad:#ef7b7f; --bad-soft:#3a1c1d; --dark:#0b0c0e; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  a { color:var(--accent); }
+  .wrap { max-width:1080px; margin:0 auto; padding:0 16px; }
+  header.hero { background:var(--dark); color:#f6f5f1; padding:72px 0 64px; }
+  .eyebrow { font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:#5fd3b8; font-weight:600; margin:0 0 16px; }
+  h1 { font-size:clamp(40px,7vw,72px); line-height:1.02; margin:0 0 16px; letter-spacing:-.02em; }
+  .tag { font-size:clamp(20px,3vw,28px); margin:0 0 20px; color:#f6f5f1; }
+  .lede { font-size:18px; color:#b9c0c8; max-width:720px; margin:0 0 28px; }
+  .btns { display:flex; flex-wrap:wrap; gap:10px; }
+  .btn { display:inline-block; padding:10px 16px; border-radius:9px; background:#5fd3b8; color:#0b1512; font-weight:600; text-decoration:none; }
+  .btn.ghost { background:transparent; color:#f6f5f1; border:1px solid #39404a; }
+  main { padding:40px 0 64px; display:grid; gap:20px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px; min-width:0; }
+  h2 { font-size:22px; margin:0 0 6px; letter-spacing:-.01em; }
+  .sub { color:var(--muted); margin:0 0 16px; font-size:15px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; }
+  .kpi { border:1px solid var(--line); border-radius:11px; padding:14px; background:var(--bg); }
+  .kpi .l { color:var(--muted); font-size:13px; }
+  .kpi .v { font-size:26px; font-weight:650; font-variant-numeric:tabular-nums; word-break:break-word; }
+  .kpi code { display:block; margin-top:6px; font:11px/1.4 var(--mono); color:var(--muted); word-break:break-word; }
+  .kpi.hi .v { color:var(--accent); }
+  .scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th,td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:500; font-size:12px; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .hash { font:12px var(--mono); color:var(--muted); }
+  .pill { display:inline-block; padding:1px 8px; border-radius:99px; font-size:12px; border:1px solid var(--line); white-space:nowrap; }
+  .pill.accepted { background:var(--accent-soft); color:var(--accent); border-color:transparent; }
+  .pill.claimed { background:var(--warn-soft); color:var(--warn); border-color:transparent; }
+  .pill.flag { background:var(--bad-soft); color:var(--bad); border-color:transparent; }
+  .checks { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px; }
+  .check { border:1px solid var(--line); border-radius:11px; padding:12px 14px; background:var(--bg); }
+  .check b { display:block; margin-bottom:4px; }
+  .check .ok { color:var(--accent); font-weight:700; }
+  .check .bad { color:var(--bad); font-weight:700; }
+  .check ul { margin:6px 0 0; padding-left:18px; color:var(--muted); font-size:13px; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:9px; padding:12px; font:12px/1.5 var(--mono); overflow-x:auto; white-space:pre-wrap; word-break:break-word; margin:0; }
+  img.arch { width:100%; height:auto; border-radius:10px; border:1px solid var(--line); background:#f6f5f1; }
+  .note { color:var(--muted); font-size:13px; }
+  footer { padding:28px 0 48px; color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">NEAR HACKATHON · privacy · business · realworld</p>
+    <h1>Takara AI</h1>
+    <p class="tag">Never spend tomorrow’s payroll on today’s expenses.</p>
+    <p class="lede">A non-custodial treasury for small businesses. The business owns the treasury contract and its funds; Takara is an AI agent that pays bills only inside a policy the owner signs, and the owner can revoke it at any time without the agent’s cooperation.</p>
+    <div class="btns">
+      <a class="btn" href="https://github.com/growthmindsetgg/takara-ai" target="_blank" rel="noopener">GitHub repository</a>
+      <a class="btn ghost" href="#proof">10/10 judge checks</a>
+      <a class="btn ghost" id="explorer" href="#" target="_blank" rel="noopener">Treasury on NearBlocks</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section>
+    <h2>Live treasury · NEAR testnet</h2>
+    <p class="sub">Read directly from the chain in your browser. Public state holds balances, states, hashes and attestation references only.</p>
+    <div class="kpis" id="live"><div class="kpi"><div class="l">Loading</div><div class="v">…</div></div></div>
+  </section>
+
+  <section>
+    <h2>Public ledger</h2>
+    <p class="sub">What anyone can see. Amounts, vendors and payees are sealed inside the TEE policy engine.</p>
+    <div class="scroll"><table id="ledger"><thead><tr><th>#</th><th>State</th><th>Priority</th><th>Flags</th><th>Evidence hash</th><th>Commitment hash</th><th>Engine attestation</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>Owner view (snapshot)</h2>
+    <p class="sub" id="snapnote">Only the business owner can see this: it is computed locally by the same engine binary with the owner’s ledger key. Shown here as a snapshot over fictional fixture data.</p>
+    <div class="kpis" id="owner"></div>
+    <div class="scroll" style="margin-top:14px"><table id="ownertable"><thead><tr><th>#</th><th>Vendor / payee</th><th class="num">Amount</th><th>Priority</th><th>State</th><th>Flags</th><th>Destination</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section id="proof">
+    <h2 id="proofh">Judge checks</h2>
+    <p class="sub">Every check is real transactions against the live treasury; each step links to the explorer. Re-run with <code>node scripts/judge.mjs</code>.</p>
+    <div class="checks" id="checks"></div>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <p class="sub">The contract believes only answers to its own OutLayer requests, for the exact engine build it pinned. The agent can request decisions and settle what the engine authorized, nothing else.</p>
+    <img class="arch" src="architecture.svg" alt="Architecture: owners, signers and agent call the NEAR treasury contract; the contract calls the OutLayer TEE policy engine with a pinned wasm hash and accepts only its callback; NEAR AI Cloud parses invoices in a TEE; 1Click payout is a separate mainnet demo.">
+  </section>
+
+  <section>
+    <h2>Verify it yourself</h2>
+    <div class="grid2">
+      <div>
+        <p class="sub">Independently verify an OutLayer engine execution’s Intel TDX attestation (6 checks, Intel root of trust):</p>
+        <pre>git clone https://github.com/growthmindsetgg/takara-ai.git
+cd takara-ai && npm install
+node scripts/verify-attestation.mjs 30883 \
+  dc3e7c5c406cea1872b338cfed59bb14ed37a422f5bb31486d02346f94a7f019 \
+  '{"request":"step0-onchain","treasury":"takara-ai-hq.testnet"}' \
+  '{"ok":true,"engine":"takara-ai-engine","step":0,"input_len":61,"echo":"request:step0-onchaintreasury:takara-ai-hq.testnet"}'</pre>
+      </div>
+      <div>
+        <p class="sub">Run all ten checks on your own deployment:</p>
+        <pre>TAKARA_OWNER=&lt;you&gt;.testnet node scripts/setup-testnet.mjs
+node scripts/judge.mjs
+node backend/server.mjs   # local owner dashboard</pre>
+        <p class="note">The confidential payout via NEAR Intents 1Click is a separately labelled mainnet integration demo. The testnet contract does not enforce it.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  Takara AI · built at NEAR HACKATHON · MIT license · all sample invoices and vendors are fictional; tUSDC has no value.
+</footer>
+
+<script>
+const RPC = "https://rpc.testnet.fastnear.com";
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const short = (h) => (h ? `${String(h).slice(0, 8)}…${String(h).slice(-4)}` : "");
+const FLAGS = { 1: "provisional vendor", 2: "new vendor > limit", 4: "instruction ignored", 8: "destination changed", 16: "preempted" };
+const flags = (f) => Object.entries(FLAGS).filter(([b]) => f & b).map(([, n]) => `<span class="pill flag">${n}</span>`).join(" ");
+async function view(contract, method, args = {}) {
+  const r = await fetch(RPC, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "call_function", finality: "optimistic", account_id: contract, method_name: method, args_base64: btoa(JSON.stringify(args)) } }) });
+  const j = await r.json();
+  if (!j.result) throw new Error(JSON.stringify(j.error ?? j).slice(0, 200));
+  return JSON.parse(new TextDecoder().decode(new Uint8Array(j.result.result)));
+}
+const kpi = (l, v, q, hi) => `<div class="kpi ${hi ? "hi" : ""}"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div>${q ? `<code>${esc(q)}</code>` : ""}</div>`;
+
+(async () => {
+  const D = await (await fetch("deployment.json")).json();
+  const T = D.accounts.treasury;
+  $("#explorer").href = `https://testnet.nearblocks.io/address/${T}`;
+  try {
+    const c = await view(T, "get_config");
+    $("#live").innerHTML = [
+      kpi("Treasury", T), kpi("Balance (public)", `${(Number(c.balance) / 1e6).toLocaleString()} tUSDC`),
+      kpi("Agent", c.agent ?? "revoked"), kpi("Paused", c.paused ? "yes" : "no"),
+      kpi("Policy", `v${c.policy_version} · ${short(c.policy_hash)}`), kpi("Pinned engine", short(c.engine.wasm_hash)),
+      kpi("Owners", c.owners.join(", ")), kpi("Policy signers", c.signers.join(", ")),
+    ].join("");
+    const list = await view(T, "list_commitments", { from: "0", limit: 100 });
+    $("#ledger tbody").innerHTML = list.map((x) => `<tr><td>${x.id}</td><td><span class="pill ${x.state}">${x.state}</span></td><td>${x.priority}</td><td>${flags(x.flags)}</td><td class="hash">${short(x.evidence_hash)}</td><td class="hash">${short(x.commitment_hash)}</td><td class="hash"><a href="https://testnet-api.outlayer.ai/attestations/by-request/${encodeURIComponent(x.attestation.request_no)}" target="_blank" rel="noopener">request ${x.attestation.request_no}</a> · out ${short(x.attestation.output_hash)}</td></tr>`).join("") || `<tr><td colspan="7">No commitments yet.</td></tr>`;
+  } catch (e) {
+    $("#live").innerHTML = kpi("Could not reach NEAR testnet RPC", e.message);
+  }
+
+  const snap = await (await fetch("owner-snapshot.json")).json();
+  const f = snap.figures, q = snap.queries;
+  $("#snapnote").textContent += ` Generated ${snap.generated_at.slice(0, 16).replace("T", " ")} UTC.`;
+  $("#owner").innerHTML = [kpi("Treasury balance", `${f.treasury_balance} ${snap.symbol}`, q.treasury_balance), kpi("Reserved", f.reserved, q.reserved), kpi("Spendable", f.spendable, q.spendable, true), kpi("Runway", f.runway_days == null ? "n/a" : `${f.runway_days} days`, q.runway_days)].join("");
+  $("#ownertable tbody").innerHTML = snap.commitments.map((x) => `<tr><td>${x.id}</td><td>${esc(x.vendor)}</td><td class="num">${esc(x.amount)}</td><td>${x.priority}</td><td><span class="pill ${x.state}">${x.state}</span>${x.vendor_change ? ` <span class="pill">${esc(x.vendor_change.replaceAll("_", " "))}</span>` : ""}</td><td>${flags(x.flags)}</td><td class="hash">${esc(x.destination)}${x.proposed_destination ? `<br>proposed: <b>${esc(x.proposed_destination)}</b>` : ""}</td></tr>`).join("");
+
+  const run = await (await fetch("judge-run.json")).json();
+  $("#proofh").textContent = `${run.passed} of ${run.total} judge checks pass on NEAR testnet`;
+  $("#checks").innerHTML = run.results.map((r) => {
+    const txs = run.txs.filter((t) => t.test === r.n).slice(0, 4).map((t) => `<li><a href="https://testnet.nearblocks.io/txns/${t.tx}" target="_blank" rel="noopener">${esc(t.label)}</a></li>`).join("");
+    return `<div class="check"><b><span class="${r.ok ? "ok" : "bad"}">${r.ok ? "PASS" : "FAIL"}</span> ${r.n}. ${esc(r.title)}</b><ul>${r.checks.map((c) => `<li>${c.ok ? "✓" : "✗"} ${esc(c.name)}</li>`).join("")}</ul>${txs ? `<ul>${txs}</ul>` : ""}</div>`;
+  }).join("");
+})();
+</script>
+</body>
+</html>

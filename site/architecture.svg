@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14">
+  <title>Takara AI architecture</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3b3b44"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f6b5c"/></marker>
+    <style>
+      .box { fill: #ffffff; stroke: #c9c6bd; stroke-width: 1.5; rx: 12; }
+      .tee { fill: #e3f1ee; stroke: #0f6b5c; stroke-width: 2; }
+      .chain { fill: #eef1fb; stroke: #3a55b4; stroke-width: 2; }
+      .main { fill: #fbf0dc; stroke: #9a5b00; stroke-width: 1.5; stroke-dasharray: 6 4; }
+      .t { font-weight: 650; font-size: 16px; fill: #17171a; }
+      .s { fill: #4b4b55; font-size: 13px; }
+      .k { fill: #0f6b5c; font-size: 12px; font-weight: 600; }
+      .l { stroke: #3b3b44; stroke-width: 1.6; fill: none; marker-end: url(#a); }
+      .lg { stroke: #0f6b5c; stroke-width: 2.2; fill: none; marker-end: url(#g); }
+      .lab { fill: #3b3b44; font-size: 12px; }
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="#f6f5f1"/>
+  <text x="40" y="44" font-size="22" font-weight="700" fill="#17171a">Takara AI: who can do what, and where the data lives</text>
+  <text x="40" y="68" class="s">The business owns the treasury. The agent can only ask the pinned engine for a decision and settle what it authorized.</text>
+
+  <!-- People -->
+  <rect x="40" y="100" width="250" height="110" class="box"/>
+  <text x="60" y="130" class="t">Owner(s)</text>
+  <text x="60" y="152" class="s">Ownership authority</text>
+  <text x="60" y="172" class="s">revoke agent · pause · recover funds</text>
+  <text x="60" y="192" class="s">pin engine · rotate signers</text>
+
+  <rect x="40" y="230" width="250" height="110" class="box"/>
+  <text x="60" y="260" class="t">Policy signer(s)</text>
+  <text x="60" y="282" class="s">Policy authority</text>
+  <text x="60" y="302" class="s">sign policy versions · accept bills</text>
+  <text x="60" y="322" class="s">approve vendor destination changes</text>
+
+  <rect x="40" y="360" width="250" height="150" class="box"/>
+  <text x="60" y="390" class="t">Takara agent + backend</text>
+  <text x="60" y="412" class="s">Execution authority only</text>
+  <text x="60" y="432" class="s">intake: reads mail headers itself;</text>
+  <text x="60" y="452" class="s">model copies body fields only</text>
+  <text x="60" y="472" class="s">seals claim to engine key</text>
+  <text x="60" y="492" class="s">register · request · settle</text>
+
+  <!-- NEAR AI -->
+  <rect x="40" y="540" width="250" height="140" class="tee"/>
+  <text x="60" y="570" class="t">NEAR AI Cloud</text>
+  <text x="60" y="592" class="s">TEE-hosted model (TDX + H100)</text>
+  <text x="60" y="612" class="s">attestation checked vs fresh nonce</text>
+  <text x="60" y="632" class="s">per-response signature verified</text>
+  <text x="60" y="660" class="k">PRIVATE INFERENCE</text>
+
+  <!-- Treasury contract -->
+  <rect x="420" y="160" width="360" height="360" class="chain"/>
+  <text x="440" y="192" class="t">Treasury contract · NEAR testnet</text>
+  <text x="440" y="218" class="s">three authorities, checked separately</text>
+  <text x="440" y="248" class="s">• commitments: claimed → accepted → settled</text>
+  <text x="440" y="270" class="s">• only accepted reserves funds</text>
+  <text x="440" y="292" class="s">• vendor-change records (suspended, approved)</text>
+  <text x="440" y="314" class="s">• issued authorizations (by nonce), used nonces</text>
+  <text x="440" y="336" class="s">• rolling ledger state hash</text>
+  <text x="440" y="358" class="s">• stores hashes, states, sealed blobs only</text>
+  <text x="440" y="392" class="t" font-size="14">settle() checks, in order</text>
+  <text x="440" y="414" class="s">nonce unused → issued here → every field equal</text>
+  <text x="440" y="434" class="s">→ not expired → engine still pinned → policy</text>
+  <text x="440" y="454" class="s">and ledger current → commitment accepted</text>
+  <text x="440" y="490" class="k">PUBLIC STATE: NO AMOUNTS, NAMES OR PAYEES</text>
+
+  <!-- OutLayer engine -->
+  <rect x="880" y="160" width="280" height="300" class="tee"/>
+  <text x="900" y="192" class="t">Policy engine · OutLayer</text>
+  <text x="900" y="214" class="s">Rust → WASM, Intel TDX</text>
+  <text x="900" y="244" class="s">• opens sealed claim + policy</text>
+  <text x="900" y="266" class="s">• resolves vendor / priority from</text>
+  <text x="900" y="286" class="s">  the signed registry, never the doc</text>
+  <text x="900" y="308" class="s">• reserve check: spendable_after ≥ 0</text>
+  <text x="900" y="330" class="s">• destination match, cooling-off</text>
+  <text x="900" y="352" class="s">• issues bound authorization</text>
+  <text x="900" y="382" class="s">ledger key = OutLayer secret bound</text>
+  <text x="900" y="402" class="s">to this wasm hash; readable only when</text>
+  <text x="900" y="422" class="s">agent signs via the treasury</text>
+  <text x="900" y="446" class="k">CONFIDENTIAL COMPUTE</text>
+
+  <!-- Mainnet payout -->
+  <rect x="880" y="520" width="280" height="160" class="main"/>
+  <text x="900" y="550" class="t">1Click · NEAR Intents</text>
+  <text x="900" y="572" class="s">MAINNET integration demo</text>
+  <text x="900" y="594" class="s">confidential payout, quote checked</text>
+  <text x="900" y="614" class="s">against the authorization opening</text>
+  <text x="900" y="642" class="s" font-weight="600">Not enforced by the testnet contract</text>
+
+  <!-- Report -->
+  <rect x="420" y="560" width="360" height="120" class="box"/>
+  <text x="440" y="590" class="t">Owner reports + read-only chat</text>
+  <text x="440" y="612" class="s">same engine binary, run locally with the</text>
+  <text x="440" y="632" class="s">owner's ledger key: every figure has a query;</text>
+  <text x="440" y="652" class="s">the chat cannot pay, approve or edit</text>
+
+  <!-- arrows -->
+  <path d="M290 155 L420 220" class="l"/><text x="318" y="170" class="lab">owner calls</text>
+  <path d="M290 285 L420 300" class="l"/><text x="318" y="282" class="lab">signed approvals</text>
+  <path d="M290 430 L420 400" class="l"/><text x="304" y="452" class="lab">execution only</text>
+  <path d="M165 540 L165 510" class="l"/>
+  <path d="M780 250 L880 250" class="lg"/><text x="790" y="240" class="lab">pinned hash</text>
+  <path d="M880 330 L780 330" class="lg"/><text x="794" y="350" class="lab">callback only</text>
+  <path d="M1020 460 L1020 520" class="l"/><text x="1030" y="496" class="lab">opening (sealed to agent)</text>
+  <path d="M600 520 L600 560" class="l"/>
+</svg>

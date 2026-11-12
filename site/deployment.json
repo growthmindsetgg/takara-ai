@@ -1,0 +1,20 @@
+{
+  "secret_for_hash": "bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb",
+  "network": "testnet",
+  "owner": "takara-ai-hq.testnet",
+  "accounts": {
+    "treasury": "treasury.takara-ai-hq.testnet",
+    "tusdc": "tusdc.takara-ai-hq.testnet",
+    "agent": "agent.takara-ai-hq.testnet",
+    "signer": "signer.takara-ai-hq.testnet"
+  },
+  "engine": {
+    "wasm_url": "https://test.fastfs.io/takara-ai-hq.testnet/outlayer.testnet/bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb.wasm",
+    "wasm_hash": "bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb",
+    "build_target": "wasm32-wasip1",
+    "public_key": "70164e864e218e42426ca40545165f160fea98f1b2d1caef47dc51fceb3d2f72"
+  },
+  "agent_payout_public_key": "e347cb685719d989e289d1a27912a2eff3de93d32950d3cab819c15c7e0c023c",
+  "policy_hash": "68ea8f18e117a0286ca0da99c57a4966035ee107049dcd471efbaa03d4eb5281",
+  "secret_rule": "agent-via-treasury"
+}

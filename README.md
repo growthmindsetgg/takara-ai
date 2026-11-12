@@ -6,6 +6,8 @@ Takara AI is a non-custodial treasury for small businesses: the business owns th
 
 Built at NEAR HACKATHON (tracks: `privacy`, `business`, `realworld`).
 
+**Live:** [takara-ai.vercel.app](https://takara-ai.vercel.app) (public, read-only: live treasury from NEAR testnet, the public ledger, an owner-view snapshot over fictional fixture data, and the 10/10 judge run with transaction links) · **Repo:** [github.com/growthmindsetgg/takara-ai](https://github.com/growthmindsetgg/takara-ai)
+
 ## The problem
 
 A small business's bank balance looks healthy while most of it already belongs to payroll and bills, so money gets spent twice and payroll fails. Fake invoices that swap a known vendor's payout details (business email compromise) cost small businesses one irreversible payment at a time. AI agents that can move money make both problems faster unless their limits are enforced in code they cannot change.
