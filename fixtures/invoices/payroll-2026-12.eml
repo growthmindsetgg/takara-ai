@@ -1,0 +1,11 @@
+From: Fixture Co Payroll <payroll@fixtureco.example>
+To: ap@takara.example
+Subject: Payroll run December 2026
+Authentication-Results: mx.takara.example; dkim=pass header.d=fixtureco.example
+
+FICTIONAL TEST DOCUMENT - Fixture Co (not a real company)
+Payroll run: December 2026
+Total net pay: 600.00 USDC
+Pay date: 2026-12-01
+Payout account (NEAR): payroll.fixtureco.testnet
+Recurring: monthly

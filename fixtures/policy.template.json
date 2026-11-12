@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "version": 1,
+  "asset": "${ASSET}",
+  "symbol": "USDC",
+  "decimals": 6,
+  "max_auto_pay": "500000000",
+  "new_vendor_auto_limit": "50000000",
+  "cooling_off_hours": 24,
+  "min_runway_days": 7,
+  "auth_ttl_secs": 900,
+  "settlement_mode": "per_payment",
+  "agent_payout_pk": "${AGENT_PAYOUT_PK}",
+  "vendors": [
+    { "id": "payroll", "name": "Payroll run", "emails": ["payroll@fixtureco.example"], "domains": [], "tax_ids": [],
+      "destinations": { "near": "payroll.fixtureco.testnet" }, "priority": "critical", "recurrence": "monthly", "verified_by": "${SIGNER}" },
+    { "id": "railway", "name": "Railway (fictional hosting vendor)", "emails": ["billing@railway.example"], "domains": ["railway.example"], "tax_ids": ["US-88-1234567"],
+      "destinations": { "near": "railway-pay.testnet" }, "priority": "normal", "recurrence": "monthly", "verified_by": "${SIGNER}" },
+    { "id": "inkwell", "name": "Inkwell Design Tools (fictional)", "emails": ["invoices@inkwell.example"], "domains": ["inkwell.example"], "tax_ids": [],
+      "destinations": { "near": "inkwell-pay.testnet" }, "priority": "normal", "recurrence": "monthly", "verified_by": "${SIGNER}" }
+  ],
+  "roster": [
+    { "id": "ana", "name": "Ana (team member)", "email": "ana@fixtureco.example", "role": "member", "payout_chain": "near", "payout_token": "usdc", "payout_address": "ana.fixtureco.testnet" }
+  ]
+}

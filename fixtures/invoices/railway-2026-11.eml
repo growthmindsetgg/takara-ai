@@ -1,0 +1,13 @@
+From: Railway Billing <billing@railway.example>
+To: ap@takara.example
+Subject: Invoice RW-2026-11-0042
+Authentication-Results: mx.takara.example; dkim=pass header.d=railway.example
+
+FICTIONAL TEST DOCUMENT - Railway (fictional hosting vendor)
+Invoice number: RW-2026-11-0042
+Tax ID: US-88-1234567
+Service: Hosting, November 2026
+Amount due: $120.00 USD
+Due date: 2026-12-12
+Pay to (NEAR): railway-pay.testnet
+Billing: monthly

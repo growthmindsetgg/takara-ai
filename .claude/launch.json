@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "takara-dashboard",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["backend/server.mjs"],
+      "port": 8787
+    }
+  ]
+}

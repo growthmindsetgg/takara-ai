@@ -1,0 +1,11 @@
+From: Inkwell Invoices <invoices@inkwell.example>
+To: ap@takara.example
+Subject: Inkwell invoice INK-7781
+Authentication-Results: mx.takara.example; dkim=pass header.d=inkwell.example
+
+FICTIONAL TEST DOCUMENT - Inkwell Design Tools (fictional)
+Invoice INK-7781 - Team plan, 5 seats
+Total: 45.00 USD
+Due: 2026-12-05
+Remit to NEAR account: inkwell-pay.testnet
+Billed monthly

@@ -1,0 +1,10 @@
+From: Big Agency Sales <sales@bigagency.example>
+To: ap@takara.example
+Subject: Invoice BA-2026-001
+Authentication-Results: mx.takara.example; dkim=pass header.d=bigagency.example
+
+FICTIONAL TEST DOCUMENT - Big Agency (fictional)
+Invoice BA-2026-001 - brand campaign, phase 1
+Amount: 900.00 USD
+Due: 2026-12-30
+Pay to (NEAR): bigagency.testnet

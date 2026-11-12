@@ -1,0 +1,9 @@
+From: Ana <ana@fixtureco.example>
+To: ap@takara.example
+Subject: Payment request: team offsite venue deposit
+Authentication-Results: mx.takara.example; dkim=pass header.d=fixtureco.example
+
+FICTIONAL TEST DOCUMENT
+Payment request from Ana
+Purpose: team offsite venue deposit
+Amount: 400 USDC

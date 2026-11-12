@@ -1,0 +1,23 @@
+{
+  "name": "takara-ai",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Takara AI: non-custodial treasury agent on NEAR",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "setup": "node scripts/setup-testnet.mjs",
+    "judge": "node scripts/judge.mjs",
+    "dashboard": "node backend/server.mjs",
+    "verify:attestation": "node scripts/verify-attestation.mjs",
+    "test": "cd contract && cargo test && cd ../engine && cargo test"
+  },
+  "dependencies": {
+    "@noble/curves": "2.0.1",
+    "@noble/hashes": "2.4.0",
+    "@phala/dcap-qvl": "0.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

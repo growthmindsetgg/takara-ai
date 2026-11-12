@@ -1,0 +1,10 @@
+From: Tiny Logo Studio <hi@tinylogo.example>
+To: ap@takara.example
+Subject: Invoice TL-001
+Authentication-Results: mx.takara.example; dkim=pass header.d=tinylogo.example
+
+FICTIONAL TEST DOCUMENT - Tiny Logo Studio (fictional)
+Invoice TL-001 - logo refresh
+Amount: 40.00 USD
+Due: 2026-12-20
+Pay to (NEAR): tinylogo.testnet

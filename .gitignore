@@ -1,0 +1,16 @@
+# build output
+target/
+node_modules/
+*.log
+
+# secrets: keys live in env vars or local keychains only, never in the repo
+.env
+.env.*
+!.env.example
+*.pem
+*credentials*.json
+.near-credentials/
+.outlayer/
+
+.secrets/
+.data/
