@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["backend/server.mjs"],
       "port": 8787
+    },
+    {
+      "name": "takara-site",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8788", "--directory", "site"],
+      "port": 8788
     }
   ]
 }

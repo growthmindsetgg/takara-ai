@@ -6,7 +6,7 @@ Takara AI is a non-custodial treasury for small businesses: the business owns th
 
 Built at NEAR HACKATHON (tracks: `privacy`, `business`, `realworld`).
 
-**Live:** [takara-ai.vercel.app](https://takara-ai.vercel.app) (public, read-only: live treasury from NEAR testnet, the public ledger, an owner-view snapshot over fictional fixture data, and the 10/10 judge run with transaction links) · **Repo:** [github.com/growthmindsetgg/takara-ai](https://github.com/growthmindsetgg/takara-ai)
+**Live app:** [takara-ai.vercel.app/app](https://takara-ai.vercel.app/app) (owner console over the fictional fixture treasury: live figures, commitments, policy diff preview, read-only chat, public ledger; signing is disabled on the hosted copy because a public site never holds a signer's key) · **Product page:** [takara-ai.vercel.app](https://takara-ai.vercel.app) · **Repo:** [github.com/growthmindsetgg/takara-ai](https://github.com/growthmindsetgg/takara-ai)
 
 ## The problem
 
@@ -85,7 +85,7 @@ An independent audit ran after the first full testnet run. No Critical issues; e
 | Invoice parsing (`backend/nearai.mjs`) | NEAR AI Cloud | **NEAR AI Cloud** private inference: gateway + model TDX quotes and NVIDIA GPU evidence verified against a fresh nonce; per-response ECDSA signature verified |
 | Payout leg (`backend/payout.mjs`) | NEAR Intents mainnet | **1Click API** with `confidentiality: "basic"`; quote checked against the authorization opening |
 | Test token (`mock-ft/`) | NEAR testnet | NEP-141 (fictional tUSDC) |
-| Dashboard + chat (`backend/server.mjs`, `web/`) | owner's machine | read-only views over chain state and the deterministic report |
+| Dashboard + chat (`backend/server.mjs`, `web/`) | owner's machine; hosted demo on Vercel (`platform/`) | read-only views over chain state and the deterministic report; hosted copy has no signing |
 
 **Trust path.** The treasury contract believes only answers to its own OutLayer requests. Each request names the pinned engine hash, and OutLayer refuses any other bytes (`docs/step0-outlayer-proof.md`: a wrong hash is refused with zero instructions executed). The callback hashes the exact bytes it receives; that hash equals OutLayer's attested `output_hash`, so the Intel TDX attestation for every decision is publicly checkable with `scripts/verify-attestation.mjs`. The contract's guarantee is that a decision came from the pinned policy engine over the committed ledger state, not that it independently redid the arithmetic: it stores hashes and states, never plaintext amounts, so it verifies that the engine asserted `spendable_after >= 0` against the current `ledger_state_hash`. The treasury's total balance is public, as any account balance is. What stays private is its composition.
 
