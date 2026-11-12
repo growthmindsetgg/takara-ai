@@ -111,6 +111,7 @@ An independent audit ran after the first full testnet run. No Critical issues; e
 | Sender identity (DKIM) | Modeled | intake trusts only our receiving server's `Authentication-Results` header (anchored, single clause); no live mail server |
 | Per-member spending limits, budget envelopes | Roadmap | data model has the roster; limits not enforced in this build |
 | Netting, incoming cash flow, compliance clearance, scenario simulation | Roadmap | |
+| Mainnet deployment with contract-enforced payout | Roadmap | feasibility, design, costs (≈ $8/month for a small business) and the must-fix list: [docs/mainnet-plan.md](docs/mainnet-plan.md) |
 
 ## Statements
 
