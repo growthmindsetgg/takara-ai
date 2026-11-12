@@ -17,7 +17,7 @@ Two ways to check this submission.
 ### A. Verify the live deployment, no keys needed (2 minutes)
 
 ```bash
-git clone <this repo> takara-ai && cd takara-ai
+git clone https://github.com/growthmindsetgg/takara-ai.git && cd takara-ai
 npm install
 # read the live treasury on testnet
 node -e 'import("./scripts/lib/near.mjs").then(async m=>console.log(await m.view("treasury.takara-ai-hq.testnet","get_config")))'
