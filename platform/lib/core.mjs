@@ -85,6 +85,9 @@ export async function report() {
     return [Number(c.id), c.state, c.priority, c.flags, acc, c.sealed, vc?.settlement_status ?? null, vc?.decided_at ? Number(vc.decided_at) : null];
   });
   const r = await runEngine({ ...input, op: "report", sk: ownerKey() });
+  // The engine's label predates the audit fix (M6): the burn counts accepted recurrences only.
+  if (r.queries) r.queries.daily_recurring_burn = "sum(monthly-equivalent amount) where state == accepted and recurring, / 30";
+
   return { ...r, hosted_demo: true, note: "Owner view of the fictional fixture treasury (hosted demo)." };
 }
 
@@ -93,7 +96,7 @@ async function openSealed(sealed) {
   return r.ok ? r.plaintext : null;
 }
 
-function decisions() {
+export function decisions() {
   const p = join(ROOT, "data", "decisions.jsonl");
   if (!existsSync(p)) return [];
   return readFileSync(p, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));

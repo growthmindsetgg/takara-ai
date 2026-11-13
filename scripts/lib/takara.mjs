@@ -56,7 +56,10 @@ export async function report() {
       const acc = c.accepted_by === "policy" ? "p" : c.accepted_by ? "s" : "";
       return [Number(c.id), c.state, c.priority, c.flags, acc, c.sealed, vc?.settlement_status ?? null, vc?.decided_at ? Number(vc.decided_at) : null];
     });
-  return runEngine({ ...input, op: "report", sk: keys.engine_sk });
+  const r = await runEngine({ ...input, op: "report", sk: keys.engine_sk });
+  // The engine's label predates the audit fix (M6): the burn counts accepted recurrences only.
+  if (r.queries) r.queries.daily_recurring_burn = "sum(monthly-equivalent amount) where state == accepted and recurring, / 30";
+  return r;
 }
 
 /** Owner-only: open a sealed refusal detail or record. */
