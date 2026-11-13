@@ -13,22 +13,42 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+/* ---------- tokens, layer 1: primitives (raw values; components never use these directly) ---------- */
 :root {
   color-scheme: light;
-  --paper: #FAFAF8; --surface: #FFFFFF; --sunken: #F4F4F0;
-  --ink: #182026; --ink-2: #364048; --muted: #5A636B;
-  --line: #E6E5DF; --line-2: #D5D4CC; --line-strong: #8C918C;
-  --accent: #0B5D52; --accent-2: #4A8F84; --accent-soft: #E6F0ED; --accent-ink: #08473F;
-  --warn: #8A5300; --warn-soft: #FAF0DC;
-  --bad: #9E2A2E; --bad-soft: #FAEAEA;
-  --seg-paid: #8C918C; --seg-reserved: #4A8F84; --seg-spendable: #0B5D52;
+  --p-paper: #FAFAF8; --p-white: #FFFFFF;
+  --p-stone-50: #FCFCFA; --p-stone-100: #F4F4F0; --p-stone-150: #ECECE6; --p-stone-200: #E6E5DF; --p-stone-300: #D5D4CC; --p-stone-500: #8C918C;
+  --p-ink-900: #182026; --p-ink-800: #26323A; --p-ink-700: #364048; --p-ink-500: #5A636B;
+  --p-green-900: #08473F; --p-green-800: #0B5D52; --p-green-500: #4A8F84; --p-green-200: #CFE2DC; --p-green-100: #E6F0ED; --p-green-50: #F2F7F5; --p-green-on-ink: #BFE3DA;
+  --p-amber-800: #8A5300; --p-amber-200: #F0DDB8; --p-amber-100: #FAF0DC;
+  --p-red-800: #9E2A2E; --p-red-300: #E3B7B9; --p-red-200: #F1D2D3; --p-red-100: #FAEAEA;
+  /* spacing: a 4px grid */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px;
+  /* type scale (size/line-height) */
+  --t-xs: 12px; --t-sm: 13px; --t-ui: 14px; --t-base: 15px; --t-md: 17px; --t-lg: 20px; --t-xl: 24px; --t-2xl: 32px; --t-hero: 48px;
   --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --r-sm: 6px; --r-md: 10px; --r-lg: 14px;
+  --r-xs: 4px; --r-sm: 6px; --r-md: 10px; --r-lg: 14px;
+  --ease: cubic-bezier(.2,.7,.2,1); --ease-out: cubic-bezier(.4,0,1,1);
+}
+/* ---------- layer 2: semantic (what a colour means; components use these) ---------- */
+:root {
+  --paper: var(--p-paper); --surface: var(--p-white); --raised: var(--p-stone-50); --sunken: var(--p-stone-100);
+  --ink: var(--p-ink-900); --ink-2: var(--p-ink-700); --muted: var(--p-ink-500);
+  --line: var(--p-stone-200); --line-2: var(--p-stone-300); --line-strong: var(--p-stone-500);
+  --accent: var(--p-green-800); --accent-2: var(--p-green-500); --accent-soft: var(--p-green-100); --accent-faint: var(--p-green-50); --accent-ink: var(--p-green-900); --accent-line: var(--p-green-200);
+  --warn: var(--p-amber-800); --warn-soft: var(--p-amber-100); --warn-line: var(--p-amber-200);
+  --bad: var(--p-red-800); --bad-soft: var(--p-red-100); --bad-line: var(--p-red-200); --bad-line-2: var(--p-red-300);
+  --on-ink: var(--p-white); --on-ink-link: var(--p-green-on-ink);
   --lift: 0 1px 0 rgba(24,32,38,.03), 0 18px 40px -24px rgba(24,32,38,.28);
   --shadow-pop: 0 2px 6px rgba(24,32,38,.06), 0 24px 48px -16px rgba(24,32,38,.28);
-  --ease: cubic-bezier(.2,.7,.2,1); --ease-out: cubic-bezier(.4,0,1,1);
+}
+/* ---------- layer 3: component tokens ---------- */
+:root {
   --side: 240px; --pad: 32px;
+  --btn-h: 40px; --btn-primary-bg: var(--ink); --btn-primary-hover: var(--p-ink-800);
+  --nav-h: 36px; --panel-x: 24px;
+  --seg-paid: var(--p-stone-500); --seg-reserved: var(--p-green-500); --seg-spendable: var(--p-green-800);
 }
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: 24px; }
@@ -56,11 +76,11 @@ svg { flex: none; }
 .brand { height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 20px; font-weight: 600; font-size: 16px; letter-spacing: -.01em; color: var(--ink); text-decoration: none; }
 .acctrow { display: flex; align-items: center; gap: 2px; padding: 0 8px 12px 20px; margin-bottom: 8px; border-bottom: 1px solid var(--line); min-height: 44px; }
 .acctrow .mono { font-size: 12px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
-.navlist { display: grid; gap: 2px; padding: 4px 10px; }
-.nv { position: relative; display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 8px; color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 14px; transition: background-color .16s var(--ease), color .16s var(--ease); }
+.navlist { display: grid; gap: 4px; padding: 12px 12px; }
+.nv { position: relative; display: flex; align-items: center; gap: 12px; height: var(--nav-h); padding: 0 12px; border-radius: 8px; color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 14px; transition: background-color .16s var(--ease), color .16s var(--ease); }
 .nv:hover { background: var(--sunken); color: var(--ink); }
 .nv[aria-current="page"] { background: var(--accent-soft); color: var(--accent-ink); }
-.nv[aria-current="page"]::before { content: ""; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+.nv[aria-current="page"]::before { content: ""; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
 .nv-l { flex: 1; min-width: 0; }
 .nv-b { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); font: 600 12px/20px var(--sans); text-align: center; font-variant-numeric: tabular-nums; }
 .nv-b[hidden] { display: none; }
@@ -75,20 +95,20 @@ main { display: block; max-width: calc(1120px + 2 * var(--pad)); margin: 0 auto;
 .topbar, .tabbar { display: none; }
 
 /* banners */
-.demo { background: var(--warn-soft); border-bottom: 1px solid rgba(138,83,0,.3); color: var(--ink); font-size: 14px; line-height: 20px; }
-.demo-in { max-width: calc(1120px + 2 * var(--pad)); margin: 0 auto; padding: 10px var(--pad); display: flex; align-items: flex-start; gap: 12px; }
+.demo { background: var(--warn-soft); border-bottom: 1px solid var(--warn-line); color: var(--ink); font-size: 14px; line-height: 20px; }
+.demo-in { max-width: calc(1120px + 2 * var(--pad)); margin: 0 auto; padding: 12px var(--pad); display: flex; align-items: flex-start; gap: 12px; }
 .demo-in p { max-width: 80ch; flex: 1; padding-top: 2px; }
 .demo-in p a { color: var(--warn); font-weight: 500; margin-left: 4px; white-space: nowrap; }
 .statebar { max-width: calc(1120px + 2 * var(--pad)); margin: 0 auto; padding: 16px var(--pad) 0; }
 .statebar p { padding: 12px 16px; border-radius: var(--r-md); font-weight: 500; }
-.statebar .t-bad { background: var(--bad-soft); color: var(--bad); border: 1px solid #F1D2D3; }
-.statebar .t-warn { background: var(--warn-soft); color: var(--warn); border: 1px solid #F0DDB8; }
+.statebar .t-bad { background: var(--bad-soft); color: var(--bad); border: 1px solid var(--bad-line); }
+.statebar .t-warn { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn-line); }
 
 /* ---------- buttons ---------- */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: var(--r-md); border: 1px solid transparent; font: 500 14.5px/1.2 var(--sans); cursor: pointer; text-decoration: none; transition: background-color .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease), transform .12s var(--ease); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--btn-h); padding: 8px 16px; border-radius: var(--r-md); border: 1px solid transparent; font: 500 14px/1.2 var(--sans); cursor: pointer; text-decoration: none; transition: background-color .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease), transform .12s var(--ease); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
-.btn-primary { background: var(--ink); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: #26323A; color: #fff; }
+.btn-primary { background: var(--btn-primary-bg); color: var(--on-ink); }
+.btn-primary:hover:not(:disabled) { background: var(--btn-primary-hover); color: #fff; }
 .btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
 .btn-secondary:hover:not(:disabled) { border-color: var(--ink-2); background: var(--sunken); color: var(--ink); }
 .btn-ghost { background: transparent; color: var(--ink-2); padding: 8px 12px; }
@@ -109,11 +129,12 @@ main { display: block; max-width: calc(1120px + 2 * var(--pad)); margin: 0 auto;
 .ph h1 { width: fit-content; max-width: 100%; font-size: 24px; line-height: 30px; font-weight: 600; letter-spacing: -.015em; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
 .ph-d { margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--muted); max-width: 75ch; }
 .ph-r { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; }
-.ph-r .btn-ghost { min-height: 36px; font-size: 13.5px; padding: 6px 10px; }
+.ph-r .btn-ghost { min-height: 36px; font-size: 14px; padding: 6px 10px; }
 
 /* ---------- layout ---------- */
 .g12 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; }
-.s7 { grid-column: span 7; } .s5 { grid-column: span 5; } .s12 { grid-column: 1 / -1; }
+.s7 { grid-column: span 7; }
+.panel.pl { align-self: start; } .s5 { grid-column: span 5; } .s12 { grid-column: 1 / -1; }
 .stack { display: grid; gap: 24px; }
 .stack > *, .g12 > * { min-width: 0; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); min-width: 0; }
@@ -130,25 +151,28 @@ main { display: block; max-width: calc(1120px + 2 * var(--pad)); margin: 0 auto;
 .empty a { display: inline-block; margin-top: 10px; font-weight: 500; }
 
 /* ---------- pills, badges, tags ---------- */
-.pill, .badge { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid; font: 500 12.5px/1 var(--sans); white-space: nowrap; flex: none; }
+.pill, .badge { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid; font: 500 12px/1 var(--sans); white-space: nowrap; flex: none; }
 .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .pill.t-quiet::before { display: none; }
-.t-bad { background: var(--bad-soft); color: var(--bad); border-color: #F1D2D3; }
-.t-warn { background: var(--warn-soft); color: var(--warn); border-color: #F0DDB8; }
+.t-bad { background: var(--bad-soft); color: var(--bad); border-color: var(--bad-line); }
+.t-warn { background: var(--warn-soft); color: var(--warn); border-color: var(--warn-line); }
 .t-neutral { background: var(--sunken); color: var(--ink-2); border-color: var(--line); }
-.t-accent { background: var(--accent-soft); color: var(--accent-ink); border-color: #CFE2DC; }
+.t-accent { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-line); }
 .t-quiet { background: var(--surface); color: var(--muted); border-color: var(--line-2); }
 .badges { display: flex; flex-wrap: wrap; gap: 4px; }
-.tag { display: inline-block; flex: none; font: 500 11.5px/16px var(--sans); background: var(--sunken); color: var(--muted); border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+.tag { display: inline-block; flex: none; font: 500 12px/16px var(--sans); background: var(--sunken); color: var(--muted); border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
 .tag.warn { background: var(--warn-soft); color: var(--warn); }
 .tag.acc { background: var(--accent-soft); color: var(--accent-ink); }
 .tag.bad { background: var(--bad-soft); color: var(--bad); }
 .tag.ink { background: var(--sunken); color: var(--ink-2); }
-.rotag { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; border-radius: 4px; background: var(--sunken); color: var(--ink-2); font: 500 12.5px/1 var(--sans); letter-spacing: 0; }
+.rotag { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; border-radius: 4px; background: var(--sunken); color: var(--ink-2); font: 500 12px/1 var(--sans); letter-spacing: 0; }
 
 /* ---------- hero ---------- */
 .hero { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); box-shadow: var(--lift); }
-.hero-l { grid-column: span 7; padding: 28px; min-width: 0; min-height: 300px; }
+.hero-l { grid-column: span 7; padding: 32px; min-width: 0; min-height: 300px; }
+.hero-l > [data-sec] { height: 100%; display: flex; flex-direction: column; }
+.hero-l .bar { margin-top: 32px; }
+.hero-l .calc { margin-top: auto; padding-top: 24px; }
 .hero-r { grid-column: span 5; border-left: 1px solid var(--line); min-width: 0; display: grid; grid-template-rows: repeat(3, auto); }
 .hl-label { font-size: 14px; line-height: 20px; font-weight: 500; color: var(--ink-2); }
 .hl-val { margin-top: 6px; font-size: 48px; line-height: 52px; font-weight: 600; letter-spacing: -.025em; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
@@ -213,27 +237,27 @@ a.metric:focus-visible { outline-offset: -2px; }
 .ac-1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .ac-name { font-size: 17px; line-height: 24px; font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ac-amt { margin-left: auto; padding-left: 12px; font-size: 17px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.ac-head { margin-top: 6px; color: var(--ink-2); }
-.cmp { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 14px; }
-.box { background: var(--sunken); border: 1px solid transparent; border-radius: var(--r-sm); padding: 12px 14px; min-width: 0; align-self: stretch; }
-.box.prop { border-color: #E3B7B9; }
-.box-t { font-size: 12.5px; line-height: 18px; font-weight: 500; color: var(--ink-2); }
+.ac-head { margin-top: 8px; color: var(--ink-2); }
+.cmp { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 16px; }
+.box { background: var(--sunken); border: 1px solid transparent; border-radius: var(--r-sm); padding: 12px 16px; min-width: 0; align-self: stretch; }
+.box.prop { border-color: var(--bad-line-2); }
+.box-t { font-size: 12px; line-height: 18px; font-weight: 500; color: var(--ink-2); }
 .box.prop .box-t { color: var(--bad); }
 .box-v { margin-top: 4px; font: 14px/20px var(--mono); overflow-wrap: anywhere; color: var(--ink); }
-.box-c { font-size: 12.5px; color: var(--muted); }
+.box-c { font-size: 12px; color: var(--muted); }
 .neq { font-size: 16px; color: var(--muted); }
 @container (max-width: 560px) { .cmp { grid-template-columns: minmax(0, 1fr); } .neq { display: none; } }
 @media (max-width: 559px) { .cmp { grid-template-columns: minmax(0, 1fr); } .neq { display: none; } }
-.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin-top: 14px; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; margin-top: 16px; }
 .facts dt { font-size: 13px; line-height: 20px; color: var(--muted); }
 .facts dd { font-size: 14px; line-height: 20px; min-width: 0; overflow-wrap: anywhere; }
 .facts .mono { font-size: 13px; }
 .ac-act { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 24px; margin-top: 12px; }
 .ac-act > a { display: inline-flex; align-items: center; min-height: 32px; font-weight: 500; font-size: 14px; }
 .ac-act details { flex: 1 1 260px; }
-.ac-act details p { margin-top: 4px; font-size: 13.5px; line-height: 20px; color: var(--ink-2); max-width: 65ch; }
-.acard.compact { padding: 14px 16px; display: block; color: inherit; text-decoration: none; transition: background-color .16s var(--ease); }
-.acard.compact:hover { background: #FCFCFA; color: inherit; }
+.ac-act details p { margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--ink-2); max-width: 65ch; }
+.acard.compact { padding: 16px; display: block; color: inherit; text-decoration: none; transition: background-color .16s var(--ease); }
+.acard.compact:hover { background: var(--raised); color: inherit; }
 .acard.compact .ac-name { font-size: 15px; line-height: 22px; }
 .acard.compact .ac-amt { font-size: 15px; }
 .acard.compact .ac-head { font-size: 14px; line-height: 20px; margin-top: 4px; }
@@ -258,7 +282,7 @@ a.metric:focus-visible { outline-offset: -2px; }
 .dblk .y { display: block; font-size: 11px; color: var(--muted); }
 .up-n { grid-area: n; min-width: 0; }
 .up-n .nm { display: block; font-weight: 500; overflow-wrap: break-word; }
-.up-n .nm .mono { font-size: 13.5px; }
+.up-n .nm .mono { font-size: 13px; }
 .up-n .rc { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
 .up-a { grid-area: a; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .up-p { grid-area: p; justify-self: end; }
@@ -268,7 +292,7 @@ a.metric:focus-visible { outline-offset: -2px; }
 .actday { padding: 0 24px; }
 .actday h3, .actday h2 { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink-2); padding: 16px 0 4px; }
 .acts { display: grid; }
-.act { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.act { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
 .actday .act:first-child { border-top: 0; }
 .act-ic { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; }
 .k-caught .act-ic { background: var(--bad-soft); color: var(--bad); }
@@ -277,7 +301,7 @@ a.metric:focus-visible { outline-offset: -2px; }
 .k-admin .act-ic { background: var(--sunken); color: var(--ink-2); }
 .act-s { font-size: 15px; line-height: 22px; overflow-wrap: anywhere; }
 .act-s b { font-weight: 600; }
-.act-s .mono { font-size: 13.5px; }
+.act-s .mono { font-size: 13px; }
 .act-m { margin-top: 2px; font-size: 13px; line-height: 18px; color: var(--muted); }
 .act-m a { white-space: nowrap; }
 .actwrap { padding-bottom: 12px; }
@@ -296,15 +320,15 @@ a.metric:focus-visible { outline-offset: -2px; }
 
 /* ---------- tables ---------- */
 .tbl { width: 100%; table-layout: fixed; border-collapse: collapse; }
-.tbl th { text-align: left; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--muted); padding: 12px; border-bottom: 1px solid var(--line); background: #FCFCFA; }
+.tbl th { text-align: left; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--muted); padding: 12px; border-bottom: 1px solid var(--line); background: var(--raised); }
 .tbl th:first-child, .tbl td:first-child { padding-left: 20px; }
-.tbl td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; min-width: 0; }
+.tbl td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: middle; min-width: 0; }
 .tbl tbody tr:last-child td { border-bottom: 0; }
 .tbl .num { text-align: right; }
 .tbl thead th:first-child { border-top-left-radius: var(--r-lg); }
 .tbl thead th:last-child { border-top-right-radius: var(--r-lg); }
 tr.row { position: relative; height: 60px; transition: background-color .16s var(--ease); }
-tr.row:hover { background: #FCFCFA; }
+tr.row:hover { background: var(--raised); }
 tr.row:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
 .stretch { color: var(--ink); text-decoration: none; }
 .stretch:hover { color: var(--ink); text-decoration: underline; }
@@ -313,15 +337,15 @@ tr.row:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
 .b-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .b-name .stretch { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .b-sub { margin-top: 2px; display: flex; gap: 6px; font-size: 13px; line-height: 18px; color: var(--muted); min-width: 0; white-space: nowrap; }
-.b-sub .mono { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.b-sub .mono { font-size: 12px; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .b-iss-in { display: none; margin-top: 6px; }
-.td-due .d1 { font-size: 14px; } .td-due .d2 { font-size: 12.5px; line-height: 16px; color: var(--muted); } .td-due .d2.od { color: var(--bad); }
+.td-due .d1 { font-size: 14px; } .td-due .d2 { font-size: 12px; line-height: 16px; color: var(--muted); } .td-due .d2.od { color: var(--bad); }
 .td-amt { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.td-amt .sym { font-size: 12.5px; }
-.td-wait { font-size: 13.5px; color: var(--ink-2); line-height: 18px; }
+.td-amt .sym { font-size: 12px; }
+.td-wait { font-size: 14px; color: var(--ink-2); line-height: 18px; }
 .c-bill { width: auto; } .c-due { width: 112px; } .c-amt { width: 112px; } .c-st { width: 140px; } .c-iss { width: 176px; } .c-wait { width: 136px; }
 .cards { display: none; }
-.crd { position: relative; padding: 14px 16px; border-top: 1px solid var(--line); }
+.crd { position: relative; padding: 16px; border-top: 1px solid var(--line); }
 .crd:first-child { border-top: 0; }
 .crd:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--r-md); }
 .crd-1, .crd-2 { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
@@ -345,12 +369,12 @@ tr.row:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
 /* ledger */
 .c-lb { width: 15%; } .c-ls { width: 120px; } .c-lp { width: 120px; } .c-li { width: auto; } .c-lh { width: 190px; } .c-la { width: 130px; }
 .sumdl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.sumdl > div { padding: 14px 24px; border-top: 1px solid var(--line); min-width: 0; }
+.sumdl > div { padding: 16px 24px; border-top: 1px solid var(--line); min-width: 0; }
 .sumdl > div:nth-child(-n+2) { border-top: 0; }
 .sumdl > div:nth-child(odd) { border-right: 1px solid var(--line); }
 .sumdl dt { font-size: 13px; color: var(--muted); }
 .sumdl dd { margin-top: 2px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; overflow-wrap: anywhere; }
-.sumdl .mono { font-size: 13.5px; }
+.sumdl .mono { font-size: 13px; }
 .vis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .vis > div { padding: 16px 20px; border-radius: var(--r-md); }
 .vis .see { background: var(--surface); border: 1px solid var(--line); }
@@ -359,23 +383,23 @@ tr.row:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
 .vis p { color: var(--ink-2); font-size: 14px; }
 .changes li { padding: 12px 24px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
 .changes li:first-child { border-top: 0; }
-.footnote { margin-top: 24px; font-size: 13.5px; color: var(--muted); max-width: 80ch; }
-.hashc { display: inline-flex; align-items: center; gap: 2px; font: 12.5px/18px var(--mono); color: var(--ink-2); white-space: nowrap; }
+.footnote { margin-top: 24px; font-size: 14px; color: var(--muted); max-width: 80ch; }
+.hashc { display: inline-flex; align-items: center; gap: 2px; font: 12px/18px var(--mono); color: var(--ink-2); white-space: nowrap; }
 .sm-link { font-size: 13px; display: inline-block; margin-top: 2px; position: relative; z-index: 1; }
 
 /* ---------- policy ---------- */
 .field + .field { margin-top: 24px; }
 .field label { display: block; font-size: 15px; font-weight: 500; }
-.f-desc { margin-top: 2px; font-size: 13.5px; line-height: 20px; color: var(--muted); }
+.f-desc { margin-top: 2px; font-size: 14px; line-height: 20px; color: var(--muted); }
 .inp { display: flex; align-items: stretch; margin-top: 8px; max-width: 320px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); transition: border-color .16s var(--ease), box-shadow .16s var(--ease); }
 .inp:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .inp.invalid { border-color: var(--bad); }
 .inp input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 10px 12px; font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; outline: none; border-radius: var(--r-md) 0 0 var(--r-md); }
-.inp .u { display: flex; align-items: center; padding: 0 12px; color: var(--muted); font-size: 14px; border-left: 1px solid var(--line); background: #FCFCFA; border-radius: 0 var(--r-md) var(--r-md) 0; }
+.inp .u { display: flex; align-items: center; padding: 0 12px; color: var(--muted); font-size: 14px; border-left: 1px solid var(--line); background: var(--raised); border-radius: 0 var(--r-md) var(--r-md) 0; }
 .f-cur { margin-top: 6px; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
-.f-err { margin-top: 6px; font-size: 13.5px; color: var(--bad); font-weight: 500; }
+.f-err { margin-top: 6px; font-size: 14px; color: var(--bad); font-weight: 500; }
 .f-err[hidden], .tag[hidden] { display: none; }
-.callout { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; padding: 12px 14px; border-radius: var(--r-md); background: var(--sunken); font-size: 14px; color: var(--ink-2); margin-top: 28px; }
+.callout { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; padding: 12px 16px; border-radius: var(--r-md); background: var(--sunken); font-size: 14px; color: var(--ink-2); margin-top: 28px; }
 .callout b { color: var(--ink); font-weight: 600; }
 .formfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
 .formnote { margin-top: 10px; font-size: 13px; color: var(--muted); }
@@ -384,23 +408,23 @@ tr.row:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
 .who dl > div:first-child { border-top: 0; padding-top: 0; }
 .who dt { font-size: 13px; color: var(--muted); }
 .who dd { margin-top: 2px; overflow-wrap: anywhere; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; }
-.who .mono { font-size: 13.5px; }
+.who .mono { font-size: 13px; }
 .who p { margin-top: 12px; font-size: 14px; color: var(--ink-2); }
 
 /* ---------- ask ---------- */
 .ask { max-width: 760px; }
-.chatlog { min-height: 50vh; max-height: 64vh; overflow-y: auto; overscroll-behavior: contain; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: #FCFCFA; border: 1px solid var(--line); border-radius: var(--r-lg) var(--r-lg) 0 0; }
-.msg { max-width: 88%; padding: 10px 14px; border-radius: 12px; font-size: 15px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chatlog { min-height: 50vh; max-height: 64vh; overflow-y: auto; overscroll-behavior: contain; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-lg) var(--r-lg) 0 0; }
+.msg { max-width: 88%; padding: 12px 16px; border-radius: 12px; font-size: 15px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .msg.q { align-self: flex-end; background: var(--ink); color: #fff; border-bottom-right-radius: 4px; }
 .msg.a { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
 .msg.pending { color: var(--muted); }
-.msg.err { border-color: #F1D2D3; background: var(--bad-soft); color: var(--bad); }
+.msg.err { border-color: var(--bad-line); background: var(--bad-soft); color: var(--bad); }
 .msg abbr { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 .msg .src { display: block; margin-top: 6px; font-weight: 500; }
 .msg code { background: var(--sunken); padding: 0 4px; border-radius: 4px; }
 .chat-hello { color: var(--ink-2); font-size: 14px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-.chip { height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink-2); font-size: 13.5px; cursor: pointer; transition: border-color .16s var(--ease), color .16s var(--ease), background-color .16s var(--ease); }
+.chip { height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink-2); font-size: 14px; cursor: pointer; transition: border-color .16s var(--ease), color .16s var(--ease), background-color .16s var(--ease); }
 .chip:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
 .chatform { position: sticky; bottom: 0; display: flex; gap: 8px; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 var(--r-lg) var(--r-lg); }
 .chatform input { flex: 1; min-width: 0; border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 9px 12px; font-size: 16px; background: var(--surface); outline: none; transition: border-color .16s var(--ease), box-shadow .16s var(--ease); }
@@ -408,7 +432,7 @@ tr.row:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* ---------- states ---------- */
 .sk { display: block; background: var(--sunken); border-radius: 4px; }
-@media (prefers-reduced-motion: no-preference) { .sk { background: linear-gradient(90deg, var(--sunken) 0%, #ECECE6 50%, var(--sunken) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; } }
+@media (prefers-reduced-motion: no-preference) { .sk { background: linear-gradient(90deg, var(--sunken) 0%, var(--p-stone-150) 50%, var(--sunken) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; } }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 .skrows { padding: 8px 24px 16px; }
 .skrow { display: grid; align-content: center; gap: 8px; border-top: 1px solid var(--line); overflow: hidden; }
@@ -425,7 +449,7 @@ dialog::backdrop { background: rgba(24,32,38,.38); }
 .drawer { margin: 0 0 0 auto; width: min(520px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; border-left: 1px solid var(--line); box-shadow: var(--shadow-pop); }
 .dr-in { position: relative; height: 100%; display: flex; flex-direction: column; }
 .dr-top { position: absolute; top: 10px; right: 10px; z-index: 2; background: var(--surface); border-radius: var(--r-md); }
-.dr-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 22px 28px 32px; }
+.dr-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 24px 32px 32px; }
 .dr-h { padding-right: 8px; }
 .dr-h h2 { font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -.01em; padding-right: 48px; overflow-wrap: anywhere; }
 .dr-h .dr-tags { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
@@ -434,27 +458,27 @@ dialog::backdrop { background: rgba(24,32,38,.38); }
 .dr-sec { margin-top: 28px; }
 .dr-sec > h3 { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 10px; }
 .tl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
-.tl li { position: relative; padding-top: 22px; font-size: 13.5px; font-weight: 500; color: var(--muted); }
+.tl li { position: relative; padding-top: 22px; font-size: 14px; font-weight: 500; color: var(--muted); }
 .tl li::before { content: ""; position: absolute; top: 0; left: 0; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-2); background: var(--surface); z-index: 1; }
 .tl li::after { content: ""; position: absolute; top: 6px; left: 14px; right: 0; height: 2px; background: var(--line-2); }
 .tl li:last-child::after { display: none; }
 .tl li.done { color: var(--ink); } .tl li.done::before { background: var(--accent); border-color: var(--accent); } .tl li.done::after { background: var(--accent); }
 .tl li.now { color: var(--ink); } .tl li.now::before { border-color: var(--accent); }
 .tl-note { margin-top: 10px; font-size: 14px; color: var(--ink-2); }
-.callo { padding: 12px 14px; border-radius: var(--r-md); font-size: 14px; line-height: 20px; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; overflow-wrap: anywhere; }
+.callo { padding: 12px 16px; border-radius: var(--r-md); font-size: 14px; line-height: 20px; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; overflow-wrap: anywhere; }
 .callo + .callo { margin-top: 8px; }
-.callo.t-bad { background: var(--bad-soft); color: var(--ink); border: 1px solid #F1D2D3; }
-.callo.t-warn { background: var(--warn-soft); color: var(--ink); border: 1px solid #F0DDB8; }
+.callo.t-bad { background: var(--bad-soft); color: var(--ink); border: 1px solid var(--bad-line); }
+.callo.t-warn { background: var(--warn-soft); color: var(--ink); border: 1px solid var(--warn-line); }
 .callo.t-bad svg { color: var(--bad); margin-top: 2px; } .callo.t-warn svg { color: var(--warn); margin-top: 2px; }
 .callo b { font-weight: 600; }
 .ddl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 20px; font-size: 14px; }
-.ddl dt { color: var(--muted); font-size: 13.5px; }
+.ddl dt { color: var(--muted); font-size: 14px; }
 .ddl dd { min-width: 0; overflow-wrap: anywhere; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; }
 .ddl .mono { font-size: 13px; }
 .drawer .acts .act:first-child { border-top: 0; }
 .proof { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 12px; }
 .proof .ddl { margin-top: 10px; }
-.note-box { margin-top: 24px; padding: 12px 14px; border-radius: var(--r-md); background: var(--sunken); font-size: 13.5px; color: var(--ink-2); }
+.note-box { margin-top: 24px; padding: 12px 16px; border-radius: var(--r-md); background: var(--sunken); font-size: 14px; color: var(--ink-2); }
 .vbills li { padding: 10px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 .vbills li:first-child { border-top: 0; }
 .vbills a { font-weight: 500; }
@@ -472,14 +496,14 @@ dialog::backdrop { background: rgba(24,32,38,.38); }
 .difft td { padding: 10px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; vertical-align: top; }
 .difft td.pv { font-weight: 600; }
 .difft th:first-child, .difft td:first-child { padding-left: 0; width: 44%; }
-.dmeta { margin-top: 14px; display: grid; gap: 4px; font-size: 13.5px; color: var(--ink-2); }
-.dmeta .mono { font-size: 12.5px; }
+.dmeta { margin-top: 14px; display: grid; gap: 4px; font-size: 14px; color: var(--ink-2); }
+.dmeta .mono { font-size: 12px; }
 .raw { margin-top: 14px; }
-.raw pre { margin: 8px 0 0; background: var(--sunken); border-radius: var(--r-md); padding: 12px 14px; font: 12.5px/1.6 var(--mono); overflow: auto; max-height: 30vh; white-space: pre-wrap; overflow-wrap: anywhere; }
+.raw pre { margin: 8px 0 0; background: var(--sunken); border-radius: var(--r-md); padding: 12px 16px; font: 12px/1.6 var(--mono); overflow: auto; max-height: 30vh; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dfoot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .dfoot-note { margin-top: 10px; font-size: 13px; color: var(--muted); text-align: right; }
-.dalert { margin-top: 14px; padding: 10px 12px; border-radius: var(--r-md); background: var(--bad-soft); color: var(--bad); font-weight: 500; font-size: 14px; }
-.nothing { margin-top: 18px; padding: 14px; border-radius: var(--r-md); background: var(--sunken); color: var(--ink-2); }
+.dalert { margin-top: 16px; padding: 12px 16px; border-radius: var(--r-md); background: var(--bad-soft); color: var(--bad); font-weight: 500; font-size: 14px; }
+.nothing { margin-top: 16px; padding: 16px; border-radius: var(--r-md); background: var(--sunken); color: var(--ink-2); }
 .sheet { margin: auto 0 0; width: 100vw; max-width: 100vw; border-radius: var(--r-lg) var(--r-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); box-shadow: var(--shadow-pop); }
 .sheet-in { padding: 8px 8px 12px; }
 .sheet-h { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 12px; }
@@ -501,11 +525,98 @@ dialog::backdrop { background: rgba(24,32,38,.38); }
 /* toasts */
 .toasts { position: fixed; right: 24px; bottom: 24px; z-index: 60; display: grid; gap: 8px; justify-items: end; pointer-events: none; }
 .toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: 400px; padding: 12px 8px 12px 16px; background: var(--ink); color: #fff; font-size: 14px; border-radius: var(--r-md); box-shadow: var(--shadow-pop); }
-.toast a { color: #BFE3DA; text-decoration: underline; }
+.toast a { color: var(--on-ink-link); text-decoration: underline; }
 .toast a:hover { color: #fff; }
 .toast button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: transparent; color: #fff; border-radius: 6px; cursor: pointer; flex: none; }
 .toast button:hover { background: rgba(255,255,255,.12); }
 @media (prefers-reduced-motion: no-preference) { .toast { animation: mdIn .24s var(--ease); } }
+
+/* ---------- wallet (sidebar, top bar, sheet) ---------- */
+.acctrow { margin-bottom: 0; }
+.walblk { display: grid; gap: 8px; padding: 12px 12px 16px 20px; border-bottom: 1px solid var(--line); min-width: 0; }
+.walconnect { justify-self: start; min-height: 36px; padding: 6px 12px; font-size: var(--t-ui); }
+.walhelp { font-size: var(--t-xs); line-height: 16px; color: var(--muted); max-width: 28ch; }
+.walacct { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 28px; }
+.walacct .mono { font-size: var(--t-xs); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.walacct .copy { margin: -8px -8px -8px -12px; width: 36px; height: 36px; }
+.waldot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); box-shadow: 0 0 0 3px var(--sunken); }
+.waldot.on { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.walrole { font-size: var(--t-xs); line-height: 16px; color: var(--muted); }
+.walrole b { font-weight: 600; color: var(--ink-2); }
+.walnote { font-size: var(--t-xs); line-height: 16px; padding: 8px 12px; border-radius: var(--r-sm); border: 1px solid; }
+.walnote.t-bad { background: var(--bad-soft); color: var(--bad); border-color: var(--bad-line); }
+.walnote.t-warn { background: var(--warn-soft); color: var(--warn); border-color: var(--warn-line); }
+.walmenu { display: flex; align-items: center; flex-wrap: wrap; gap: 0 8px; font-size: var(--t-xs); color: var(--muted); }
+.linkbtn { display: inline; min-height: 24px; padding: 0; border: 0; background: none; color: var(--accent); font-family: var(--sans); font-weight: 500; font-size: inherit; line-height: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; cursor: pointer; transition: color .16s var(--ease); }
+.linkbtn:hover { color: var(--accent-ink); }
+.walrail { display: none; position: relative; margin: 0 auto; }
+.raildot { position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
+.walslot-top { display: none; }
+.walbtn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--ink); font: 500 var(--t-sm)/1 var(--sans); cursor: pointer; white-space: nowrap; transition: background-color .16s var(--ease), border-color .16s var(--ease); }
+.walbtn:hover { background: var(--sunken); }
+.walbtn:disabled { opacity: .55; cursor: not-allowed; }
+.walbtn.on { border-color: var(--accent-line); background: var(--accent-faint); }
+.walbtn .mono { font-size: var(--t-xs); max-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
+.sheetwal { border: 0; padding: 8px 12px 4px; }
+.sheetwal .walhelp { max-width: none; }
+
+/* ---------- transaction area: confirm -> wallet -> pending -> outcome ---------- */
+.txa { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); display: grid; gap: 12px; min-width: 0; }
+.txa.compact { margin-top: 12px; padding-top: 0; border-top: 0; }
+.dr-sec > .txa.compact { margin-top: 0; }
+.txrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.txnote { font-size: var(--t-sm); line-height: 18px; color: var(--muted); max-width: 65ch; }
+.txnote .mono { font-size: var(--t-xs); color: var(--ink-2); }
+.txconfirm { display: grid; gap: 12px; padding: 16px; border-radius: var(--r-md); background: var(--accent-faint); border: 1px solid var(--accent-line); font-size: var(--t-ui); line-height: 20px; color: var(--ink-2); }
+.txconfirm b { color: var(--ink); font-weight: 600; font-family: var(--mono); font-size: var(--t-sm); }
+.txconfirm .mono { font-size: var(--t-sm); color: var(--ink); overflow-wrap: anywhere; }
+.txargs { margin: 0; padding: 8px 12px; border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line); font: var(--t-xs)/16px var(--mono); color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.txwarn { padding: 8px 12px; border-radius: var(--r-sm); background: var(--warn-soft); color: var(--warn); font-size: var(--t-sm); line-height: 18px; }
+.txres { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 8px; align-items: start; font-size: var(--t-ui); line-height: 20px; color: var(--ink-2); }
+.txres:empty { display: none; }
+.txres > svg { margin-top: 3px; }
+.txres:not(:has(svg)) { grid-template-columns: minmax(0, 1fr); }
+.txres.ok > svg { color: var(--accent); }
+.txres.refused { padding: 12px 16px; border-radius: var(--r-md); background: var(--sunken); border: 1px solid var(--line); }
+.txres.refused > svg { color: var(--ink-2); }
+.txres.refused b { color: var(--ink); font-weight: 600; }
+.txres code { padding: 1px 6px; border-radius: var(--r-xs); background: var(--surface); border: 1px solid var(--line-2); font-size: var(--t-xs); color: var(--ink); white-space: nowrap; }
+.txres.err { color: var(--bad); }
+.modal .txres.refused { margin-top: 16px; }
+.chk { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; align-items: start; padding: 12px 16px; border-radius: var(--r-md); background: var(--warn-soft); border: 1px solid var(--warn-line); font-size: var(--t-ui); line-height: 20px; color: var(--ink); cursor: pointer; }
+.chk input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--accent); cursor: pointer; }
+.spin.dark { border-color: rgba(24,32,38,.2); border-top-color: var(--ink); }
+
+/* ---------- owner controls ---------- */
+.oc .panel-h { align-items: center; justify-content: flex-start; }
+.oc .panel-h svg { color: var(--muted); }
+.oc-d { font-size: var(--t-ui); line-height: 20px; color: var(--ink-2); }
+.ocrow { padding: 16px 0; border-top: 1px solid var(--line); min-width: 0; }
+.ocrow:first-of-type { margin-top: 16px; }
+.ocrow:last-child { padding-bottom: 0; }
+.oc-t h3 { font-size: var(--t-base); line-height: 22px; font-weight: 600; }
+.oc-t p { margin-top: 2px; font-size: var(--t-sm); line-height: 18px; color: var(--muted); }
+.oc-t .mono { font-size: var(--t-xs); color: var(--ink-2); }
+.ocgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ocgrid .ocf:last-child { grid-column: 1 / -1; }
+.ocf { display: grid; gap: 4px; min-width: 0; }
+.ocf label { font-size: var(--t-sm); font-weight: 500; color: var(--ink-2); }
+.ocinp { width: 100%; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); font-size: 16px; font-variant-numeric: tabular-nums; outline: none; transition: border-color .16s var(--ease), box-shadow .16s var(--ease); }
+.ocinp:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.statebar p { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.sb-btn { min-height: 36px; font-size: var(--t-sm); }
+
+/* ---------- key figures: one hero number, three subordinate metrics ---------- */
+.legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.legend li { display: grid; grid-template-columns: 10px minmax(0, 1fr); column-gap: 8px; row-gap: 2px; align-items: center; }
+.legend .lv { grid-column: 2; font-size: var(--t-base); line-height: 22px; }
+@media (max-width: 559px) {
+  .legend { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .legend li { grid-template-columns: 10px minmax(0, 1fr) auto; }
+  .legend .lv { grid-column: 3; }
+}
+.metric .m-v { font-size: 28px; line-height: 34px; }
+.metric .m-v.warn { color: var(--warn); }
 
 /* ---------- responsive ---------- */
 @media (max-width: 1279px) {
@@ -522,6 +633,9 @@ dialog::backdrop { background: rgba(24,32,38,.38); }
   .nv[aria-current="page"]::before { left: 0; top: 10px; bottom: 10px; }
   .nv-b { position: absolute; top: 6px; left: calc(50% + 4px); min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 5px; }
   .side-foot { padding: 12px 8px 16px; justify-items: center; }
+  .side .walblk { padding: 8px 0; justify-items: center; }
+  .side .walblk > :not(.walrail) { display: none; }
+  .walrail { display: inline-grid; }
   .etag { display: none; } .etag.short { display: inline-flex; }
   .footlinks { display: none; }
   .s7, .s5 { grid-column: 1 / -1; }
@@ -544,7 +658,9 @@ dialog::backdrop { background: rgba(24,32,38,.38); }
   main { padding: 20px var(--pad) calc(64px + env(safe-area-inset-bottom) + 16px); }
   .topbar { display: flex; position: sticky; top: 0; z-index: 10; height: calc(56px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); align-items: center; gap: 8px; background: var(--surface); border-bottom: 1px solid var(--line); }
   .topbar .brand { height: auto; padding: 0; gap: 8px; font-size: 15px; flex: none; }
-  .topbar .envtags { margin-left: auto; flex-wrap: nowrap; }
+  .walslot-top { display: inline-flex; margin-left: auto; }
+  .walslot-top:empty + .envtags { margin-left: auto; }
+  .topbar .envtags { flex-wrap: nowrap; }
   .topbar .etag { display: inline-flex; }
   .tabbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; height: calc(64px + env(safe-area-inset-bottom)); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: var(--surface); border-top: 1px solid var(--line); }
   .tb { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 64px; border: 0; background: transparent; color: var(--ink-2); font: 500 11px/13px var(--sans); text-decoration: none; cursor: pointer; }
@@ -561,6 +677,7 @@ dialog::backdrop { background: rgba(24,32,38,.38); }
   .metric { padding: 16px 20px; }
   .metric .m-v { font-size: 28px; line-height: 34px; }
   .panel-h { padding: 16px 16px 0; }
+  .panel-b { padding: 16px 16px 20px; }
   .attlist { padding: 12px 12px 16px; }
   .up-sum { padding: 8px 16px 4px; }
   .uplist { padding: 8px 4px 4px; }
@@ -595,6 +712,12 @@ dialog::backdrop { background: rgba(24,32,38,.38); }
   .dfoot-note { text-align: left; }
 }
 @media (max-width: 767px) and (prefers-reduced-motion: no-preference) { .drawer[open] { animation-name: shIn; } }
+@media (max-width: 419px) { /* top bar: brand, wallet and both env tags must fit in 375px */
+  .walbtn { width: 40px; height: 40px; padding: 0; justify-content: center; position: relative; }
+  .walbtn > span:not(.waldot) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .walbtn.on .waldot { position: absolute; top: 6px; right: 6px; box-shadow: 0 0 0 2px var(--accent-faint); }
+  .topbar { gap: 6px; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
   .btn:active:not(:disabled) { transform: none; }
@@ -606,12 +729,14 @@ dialog::backdrop { background: rgba(24,32,38,.38); }
 
 <header class="topbar">
   <a class="brand" href="#/overview"><svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0B5D52"/><rect x="8" y="8" width="16" height="16" rx="3" fill="none" stroke="#fff" stroke-width="2.5"/><rect x="13" y="13" width="6" height="6" rx="1" fill="#fff"/></svg><span>Takara AI</span></a>
+  <span class="walslot-top" data-slot="wallet-top"></span>
   <span class="envtags" data-slot="envtags-top"></span>
 </header>
 
 <div class="side">
   <a class="brand" href="#/overview"><svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0B5D52"/><rect x="8" y="8" width="16" height="16" rx="3" fill="none" stroke="#fff" stroke-width="2.5"/><rect x="13" y="13" width="6" height="6" rx="1" fill="#fff"/></svg><span class="wm">Takara AI</span></a>
   <div class="acctrow" data-slot="acct"><span class="sk" style="width:150px;height:10px"></span></div>
+  <div class="walblk" data-slot="wallet"></div>
   <nav aria-label="Main"><ul class="navlist" data-slot="sidenav"></ul></nav>
   <footer class="side-foot">
     <div class="envtags" data-slot="envtags-side"></div>
@@ -800,7 +925,7 @@ async function loadAll(manual = false) {
 
 /* ---------- derived model ---------- */
 function decisionsList() {
-  const d = Array.isArray(S.decisions.data) ? S.decisions.data : [];
+  const d = [...SESSION_TX, ...(Array.isArray(S.decisions.data) ? S.decisions.data : [])];
   const seen = new Set(), out = [];
   for (const x of d) { const k = x.tx || JSON.stringify(x); if (seen.has(k)) continue; seen.add(k); out.push(x); }
   return out;
@@ -899,7 +1024,7 @@ function model() {
     if (vc === "suspended_destination_mismatch") b.status = ["Frozen", "bad"];
     else if (vc === "approved_cooling_off" && c.state !== "settled") b.status = ["Cooling off", "warn"];
     else if (vc === "rejected" && c.state !== "settled") b.status = ["Change rejected", "bad"];
-    else if (c.state === "claimed" && w && w.who === "signer") b.status = ["Awaiting signer", "warn"];
+    else if (c.state === "claimed" && w && w.who === "signer") b.status = isSigner() ? ["Needs your approval", "warn"] : ["Awaiting signer", "warn"];
     else if (c.state === "claimed") b.status = ["Received", "neutral"];
     else if (c.state === "accepted") b.status = ["Reserved", "accent"];
     else if (c.state === "settled") b.status = ["Paid", "quiet"];
@@ -982,7 +1107,7 @@ const REASONS = {
 REASONS.missing_destination = REASONS.vendor_destination_unknown;
 REASONS.unknown_requester = REASONS.member_not_in_roster;
 const humanCode = (c) => String(c).replace(/_/g, " ");
-const METHOD = { approve_vendor_change: "approve a payout destination change", propose_policy: "change the policy", recover: "recover the treasury’s funds", register_claim: "record a bill", accept_commitment: "accept a bill", pause: "pause the treasury", revoke_agent: "revoke the agent", settle: "pay a bill" };
+const METHOD = { approve_vendor_change: "approve a payout destination change", reject_vendor_change: "reject a payout destination change", propose_policy: "change the policy", approve_policy: "approve a policy version", recover: "recover the treasury’s funds", register_claim: "record a bill", accept_commitment: "accept a bill", close_commitment: "close a bill", pause: "pause the treasury", unpause: "resume the treasury", revoke_agent: "revoke the agent", set_agent: "set the agent", settle: "pay a bill" };
 const methodL = (m) => METHOD[m] || m;
 const FAILS = {
   E_NOT_POLICY_SIGNER: ["caught", (d) => ["Blocked:", h`${actorP(d.signer)} tried to ${methodL(d.method)} without being a policy signer.`]],
@@ -1018,7 +1143,7 @@ function sentenceCtx(m) {
 function decisionItem(d, m) {
   const x = sentenceCtx(m);
   const v = d.value;
-  const base = { at: Date.parse(d.at), tx: d.tx, actor: d.signer, cid: null };
+  const base = { at: Date.parse(d.at), tx: d.tx, actor: d.signer, cid: null, session: !!d.session };
   if (d.ok === false) {
     const code = failCode(d.failure);
     const f = FAILS[code];
@@ -1079,6 +1204,7 @@ function actItem(it, m) {
   if (it.at) meta.push(timeEl(it.at, relTime(it.at)));
   if (it.actor) meta.push(roleSpan(it.actor));
   if (it.fromFlags) meta.push("From bill flags");
+  if (it.session) meta.push("From your wallet, this session");
   if (it.tx) meta.push(txLink(it.tx));
   if (it.cid != null && m && m.byId[String(it.cid)]) meta.push(h`<a href="#/bills/${it.cid}" data-open="bill-${it.cid}">Bill</a>`);
   return h`<li class="act k-${it.kind}"><span class="act-ic">${KIND_IC[it.kind]()}</span><div><p class="act-s">${it.lead ? h`<b>${it.lead}</b> ` : ""}${it.rest}</p><p class="act-m">${join(meta, " · ")}</p></div></li>`;
@@ -1133,9 +1259,26 @@ const toneOf = (b) => (b.status[0] === "Frozen" ? "bad" : b.waitsOn && (b.waitsO
 const compareBoxes = (b) => h`<div class="cmp"><div class="box"><p class="box-t">Registered destination (in use)</p><p class="box-v" translate="no">${b.destination}</p><p class="box-c">${(b.chain || "").toUpperCase()}</p></div><span class="neq" aria-hidden="true">≠</span><span class="vh">differs from</span><div class="box prop"><p class="box-t">Proposed by invoice</p><p class="box-v" translate="no">${b.proposed}</p><p class="box-c">${(b.chain || "").toUpperCase()}</p></div></div>`;
 function howApproved(b, m) {
   const w = b.waitsOn;
-  if (w.who === "signer") return "A policy signer approves this from their own wallet, outside this app. The contract rejects anyone else with E_NOT_POLICY_SIGNER. This app shows the queue. It can’t approve.";
+  if (w.who === "signer") return "A policy signer approves this in their own wallet. Connect it in the sidebar. The app only prepares the transaction; the contract checks who signed and rejects anyone else with E_NOT_POLICY_SIGNER.";
   if (w.who === "timer") return `A policy signer already approved the new destination. Takara still won’t pay it until the ${m.pol ? m.pol.cooling_off_hours + "-hour " : ""}cooling-off ends, so a hijacked approval can be caught in time.`;
   return "Takara’s policy engine accepts this automatically if it fits the policy, or refuses it with a named reason. Nobody needs to act.";
+}
+function signerActs(b) {
+  if (b.c.vendor_change === "suspended_destination_mismatch" && b.change) {
+    const args = { change_id: String(b.change.id) };
+    return [{ method: "approve_vendor_change", args, label: "Approve new destination", tone: "primary" }, { method: "reject_vendor_change", args, label: "Reject change", tone: "secondary" }];
+  }
+  if (b.state === "claimed" && b.waitsOn && b.waitsOn.who === "signer") {
+    const args = { commitment_id: b.sid };
+    return [{ method: "accept_commitment", args, label: "Accept bill", tone: "primary" }, { method: "close_commitment", args, label: "Close bill", tone: "secondary" }];
+  }
+  return [];
+}
+function billActions(b, where) {
+  const acts = signerActs(b);
+  if (acts.length) return actionArea(`${where}-${b.sid}`, acts, { need: "signer", tryIdx: 0, oob: acts[0].method === "approve_vendor_change", compact: where === "drw" });
+  if (where === "drw" && b.state === "accepted" && !b.c.vendor_change) return actionArea(`drw-${b.sid}`, [{ method: "close_commitment", args: { commitment_id: b.sid }, label: "Release reservation", tone: "secondary" }], { need: "owner", compact: true });
+  return "";
 }
 function approvalCard(b, m) {
   const w = b.waitsOn;
@@ -1147,6 +1290,7 @@ function approvalCard(b, m) {
     <p class="ac-head">${headline(b, m)}</p>
     ${b.proposed ? compareBoxes(b) : ""}
     <dl class="facts">${raw(facts.map((f) => f.s.replace(/^<div>|<\/div>$/g, "")).join(""))}</dl>
+    ${billActions(b, "card")}
     <div class="ac-act"><a href="#/bills/${b.sid}" data-open="bill-${b.sid}">View bill<span class="vh">: ${nameText(b)}, ${moneyT(b.amount)}</span></a><details class="disc" data-k="how-${b.sid}"><summary>${IC.chev(14)}How is this approved?</summary><p>${howApproved(b, m)}</p></details></div>
   </article>`;
 }
@@ -1236,12 +1380,20 @@ function fillSection(s) {
   if (loading) { el.setAttribute("aria-busy", "true"); el.innerHTML = part(s.skel ? s.skel() : skRows()) + `<span class="vh">${esc(s.label)}</span>`; return; }
   el.removeAttribute("aria-busy");
   const open = new Set($$("details[open][data-k]", el).map((d) => d.dataset.k));
+  const keep = keepInputs(el);
   el.innerHTML = part(s.render());
+  keep();
   open.forEach((k) => { const d = $(`details[data-k="${CSS.escape(k)}"]`, el); if (d) d.open = true; });
   $$(".filters", el).forEach((f) => { // keep the active filter visible inside its own scroller
     const a = $('[aria-current="true"]', f);
     if (a && a.offsetLeft + a.offsetWidth > f.clientWidth - 24) f.scrollLeft = a.offsetLeft - 24;
   });
+}
+// Re-rendering a section must not wipe what someone typed (owner control fields, the destination tick box).
+function keepInputs(root) {
+  const vals = $$("input[id].ocinp", root).map((i) => [i.id, i.value]);
+  const focused = document.activeElement && root.contains(document.activeElement) && document.activeElement.id;
+  return () => { for (const [id, v] of vals) { const i = document.getElementById(id); if (i) i.value = v; } if (focused) { const f = document.getElementById(focused); if (f) f.focus(); } };
 }
 function refreshSections(k) { SECTIONS.filter((s) => s.deps.includes(k) || s.opt.includes(k)).forEach(fillSection); }
 
@@ -1321,7 +1473,7 @@ function heroRight() {
   }
   // waiting on a signer
   const si = m.signerItems, sum = si.reduce((a, b) => a + b.amount, 0), ti = m.timerItems.length;
-  const waiting = h`<div class="metric"><p class="m-l">Waiting on a signer</p><p class="m-v">${si.length}</p><p class="m-c">${si.length ? `${plural(si.length, "bill")} · ${moneyT(sum)}` : "Nothing is waiting on a signer"}</p>${ti ? h`<p class="m-c">${ti} cooling off</p>` : ""}<span class="m-go"><a href="#/approvals">View<span class="vh"> approvals</span>${chevA()}</a></span></div>`;
+  const waiting = h`<div class="metric"><p class="m-l">${isSigner() ? "Waiting on you" : "Waiting on a signer"}</p><p class="m-v${si.length ? " warn" : ""}">${si.length}</p><p class="m-c">${si.length ? `${plural(si.length, "bill")} · ${moneyT(sum)}` : "Nothing is waiting on a signer"}</p>${ti ? h`<p class="m-c">${ti} cooling off</p>` : ""}<span class="m-go"><a href="#/approvals">View<span class="vh"> approvals</span>${chevA()}</a></span></div>`;
   // caught
   const c = m.caught;
   const nz = CATS.filter(([k]) => c.counts[k] > 0);
@@ -1353,7 +1505,7 @@ function comingUp() {
 /* ---------- Approvals ---------- */
 VIEWS.approvals = {
   title: "Approvals", h1: "Needs attention",
-  desc: () => "Everything waiting, who it waits on, how long it has waited, and its deadline. Approvals happen in a signer’s wallet, not here.",
+  desc: () => "Everything waiting, who it waits on, how long, and its deadline. A policy signer approves from their own wallet.",
   body: () => sec("appr", ["report"], ["public", "policy", "decisions"], () => {
     const m = model();
     const groups = [["Waiting on a signer", m.signerItems, ""], ["Waiting on time", m.timerItems, ""], ["Pending policy check", m.policyItems, "Takara decides these automatically. Shown so nothing is stuck out of sight."]].filter((g) => g[1].length);
@@ -1413,13 +1565,15 @@ function validField(f, v) { v = String(v).trim(); if (!/^\d+$/.test(v)) return f
 VIEWS.policy = {
   title: "Policy", h1: "Policy",
   desc: () => "The limits the agent must stay inside. Changing them needs a policy signer’s signature.",
+  after: (r) => { if (r.params.get("focus") === "owner") { const oc = $("#oc-h"); if (oc) { oc.setAttribute("tabindex", "-1"); requestAnimationFrame(() => { oc.scrollIntoView({ block: "start" }); oc.focus({ preventScroll: true }); }); } } },
   body: () => h`<div class="g12">
-    <section class="panel s7" aria-labelledby="pl-h"><div class="panel-h"><h2 id="pl-h">Current limits</h2></div><div class="panel-b">${sec("pform", ["policy"], [], policyForm, () => h`${[0, 1, 2].map(() => h`<div style="margin-bottom:28px">${skBar("160px", 14)}${skBar("260px", 10, "margin-top:8px")}${skBar("320px", 42, "max-width:100%;margin-top:10px;border-radius:10px")}</div>`)}`, "Loading the current policy…")}</div></section>
-    <section class="panel s5 who" aria-labelledby="pw-h"><div class="panel-h"><h2 id="pw-h">Who can change this</h2></div><div class="panel-b">${sec("pwho", ["public"], ["policy"], () => {
+    <section class="panel s7 pl" aria-labelledby="pl-h"><div class="panel-h"><h2 id="pl-h">Current limits</h2></div><div class="panel-b">${sec("pform", ["policy"], [], policyForm, () => h`${[0, 1, 2].map(() => h`<div style="margin-bottom:28px">${skBar("160px", 14)}${skBar("260px", 10, "margin-top:8px")}${skBar("320px", 42, "max-width:100%;margin-top:10px;border-radius:10px")}</div>`)}`, "Loading the current policy…")}</div></section>
+    <div class="s5 stack"><section class="panel who" aria-labelledby="pw-h"><div class="panel-h"><h2 id="pw-h">Who can change this</h2></div><div class="panel-b">${sec("pwho", ["public"], ["policy"], () => {
       const p = S.public.data, pol = S.policy.data;
       const ver = pol ? pol.version : p.policy.version, hash = pol ? pol.hash : p.policy.hash;
       return h`<dl><div><dt>Policy version</dt><dd>v${ver}</dd></div><div><dt>Policy hash</dt><dd>${hashC(hash, "policy hash")}</dd></div><div><dt>Owners</dt><dd>${join((p.owners || []).map(acct), ", ")}</dd></div><div><dt>Policy signers</dt><dd>${join((p.signers || []).map(acct), ", ")}</dd></div></dl><p>Owners can pause the treasury, revoke the agent and recover funds, even with the agent offline. Only a policy signer can change these limits.</p>`;
     }, () => skRows(4, 36), "Loading who can change the policy…")}</div></section>
+    <section class="panel oc" aria-labelledby="oc-h"><div class="panel-h"><h2 id="oc-h">Owner controls</h2>${IC.lock(16)}</div><div class="panel-b">${sec("owner", ["public"], ["report"], ownerControls, () => skRows(3, 72), "Loading owner controls…")}</div></section></div>
   </div>`,
 };
 function policyForm() {
@@ -1432,7 +1586,7 @@ function policyForm() {
       <p class="f-err" id="e-${f.k}" hidden></p></div>`; })}
     <div class="callout">${IC.lock(18)}<p><b>Editing previews a change. A signature applies it.</b> Nothing changes until a policy signer signs the new version on-chain.</p></div>
     <div class="formfoot"><button class="btn btn-primary" type="submit" id="pv-btn">Preview change</button><button class="btn btn-secondary" type="button" data-act="preset"${policyDirty() ? "" : raw(" disabled")}>Reset</button></div>
-    ${DEMO ? h`<p class="formnote">Previewing works here. Signing is off in this demo.</p>` : ""}
+    <p class="formnote">A policy signer reviews the change, then signs it in their own wallet.</p>
     <p class="f-err" id="pf-alert" role="alert" hidden></p>
   </form>`;
 }
@@ -1559,6 +1713,7 @@ function billDrawer(id) {
   return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">${nameHTML(b)}</h2><div class="dr-tags">${fictTag(b)}${critTag(b)}${b.sub && !b.isNew ? h`<span class="tag">${b.sub}</span>` : ""}</div>
       <div class="dr-amt">${money(b.amount)}${pill(b)}</div></div>
     <section class="dr-sec" aria-labelledby="ds-tl"><h3 id="ds-tl">Progress</h3><ol class="tl">${steps.map(([t, c]) => h`<li class="${c}">${t}${c === "done" ? raw('<span class="vh"> (done)</span>') : c === "now" ? raw('<span class="vh"> (next)</span>') : ""}</li>`)}</ol>${w ? h`<p class="tl-note">Waiting on ${w.labelHTML}: ${w.task}.</p>` : ""}</section>
+    ${(() => { const a = billActions(b, "drw"); return a ? h`<section class="dr-sec" aria-labelledby="ds-act"><h3 id="ds-act">${b.state === "accepted" ? "Owner action" : "Signer action"}</h3>${a}</section>` : ""; })()}
     ${issues.length ? h`<section class="dr-sec" aria-labelledby="ds-is"><h3 id="ds-is">Issues</h3>${issues.map(([k, t, tone]) => h`<div class="callo t-${tone}">${tone === "bad" ? IC.diamond(14) : IC.tri(14)}<p><b>${t}.</b> ${issueSentence(k, b, m)}</p></div>`)}</section>` : ""}
     <section class="dr-sec" aria-labelledby="ds-de"><h3 id="ds-de">Destination</h3>${b.proposed ? compareBoxes(b) : h`<div class="box"><p class="box-t">Registered destination</p><p class="box-v" translate="no">${b.destination}</p><p class="box-c">${(b.chain || "").toUpperCase()}</p></div>`}</section>
     <section class="dr-sec" aria-labelledby="ds-dt"><h3 id="ds-dt">Details</h3><dl class="ddl">${details.map(([k, v]) => h`<dt>${k}</dt><dd>${v}</dd>`)}</dl></section>
@@ -1709,7 +1864,7 @@ function paintNav() {
     if (a.dataset.nav === curV) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     if (a.dataset.nav === "approvals") {
       const b = $(".nv-b", a); b.textContent = n; b.hidden = !n;
-      if (n) a.setAttribute("aria-label", `${a.dataset.label}, ${n} waiting on a signer`); else a.removeAttribute("aria-label");
+      if (n) a.setAttribute("aria-label", `${a.dataset.label}, ${n} waiting on ${isSigner() ? "you" : "a signer"}`); else a.removeAttribute("aria-label");
     }
   });
   const more = $('[data-act="more"]'); if (more) more.classList.toggle("on", ["vendors", "policy", "ledger", "activity"].includes(curV));
@@ -1722,18 +1877,19 @@ function paintAcct() {
 }
 function paintStateBar() {
   const p = S.public.data; let msg = null;
-  if (p && p.paused === true) msg = h`<p class="t-bad" role="status">The treasury is paused. No payment can settle until an owner resumes it.</p>`;
+  if (p && p.paused === true) msg = h`<p class="t-bad" role="status"><span>The treasury is paused. No payment can settle until an owner resumes it.</span>${isOwner() ? h`<a class="btn btn-secondary sb-btn" href="#/policy" data-act="goto-owner">Resume in owner controls</a>` : ""}</p>`;
   else if (p && !p.agent) msg = h`<p class="t-warn" role="status">The agent’s access is revoked. It can’t record or pay bills until an owner restores it.</p>`;
   $('[data-slot="statebar"]').innerHTML = msg ? part(h`<div class="statebar">${msg}</div>`) : "";
 }
 function paintDemo() {
   let dismissed = false; try { dismissed = sessionStorage.getItem("takara.demoBanner") === "dismissed"; } catch { /* storage blocked */ }
-  $('[data-slot="demo"]').innerHTML = DEMO && !dismissed ? part(h`<div class="demo" role="region" aria-label="Demo notice"><div class="demo-in"><p>Hosted demo of a <b>fictional</b> treasury on NEAR testnet. Figures are live from chain. Signing is off here, because a public website never holds a signer’s key. <a href="/">Product page</a> <a href="${GITHUB}" target="_blank" rel="noopener">GitHub<span class="vh"> (opens in a new tab)</span></a></p><button class="iconbtn" type="button" data-act="dismiss-demo" aria-label="Dismiss for this visit" style="margin:-10px -12px -10px 0">${IC.close(18)}</button></div></div>`) : "";
+  $('[data-slot="demo"]').innerHTML = DEMO && !dismissed ? part(h`<div class="demo" role="region" aria-label="Demo notice"><div class="demo-in"><p>Hosted demo of a <b>fictional</b> treasury on NEAR testnet. Connect a testnet wallet to act. Only the treasury’s signer and owner accounts can change anything; the contract refuses everyone else. <a href="/">Product page</a> <a href="${GITHUB}" target="_blank" rel="noopener">GitHub<span class="vh"> (opens in a new tab)</span></a></p><button class="iconbtn" type="button" data-act="dismiss-demo" aria-label="Dismiss for this visit" style="margin:-10px -12px -10px 0">${IC.close(18)}</button></div></div>`) : "";
 }
 function paintSheet() {
   const curV = cur ? cur.view : null;
   const p = S.public.data;
   $('[data-slot="sheet"]').innerHTML = part(h`<div class="sheet-h"><h2 id="more-title">More</h2><button class="iconbtn" type="button" data-act="close-more" aria-label="Close menu">${IC.close()}</button></div>
+    <section class="walblk sheetwal" aria-label="Wallet">${walletBlock("sheet")}</section><hr>
     <nav aria-label="More pages">${NAV.filter(([v]) => ["vendors", "policy", "ledger"].includes(v)).map(([v, label, ic]) => h`<a class="si" href="#/${v}"${curV === v ? raw(' aria-current="page"') : ""}>${IC[ic]()}${label}</a>`)}</nav>
     <hr><a class="si" href="${PRODUCT}"${DEMO ? "" : raw(' target="_blank" rel="noopener"')}>Product page${DEMO ? "" : raw('<span class="vh"> (opens in a new tab)</span>')}</a><a class="si" href="${GITHUB}" target="_blank" rel="noopener">GitHub<span class="vh"> (opens in a new tab)</span></a>
     ${p ? h`<hr><div class="acctrow"><span class="mono" translate="no">${p.treasury}</span>${copyBtn(p.treasury, "treasury account")}</div>` : ""}`);
@@ -1747,17 +1903,17 @@ function announce(msg) { const a = $("#announce"); a.textContent = ""; setTimeou
 
 function onData(k) {
   if (k === "public" || k === "report" || k === "policy" || k === "decisions") paintNav();
-  if (k === "public") { paintAcct(); paintStateBar(); }
+  if (k === "public") { paintAcct(); paintStateBar(); paintWallet(); if (pdlg.open && pending) paintPolicyDialog(pending.d, pending.state || {}); }
   refreshSections(k);
   if (drawerState) paintDrawer();
 }
 
 /* ---------- toasts ---------- */
-function toast(msg, link) {
+function toast(msg, link, inner) {
   const box = $("#toasts");
   while (box.children.length >= 3) box.firstElementChild.remove();
   const t = document.createElement("div"); t.className = "toast";
-  t.innerHTML = part(h`<span>${msg}${link ? h` ${ext(link.href, link.text)}` : ""}</span><button type="button" aria-label="Dismiss">${IC.close(16)}</button>`);
+  t.innerHTML = part(h`<span>${msg}${link ? h` ${ext(link.href, link.text)}` : ""}${inner ? h` <a href="${inner.href}">${inner.text}</a>` : ""}</span><button type="button" aria-label="Dismiss">${IC.close(16)}</button>`);
   box.appendChild(t);
   let left = 6000, start = Date.now(), timer = null;
   const run = () => { start = Date.now(); timer = setTimeout(() => t.remove(), left); };
@@ -1799,16 +1955,28 @@ function paintPolicyDialog(d, state = {}) {
   const rows = diffRows(d, S.policy.data);
   const changed = rows.length > 0;
   const signing = state.signing;
+  const thr = (S.public.data && S.public.data.threshold) || d.threshold || 1;
   $("#pdlg-body").innerHTML = part(h`<h2 id="pd-title" tabindex="-1">Review policy change</h2>
-    <ol class="steps"><li class="now"><span class="n">1</span>Proposed</li><li aria-hidden="true" class="sep">›</li><li><span class="n">2</span>Signed by a policy signer</li><li aria-hidden="true" class="sep">›</li><li><span class="n">3</span>Live</li></ol>
+    <ol class="steps"><li class="now"><span class="n">1</span>Proposed</li><li aria-hidden="true" class="sep">›</li><li><span class="n">2</span>${thr > 1 ? `Signed by 1 of ${thr} signers` : "Signed by a policy signer"}</li><li aria-hidden="true" class="sep">›</li><li><span class="n">3</span>Live</li></ol>
     ${changed ? h`<table class="difft"><caption class="vh">Proposed changes</caption><thead><tr><th scope="col">Setting</th><th scope="col">Current</th><th scope="col">Proposed</th></tr></thead><tbody>${rows}</tbody></table>` : h`<p class="nothing">Nothing changed. Edit a value to preview a new version.</p>`}
     <div class="dmeta"><p>Policy version ${d.diff.version ? `${d.diff.version.from} → ${d.diff.version.to}` : ""}</p>
       <p>New policy hash <span class="hashc"><span class="mono" translate="no" title="${d.next_hash}">${short(d.next_hash)}</span>${copyBtn(d.next_hash, "new policy hash")}</span> (now <span class="mono" translate="no" title="${d.current_hash}">${short(d.current_hash)}</span>)</p>
       <p>Signer: ${acct(d.signer)}</p></div>
     <details class="disc raw" data-k="raw"><summary>${IC.chev(14)}Show raw diff</summary><pre translate="no">${JSON.stringify(d.diff, null, 2)}</pre></details>
     ${state.error ? h`<p class="dalert" role="alert">Not signed: ${state.error}</p>` : ""}
-    ${DEMO ? h`<div class="dfoot"><button class="btn btn-secondary" type="button" data-act="pd-close">Close</button><button class="btn btn-primary" type="button" disabled aria-describedby="pd-why">Signing is off in this demo</button></div><p class="dfoot-note" id="pd-why">A public website never holds a signer’s key. A policy signer applies this version from their own machine.</p>`
-      : h`<div class="dfoot"><button class="btn btn-secondary" type="button" data-act="pd-close"${signing ? raw(" disabled") : ""}>Cancel</button><button class="btn btn-primary" type="button" data-act="pd-sign"${!changed || signing ? raw(" disabled") : ""}${changed ? "" : raw(' aria-describedby="pd-why"')}>${signing ? h`<span class="spin" aria-hidden="true"></span>Waiting for signature and finality…` : "Sign as policy signer"}</button></div>${changed ? "" : h`<p class="dfoot-note" id="pd-why">There is nothing to sign until a value changes.</p>`}`}`);
+    ${state.refused ? h`<p class="txres refused" role="status">${IC.slash(14)}<span><b>The contract refused.</b> ${refusalText(state.refused.code, state.refused.signer || WALLET.accountId)} (<code translate="no">${state.refused.code}</code>). Nothing changed. ${state.refused.hash ? txLink(state.refused.hash) : ""}</span></p>` : ""}
+    ${policyFooter(d, changed, signing)}`);
+}
+function policyFooter(d, changed, signing) {
+  const close = (t) => h`<button class="btn btn-secondary" type="button" data-act="pd-close"${signing ? raw(" disabled") : ""}>${t}</button>`;
+  // Local operators without a wallet keep the CLI-keychain path, clearly secondary.
+  const keychain = !DEMO && changed ? h`<button class="btn btn-ghost" type="button" data-act="pd-sign" title="Fallback for operators without a wallet: signs with the policy signer key in this machine’s NEAR CLI keychain"${signing ? raw(" disabled") : ""}>${signing ? h`<span class="spin dark" aria-hidden="true"></span>Signing with the local keychain…` : "Sign with local keychain"}</button>` : "";
+  const sigs = join(((S.public.data && S.public.data.signers) || [d.signer]).map(acct), ", ");
+  if (!changed) return h`<div class="dfoot">${close("Close")}<button class="btn btn-primary" type="button" disabled aria-describedby="pd-why">Sign with wallet</button></div><p class="dfoot-note" id="pd-why">There is nothing to sign until a value changes.</p>`;
+  if (WALLET.status === "absent") return h`<div class="dfoot">${close("Close")}${keychain}</div><p class="dfoot-note">Wallets are unavailable on this page. A policy signer (${sigs}) can still sign with the NEAR CLI.</p>`;
+  if (!WALLET.accountId) return h`<div class="dfoot">${close("Close")}${keychain}<button class="btn btn-primary" type="button" data-act="wallet-connect"${WALLET.status === "loading" ? raw(" disabled") : ""}>${walIcon()}Connect a signer’s wallet</button></div><p class="dfoot-note">The dialog closes while your wallet opens. Your edits stay.</p>`;
+  if (isSigner()) return h`<div class="dfoot">${close("Cancel")}${keychain}<button class="btn btn-primary" type="button" data-act="pd-wallet"${signing ? raw(" disabled") : ""}>Sign with wallet</button></div><p class="dfoot-note">Before your wallet opens, this page checks that the hash matches the policy text and that only your edits changed.</p>`;
+  return h`<div class="dfoot">${close("Close")}${keychain}<button class="btn btn-primary" type="button" disabled aria-describedby="pd-why">Sign with wallet</button></div><p class="dfoot-note" id="pd-why">Policy signer only (${sigs}). You’re connected as ${acct(WALLET.accountId)}.${walletUsable() ? h` <button class="linkbtn" type="button" data-act="pd-try" title="Sends a real testnet transaction. The contract will refuse it, which is the point. It costs a little testnet gas.">Try anyway</button>` : ""}</p>`;
 }
 const plainFailure = (f) => { const s = typeof f === "string" ? f : JSON.stringify(f || ""); if (/E_NOT_POLICY_SIGNER/.test(s)) return "this key isn’t a policy signer"; const c = failCode(f); return c ? humanCode(c.replace(/^E_/, "")).toLowerCase() : s || "the transaction failed"; };
 async function submitPolicy(form) {
@@ -1848,6 +2016,318 @@ async function signPolicy() {
 }
 pdlg.addEventListener("close", () => { if (pdOpener && pdOpener.isConnected) pdOpener.focus(); });
 
+/* ================================================================== wallet */
+// The page never holds a key. A connected wallet signs one function call to the treasury; the
+// contract checks who signed. The role below only decides which buttons are enabled.
+const TREASURY_ID = "treasury.takara-ai-hq.testnet"; // hardcoded: a changed API response can't redirect receiverId
+const TG = (n) => String(n) + "000000000000"; // Tgas -> gas units
+// One table drives buttons, wallet calls and labels. Nothing outside it is ever sent.
+const TREASURY_ACTIONS = {
+  accept_commitment:     { who: "signer", gas: TG(30), deposit: "0", label: "accept a bill", ok: "Bill accepted. The money is now reserved." },
+  close_commitment:      { who: "signer|owner", gas: TG(30), deposit: "0", label: "close a bill", ok: "Bill closed." },
+  approve_vendor_change: { who: "signer", gas: TG(30), deposit: "0", label: "approve a payout destination change", ok: "New destination approved. Payment stays frozen until the cooling-off period ends." },
+  reject_vendor_change:  { who: "signer", gas: TG(30), deposit: "0", label: "reject a payout destination change", ok: "Destination change rejected. Nothing will be paid to the new account." },
+  propose_policy:        { who: "signer", gas: TG(60), deposit: "0", label: "change the policy", ok: "Policy change signed." },
+  approve_policy:        { who: "signer", gas: TG(30), deposit: "0", label: "approve a policy version", ok: "Policy version approved." },
+  pause:                 { who: "owner",  gas: TG(60), deposit: "0", label: "pause the treasury", ok: "Treasury paused. No payment can settle." },
+  unpause:               { who: "owner",  gas: TG(60), deposit: "0", label: "resume the treasury", ok: "Treasury resumed." },
+  revoke_agent:          { who: "owner",  gas: TG(60), deposit: "0", label: "revoke the agent", ok: "Agent revoked. It can no longer record or pay bills." },
+  set_agent:             { who: "owner",  gas: TG(60), deposit: "0", label: "set the agent", ok: "Agent restored. Re-run setup to re-bind the engine secret." },
+  recover:               { who: "owner",  gas: TG(60), deposit: "1", label: "recover the treasury’s funds", ok: "Recovery sent." },
+};
+const REFUSAL_TEXT = {
+  E_NOT_POLICY_SIGNER: (a) => h`${acct(a)} isn’t a policy signer`,
+  E_NOT_OWNER: (a) => h`${acct(a)} isn’t an owner`,
+  E_INVALID_TRANSITION: () => "this item already moved on. Refresh to see its current state",
+  E_NOT_FOUND: () => "this item no longer exists on the treasury",
+  E_ALREADY_APPROVED: () => "you already approved this",
+  E_INVALID_ARGUMENT: () => "the contract rejected the values",
+  E_INSUFFICIENT_BALANCE: () => "the treasury doesn’t hold that much",
+  E_REQUIRES_ONE_YOCTO: () => "this call needs exactly 1 yoctoNEAR attached",
+  RECOVERY_REVERTED: () => "the token transfer failed (is the recipient registered with the token?), so the funds stayed in the treasury",
+};
+const refusalText = (code, a) => (REFUSAL_TEXT[code] || (() => humanCode(code).toLowerCase()))(a);
+const ROLE_INFO = {
+  agent: ["Takara agent", "bad", "Don’t use the agent key in a browser"],
+  both: ["Owner · Policy signer", "accent", "can approve bills, change the policy and use owner controls"],
+  owner: ["Owner", "accent", "can pause, revoke the agent and recover funds"],
+  signer: ["Policy signer", "warn", "can approve bills and policy changes"],
+  viewer: ["Viewer", "neutral", "can look, can’t change anything"],
+};
+let WALLET = { status: "loading", accountId: null, walletName: null, check: null };
+const SESSION_TX = []; // hosted: this visitor's own wallet transactions, merged into Activity
+const TX = {};         // slot -> { phase, method, args, tryAnyway, result }
+const ACTS = {};       // slot -> { acts, opts } as last rendered, so a click can recover its call
+const FIELD_VALS = {}; // owner control fields survive re-renders
+setTimeout(() => { if (WALLET.status === "loading" && !window.TW) { WALLET.status = "absent"; paintWallet(); refreshWalletViews(); } }, 12000);
+
+function walletRoles() {
+  const a = WALLET.accountId, p = S.public.data, r = new Set();
+  if (!a || !p) return r;
+  if ((p.owners || []).includes(a)) r.add("owner");
+  if ((p.signers || []).includes(a)) r.add("signer");
+  if (p.agent && a === p.agent) r.add("agent");
+  return r; // empty set = viewer
+}
+function roleKey() { const r = walletRoles(); return r.has("agent") ? "agent" : r.has("owner") && r.has("signer") ? "both" : r.has("owner") ? "owner" : r.has("signer") ? "signer" : "viewer"; }
+// May this account send anything at all? (testnet account that exists, not the agent)
+const walletUsable = () => !!WALLET.accountId && WALLET.check === "ok" && !walletRoles().has("agent");
+const isSigner = () => walletUsable() && walletRoles().has("signer");
+const isOwner = () => walletUsable() && walletRoles().has("owner");
+const allowed = (who) => who.split("|").some((w) => (w === "signer" ? isSigner() : w === "owner" ? isOwner() : false));
+
+async function checkAccount(id) {
+  if (/\.near$/.test(id)) return "mainnet";
+  if (!/\.testnet$/.test(id) && !/^[0-9a-f]{64}$/.test(id)) return "network";
+  try { return (await window.TW.accountExists(id)) ? "ok" : "missing"; }
+  catch { return "ok"; } // RPC hiccup: let the contract decide
+}
+window.addEventListener("takara:wallet", async (e) => {
+  const d = e.detail || {};
+  const same = d.accountId && d.accountId === WALLET.accountId;
+  WALLET = { status: d.status, accountId: d.accountId || null, walletName: d.walletName || null, check: d.accountId ? (same ? WALLET.check : "checking") : null };
+  if (!same) for (const k in TX) delete TX[k];
+  M = null; paintWallet(); refreshWalletViews();
+  if (WALLET.accountId && WALLET.check === "checking") {
+    const id = WALLET.accountId, c = await checkAccount(id);
+    if (WALLET.accountId !== id) return;
+    WALLET.check = c; M = null; paintWallet(); refreshWalletViews();
+    if (c === "ok") announce(`Connected as ${id}, ${ROLE_INFO[roleKey()][0]}.`);
+  }
+});
+function refreshWalletViews() {
+  SECTIONS.filter((s) => s.id !== "pform").forEach(fillSection);
+  paintNav(); paintStateBar();
+  if (drawerState) paintDrawer();
+  if (pdlg.open && pending) paintPolicyDialog(pending.d, pending.state || {});
+}
+
+function closeDialogs() { // the wallet chooser and wallet UI sit under the top layer: close every modal first
+  if (drawer.open) {
+    drawerState = null; drawer.close();
+    if (cur) { const qs = cur.r.params.toString(); history.replaceState(null, "", `#/${cur.view}${qs ? "?" + qs : ""}`); document.title = `${VIEWS[cur.view].title} · Takara AI`; }
+  }
+  for (const d of [pdlg, moreSheet, confirmDlg]) if (d.open) d.close();
+}
+async function connectWallet() {
+  if (!window.TW) return toast("Wallets are unavailable on this page. A policy signer can still use the NEAR CLI.");
+  closeDialogs();
+  try { await window.TW.connect(); }
+  catch (e) { const m = String((e && e.message) || e || ""); if (!/reject|cancel|closed/i.test(m)) toast(`Couldn’t connect: ${m}`); }
+}
+
+const walIcon = (s = 16) => SV('<rect x="2.5" y="5" width="15" height="11" rx="2"/><path d="M2.5 8h15"/><path d="M5 5V4.5A1.5 1.5 0 0 1 6.5 3h8"/><circle cx="14" cy="12" r=".9" fill="currentColor"/>', s);
+function walletNotice() {
+  const c = WALLET.check, a = WALLET.accountId;
+  if (!a) return "";
+  if (c === "mainnet") return h`<p class="walnote t-bad">That’s a mainnet account. This treasury is on NEAR testnet.</p>`;
+  if (c === "network") return h`<p class="walnote t-bad">This account isn’t on NEAR testnet.</p>`;
+  if (c === "missing") return h`<p class="walnote t-warn">This account doesn’t exist on testnet yet.</p>`;
+  if (c === "ok" && walletRoles().has("agent")) return h`<p class="walnote t-bad">This is the Takara agent’s account. Its key belongs on the server, not in a browser wallet. Every action is off.</p>`;
+  return "";
+}
+function walletBlock(where) {
+  if (WALLET.status === "absent") return h`<p class="walhelp">Wallets unavailable. Signers can still use the NEAR CLI.</p>`;
+  if (!WALLET.accountId) return h`<button class="btn btn-secondary walconnect" type="button" data-act="wallet-connect"${WALLET.status === "loading" ? raw(" disabled") : ""}>${walIcon()}${WALLET.status === "loading" ? "Loading wallets…" : "Connect wallet"}</button><p class="walhelp">Signers and owners sign here, in their own wallet.</p>`;
+  const [label, , sentence] = ROLE_INFO[roleKey()];
+  const checking = WALLET.check === "checking";
+  return h`<div class="walacct"><span class="waldot${walletUsable() ? " on" : ""}" aria-hidden="true"></span><span class="mono" translate="no" title="${WALLET.accountId}${WALLET.walletName ? ` (${WALLET.walletName})` : ""}">${WALLET.accountId}</span>${copyBtn(WALLET.accountId, "connected account")}</div>
+    <p class="walrole">${checking ? "Checking the account on testnet…" : h`<b>${label}</b> · ${sentence}`}</p>
+    ${walletNotice()}
+    <div class="walmenu"><button class="linkbtn" type="button" data-act="wallet-connect">Switch wallet</button><span aria-hidden="true">·</span><button class="linkbtn" type="button" data-act="wallet-disconnect">Disconnect</button></div>`;
+}
+function paintWallet() {
+  const side = $('[data-slot="wallet"]'); if (side) side.innerHTML = part(h`${walletBlock("side")}<button class="iconbtn walrail" type="button" data-act="${WALLET.accountId ? "more-wallet" : "wallet-connect"}" aria-label="${WALLET.accountId ? `Wallet: ${WALLET.accountId}` : "Connect wallet"}"${WALLET.status === "absent" || WALLET.status === "loading" ? raw(" disabled") : ""}>${walIcon(20)}${WALLET.accountId ? raw('<span class="raildot" aria-hidden="true"></span>') : ""}</button>`);
+  const top = $('[data-slot="wallet-top"]');
+  if (top) top.innerHTML = WALLET.status === "absent" ? "" : part(WALLET.accountId
+    ? h`<button class="walbtn on" type="button" data-act="more-wallet" aria-label="Wallet: ${WALLET.accountId}, ${ROLE_INFO[roleKey()][0]}">${walIcon()}<span class="waldot${walletUsable() ? " on" : ""}" aria-hidden="true"></span><span class="mono" translate="no">${shortAcct(WALLET.accountId)}</span></button>`
+    : h`<button class="walbtn" type="button" data-act="wallet-connect"${WALLET.status === "loading" ? raw(" disabled") : ""}>${walIcon()}<span>Connect</span></button>`);
+  if (moreSheet.open) paintSheet();
+}
+const shortAcct = (a) => { a = String(a || ""); const head = a.split(".")[0]; return head.length > 12 ? head.slice(0, 10) + "…" : head; };
+
+/* ---------- transaction areas: confirm -> wallet -> pending -> chain outcome ---------- */
+// acts: [{ method, args | build(), label, tone }]. opts: { need, tryIdx, oob, compact, note }
+function actionArea(slot, acts, opts = {}) {
+  ACTS[slot] = { acts, opts };
+  const st = TX[slot];
+  const wrap = (inner) => h`<div class="txa${opts.compact ? " compact" : ""}" data-txslot="${slot}">${inner}</div>`;
+  if (WALLET.status === "absent") return wrap(h`<p class="txnote">Wallets are unavailable on this page. ${opts.need === "owner" ? "An owner" : "A policy signer"} can still use the NEAR CLI.</p>`);
+  if (!WALLET.accountId) return wrap(h`<div class="txrow"><button class="btn btn-secondary" type="button" data-act="wallet-connect"${WALLET.status === "loading" ? raw(" disabled") : ""}>${walIcon()}${opts.need === "owner" ? "Connect an owner’s wallet" : "Connect a wallet to approve"}</button></div><p class="txnote">${opts.need === "owner" ? "Only an owner can do this. The contract refuses anyone else." : "Only a policy signer can approve, in their own wallet. The contract refuses anyone else."}</p>`);
+  if (st && st.phase === "confirm") return wrap(confirmBox(slot, st));
+  if (st && (st.phase === "wallet" || st.phase === "submitted")) return wrap(h`<div class="txrow"><button class="btn btn-primary" type="button" disabled><span class="spin" aria-hidden="true"></span>${st.phase === "wallet" ? "Confirm in your wallet…" : "Waiting for finality…"}</button></div><p class="txnote" role="status">${st.phase === "wallet" ? "Your wallet owns this step. Approve or cancel it there." : h`Sent. Waiting for finality. ${st.hash ? txLink(st.hash) : ""}`}</p>`);
+  const ok = allowed(opts.need) ;
+  const usable = walletUsable();
+  const btns = acts.map((a, i) => h`<button class="btn btn-${a.tone || "secondary"}" type="button" data-act="tx-start" data-slot="${slot}" data-i="${i}"${ok ? "" : raw(` disabled aria-describedby="why-${esc(slot)}"`)}>${a.label}</button>`);
+  const who = opts.need === "owner" ? h`Owner only (${join(((S.public.data && S.public.data.owners) || []).map(acct), ", ")})` : h`Only a policy signer can do this`;
+  const why = ok ? "" : h`<p class="txnote" id="why-${slot}">${who}.${usable ? h` You’re connected as ${acct(WALLET.accountId)}.` : WALLET.check === "checking" ? " Checking your account…" : " The connected account can’t act on this treasury (see the wallet panel)."}${usable && opts.tryIdx != null ? h` <button class="linkbtn" type="button" data-act="tx-start" data-try="1" data-slot="${slot}" data-i="${opts.tryIdx}" title="Sends a real testnet transaction. The contract will refuse it, which is the point. It costs a little testnet gas.">Try anyway as ${shortAcct(WALLET.accountId)}</button>` : ""}</p>`;
+  const oob = opts.oob && ok ? h`<label class="chk"><input type="checkbox" data-oob="${slot}"${st && st.oob ? raw(" checked") : ""}><span>I confirmed the new destination with the vendor through a known phone number or contact, not from this invoice.</span></label>` : "";
+  return wrap(h`${typeof opts.fields === "function" ? opts.fields() : opts.fields || ""}${oob}<div class="txrow">${btns}</div>${why}${resultLine(st)}`);
+}
+function confirmBox(slot, st) {
+  const spec = TREASURY_ACTIONS[st.method];
+  const gas = Number(BigInt(spec.gas) / 1000000000000n);
+  return h`<div class="txconfirm" role="group" aria-label="Confirm transaction">
+    ${st.tryAnyway ? h`<p class="txwarn">This sends a real testnet transaction that the contract is expected to refuse. It costs a little testnet gas.</p>` : ""}
+    <p>You’re about to call <b translate="no">${st.method}</b> on ${acct(TREASURY_ID)} as ${acct(WALLET.accountId)}. Gas ${gas} Tgas, ${spec.deposit === "1" ? "deposit 1 yoctoNEAR" : "no deposit"}. Your wallet will show the same.</p>
+    <pre class="txargs" translate="no">${JSON.stringify(st.args)}</pre>
+    <div class="txrow"><button class="btn btn-primary" type="button" data-act="tx-go" data-slot="${slot}">Continue in wallet</button><button class="btn btn-ghost" type="button" data-act="tx-cancel" data-slot="${slot}">Cancel</button></div></div>`;
+}
+function resultLine(st) {
+  if (!st || !st.result) return h`<p class="txres" role="status"></p>`;
+  const r = st.result;
+  if (r.kind === "done") return h`<p class="txres ok" role="status">${IC.check(14)}<span>${TREASURY_ACTIONS[st.method].ok} ${r.hash ? txLink(r.hash) : ""}</span></p>`;
+  if (r.kind === "refused") return h`<p class="txres refused" role="status">${IC.slash(14)}<span><b>The contract refused.</b> ${refusalText(r.code, r.signer || WALLET.accountId)} (<code translate="no">${r.code}</code>). Nothing changed. ${r.hash ? txLink(r.hash) : ""}</span></p>`;
+  if (r.kind === "cancelled") return h`<p class="txres" role="status">You cancelled in the wallet. Nothing was sent.</p>`;
+  if (r.kind === "submitted") return h`<p class="txres" role="status">Sent, but finality couldn’t be confirmed yet. Refresh in a moment. ${r.hash ? txLink(r.hash) : ""}</p>`;
+  return h`<p class="txres err" role="alert">Couldn’t reach the wallet: ${r.message}. Nothing was sent unless your wallet shows a transaction.</p>`;
+}
+function paintTxSlot(slot, focus) {
+  const el = $(`[data-txslot="${CSS.escape(slot)}"]`), reg = ACTS[slot];
+  if (!el || !reg) return;
+  const keep = keepInputs(el);
+  const tmp = document.createElement("div"); tmp.innerHTML = part(actionArea(slot, reg.acts, reg.opts));
+  el.replaceWith(tmp.firstElementChild);
+  keep();
+  if (focus) { const f = $(`[data-txslot="${CSS.escape(slot)}"] ${focus}`); if (f) f.focus(); }
+}
+function startTx(t) {
+  const slot = t.dataset.slot, reg = ACTS[slot]; if (!reg) return;
+  const a = reg.acts[Number(t.dataset.i)]; if (!a || !TREASURY_ACTIONS[a.method]) return;
+  const tryAnyway = t.dataset.try === "1";
+  if (!tryAnyway && !allowed(TREASURY_ACTIONS[a.method].who)) return;
+  if (tryAnyway && !walletUsable()) return;
+  const box = $(`[data-oob="${CSS.escape(slot)}"]`);
+  if (reg.opts.oob && !tryAnyway && a.method === "approve_vendor_change" && box && !box.checked) { box.focus(); return toast("Confirm the new destination with the vendor first, through a contact you already know."); }
+  let args = a.args;
+  if (a.build) { const b = a.build(); if (b.error) { if (b.focus) { const f = $(b.focus); if (f) f.focus(); } return toast(b.error); } args = b.args; }
+  TX[slot] = { phase: "confirm", method: a.method, args, tryAnyway, oob: !!(box && box.checked), from: t.closest("#drawer") ? "drawer" : null };
+  paintTxSlot(slot, '[data-act="tx-go"]');
+}
+async function runTx(slot) {
+  const st = TX[slot]; if (!st || st.phase !== "confirm") return;
+  const spec = TREASURY_ACTIONS[st.method];
+  if (!spec || !window.TW || !WALLET.accountId) return;
+  if (!S.public.data || S.public.data.treasury !== TREASURY_ID || window.TW.TREASURY !== TREASURY_ID) { delete TX[slot]; paintTxSlot(slot); return toast("Treasury mismatch. Nothing was sent."); }
+  const billId = st.args && st.args.commitment_id;
+  closeDialogs();
+  st.phase = "wallet"; paintTxSlot(slot); announce("Confirm in your wallet…");
+  const r = await sendTx(st.method, st.args, (hash) => { st.phase = "submitted"; st.hash = hash; paintTxSlot(slot); announce("Sent. Waiting for finality…"); });
+  st.phase = r.kind; st.result = r;
+  if (r.kind === "cancelled" || r.kind === "error") { st.phase = "idle"; }
+  paintTxSlot(slot);
+  const link = r.hash ? { href: `https://testnet.nearblocks.io/txns/${r.hash}`, text: "View transaction" } : null;
+  if (r.kind === "done") toast(spec.ok, link, billId != null && st.from === "drawer" ? { href: `#/bills/${billId}`, text: "View bill" } : null);
+  else if (r.kind === "refused") { announce(`The contract refused: ${r.code}. Nothing changed.`); if (!$(`[data-txslot="${CSS.escape(slot)}"]`)) toast(`The contract refused (${r.code}). Nothing changed.`, link); }
+  else if (r.kind === "cancelled") announce("You cancelled in the wallet. Nothing was sent.");
+  else if (!$(`[data-txslot="${CSS.escape(slot)}"]`)) toast(r.kind === "submitted" ? "Sent. Finality not confirmed yet." : `Couldn’t reach the wallet: ${r.message}`, link);
+}
+// Every transaction goes through here: allowlist, pending marker, wallet, chain re-check, record, reload.
+async function sendTx(method, args, onHash) {
+  const spec = TREASURY_ACTIONS[method];
+  if (!spec || !window.TW) return { kind: "error", message: "not an allowed action" };
+  const signer = WALLET.accountId;
+  try { sessionStorage.setItem("takara.pendingTx", JSON.stringify({ method, args, at: Date.now() })); } catch { /* storage blocked */ }
+  let r;
+  try { r = await window.TW.call(method, args, spec, onHash); } catch (e) { r = { kind: "error", message: String((e && e.message) || e) }; }
+  try { sessionStorage.removeItem("takara.pendingTx"); } catch { /* storage blocked */ }
+  r.signer = signer;
+  if (r.hash && (r.kind === "done" || r.kind === "refused")) {
+    SESSION_TX.unshift({ at: new Date().toISOString(), tx: r.hash, signer, contract: TREASURY_ID, method, ok: r.kind === "done", failure: r.kind === "refused" ? r.code : null, value: r.value || null, events: (r.events || []).filter((e) => e.standard === "takara-ai"), session: true });
+    if (!DEMO) api("/api/decisions/record", { tx: r.hash, signer }).then(() => load("decisions", { quiet: true })).catch(() => { /* the session list still shows it */ });
+    M = null;
+  }
+  if (r.kind === "done" || r.kind === "submitted") { load("public", { quiet: true }); load("report", { quiet: true }); load("decisions", { quiet: true }); if (method === "propose_policy") load("policy", { quiet: true }); }
+  else onData("decisions");
+  return r;
+}
+
+/* ---------- policy: server prepares, browser verifies, wallet signs ---------- */
+const sha256hex = async (s) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+async function verifyProposal(d) {
+  const p = d.propose; if (!p) throw new Error("there is nothing to sign");
+  if (typeof d.next_pt !== "string") throw new Error("the server didn’t return the policy text");
+  if (await sha256hex(d.next_pt) !== p.hash) throw new Error("the policy hash doesn’t match the policy text");
+  if (await sha256hex(JSON.stringify(d.diff)) !== p.diff_hash) throw new Error("the diff hash doesn’t match the diff");
+  const pub = S.public.data, cur0 = S.policy.data;
+  if (!pub || p.version !== pub.policy.version + 1) throw new Error("unexpected policy version");
+  const next = JSON.parse(d.next_pt);
+  if (next.version !== p.version) throw new Error("the policy text has the wrong version");
+  for (const k of ["max_auto_pay", "cooling_off_hours", "min_runway_days"]) {
+    const want = d.diff[k] ? d.diff[k].to : undefined;
+    if (want !== undefined && String(next[k]) !== String(want)) throw new Error(`the policy text disagrees with the diff on ${PLABEL[k]}`);
+    if (want === undefined && cur0) { // an unedited control must keep its current value
+      const have = k === "max_auto_pay" ? Number(next[k]) / 10 ** next.decimals : Number(next[k]);
+      if (have !== Number(cur0[k])) throw new Error(`the policy text changes ${PLABEL[k]}, which you didn’t edit`);
+    }
+  }
+  if (!/^[0-9a-f]{64}$/.test(p.hash) || !/^[0-9a-f]{64}$/.test(p.diff_hash) || !/^[A-Za-z0-9+/=]+$/.test(p.sealed) || p.sealed.length > 24576) throw new Error("the proposal is malformed");
+  const ms = Number(BigInt(p.expires_at) / 1000000n), now = Date.now();
+  if (ms < now + DAY || ms > now + 400 * DAY) throw new Error("unexpected expiry");
+  return { version: p.version, hash: p.hash, expires_at: p.expires_at, sealed: p.sealed, diff_hash: p.diff_hash };
+}
+async function signPolicyWithWallet(tryAnyway) {
+  if (!pending || !window.TW || !WALLET.accountId) return;
+  if (!tryAnyway && !isSigner()) return;
+  let args;
+  try { args = await verifyProposal(pending.d); }
+  catch (e) { pending.state = { error: `checked before signing: ${e.message}` }; return paintPolicyDialog(pending.d, pending.state); }
+  if (!S.public.data || S.public.data.treasury !== TREASURY_ID) return toast("Treasury mismatch. Nothing was sent.");
+  pdOpener = null; pdlg.close(); // 3.7: the wallet can't be used under a modal
+  toast("Checked: the hash matches the policy text. Confirm the policy change in your wallet…");
+  const r = await sendTx("propose_policy", args);
+  const link = r.hash ? { href: `https://testnet.nearblocks.io/txns/${r.hash}`, text: "View transaction" } : null;
+  const reopen = (state) => { pending.state = state; paintPolicyDialog(pending.d, state); pdlg.showModal(); $("#pd-title").focus(); };
+  if (r.kind === "done") {
+    PF.edits = null; pending = null;
+    const thr = (S.public.data && S.public.data.threshold) || 1;
+    toast(thr > 1 ? `Proposal ${r.value} created: 1 of ${thr} approvals.` : `Policy v${args.version} signed and live.`, link);
+  } else if (r.kind === "refused") reopen({ refused: r });
+  else if (r.kind === "submitted") toast("Sent. Finality not confirmed yet. Refresh in a moment.", link);
+  else if (r.kind !== "cancelled") reopen({ error: r.message || "not confirmed" });
+  else announce("You cancelled in the wallet. Nothing was sent.");
+}
+
+/* ---------- owner controls (Policy page) ---------- */
+function ownerControls() {
+  const p = S.public.data, f = (S.report.data && S.report.data.figures) || {};
+  const owner = (p.owners || [])[0] || "";
+  const parent = String(p.treasury || "").replace(/^[^.]+\./, "");
+  const pauseAct = p.paused ? { method: "unpause", args: {}, label: "Resume the treasury", tone: "primary" } : { method: "pause", args: {}, label: "Pause the treasury", tone: "secondary" };
+  const agentAct = p.agent ? { method: "revoke_agent", args: {}, label: "Revoke the agent", tone: "secondary" }
+    : { method: "set_agent", label: "Restore agent", tone: "secondary", build: () => { const v = String($("#oc-agent").value).trim(); if (!/^[a-z0-9._-]{2,64}$/.test(v)) return { error: "Enter the agent’s account id.", focus: "#oc-agent" }; if ((p.owners || []).includes(v) || (p.signers || []).includes(v)) return { error: "The agent can’t be an owner or a policy signer.", focus: "#oc-agent" }; return { args: { agent: v } }; } };
+  const bal = Number(f.treasury_balance);
+  const recAct = { method: "recover", label: "Recover funds", tone: "secondary", build: () => {
+    const raw1 = String($("#oc-amt").value).trim(), raw2 = String($("#oc-amt2").value).trim(), to = String($("#oc-to").value).trim();
+    const x = Number(raw1);
+    if (!/^\d+(\.\d{1,6})?$/.test(raw1) || !(x > 0)) return { error: "Enter an amount above 0, up to 6 decimals.", focus: "#oc-amt" };
+    if (Number.isFinite(bal) && x > bal) return { error: `The treasury holds ${moneyT(bal)}.`, focus: "#oc-amt" };
+    if (raw2 !== raw1) return { error: "Type the same amount again to confirm.", focus: "#oc-amt2" };
+    if (!/^[a-z0-9._-]{2,64}$/.test(to)) return { error: "Enter the account to send the funds to.", focus: "#oc-to" };
+    const [w, d = ""] = raw1.split(".");
+    return { args: { amount: (BigInt(w) * 1000000n + BigInt((d + "000000").slice(0, 6))).toString(), to } };
+  } };
+  const fld = (id, label, val, extra = "") => h`<div class="ocf"><label for="${id}">${label}</label><input id="${id}" name="${id}" class="ocinp" autocomplete="off" spellcheck="false" value="${FIELD_VALS[id] != null ? FIELD_VALS[id] : val}"${raw(extra)}></div>`;
+  return h`<p class="oc-d">Emergency actions an owner signs in their own wallet. They work even when the agent is offline. Each asks you to confirm first.</p>
+    <div class="ocrow"><div class="oc-t"><h3>${p.paused ? "Resume the treasury" : "Pause the treasury"}</h3><p>${p.paused ? "Payments can settle again within policy." : "Stops every payment from settling until an owner resumes it."}</p></div>${actionArea("own-pause", [pauseAct], { need: "owner", tryIdx: p.paused ? null : 0, compact: true })}</div>
+    <div class="ocrow"><div class="oc-t"><h3>${p.agent ? "Revoke the agent" : "Restore the agent"}</h3><p>${p.agent ? h`Stops ${acct(p.agent)} from recording or paying bills. Owners can restore it later.` : "After changing the agent, re-run setup to re-bind the engine secret, or the agent’s requests will fail."}</p></div>${actionArea("own-agent", [agentAct], { need: "owner", compact: true, fields: p.agent ? "" : () => fld("oc-agent", "Agent account", parent ? "agent." + parent : "") })}</div>
+    <div class="ocrow"><div class="oc-t"><h3>Recover funds</h3><p>Moves tUSDC out of the treasury with no agent involved. Attaches 1 yoctoNEAR, as token transfers require.</p></div>${actionArea("own-recover", [recAct], { need: "owner", compact: true, fields: () => h`<div class="ocgrid">${fld("oc-amt", "Amount (USDC)", "", ' inputmode="decimal"')}${fld("oc-amt2", "Type the amount again", "", ' inputmode="decimal"')}${fld("oc-to", "Send to", owner)}</div>` })}</div>`;
+}
+
+/* ---------- legacy redirect returns and lost requests ---------- */
+function walletBoot() {
+  const q = new URLSearchParams(location.search);
+  if (["transactionHashes", "errorCode", "errorMessage", "account_id", "all_keys"].some((k) => q.has(k))) {
+    const hash = (q.get("transactionHashes") || "").split(",")[0];
+    if (hash && /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(hash)) toast("Your wallet sent a transaction.", { href: `https://testnet.nearblocks.io/txns/${hash}`, text: "View transaction" });
+    else if (q.get("errorCode")) toast(q.get("errorCode") === "userRejected" ? "You cancelled in the wallet. Nothing was sent." : "The wallet reported an error. Nothing was sent unless your wallet shows a transaction.");
+    history.replaceState(null, "", location.pathname + location.hash);
+    try { sessionStorage.removeItem("takara.pendingTx"); } catch { /* storage blocked */ }
+  }
+  let p = null; try { p = JSON.parse(sessionStorage.getItem("takara.pendingTx") || "null"); sessionStorage.removeItem("takara.pendingTx"); } catch { /* storage blocked */ }
+  if (p && p.method) toast("A wallet request from this tab didn’t report back. Check your wallet’s activity.");
+}
+
 /* ================================================================== events */
 document.addEventListener("click", async (e) => {
   const a = e.target.closest("a[href]");
@@ -1877,13 +2357,25 @@ document.addEventListener("click", async (e) => {
   }
   else if (act === "pd-close") pdlg.close();
   else if (act === "pd-sign") signPolicy();
+  else if (act === "pd-wallet") signPolicyWithWallet(false);
+  else if (act === "pd-try") signPolicyWithWallet(true);
+  else if (act === "wallet-connect") connectWallet();
+  else if (act === "wallet-disconnect") { if (window.TW) window.TW.disconnect().catch(() => toast("Couldn’t disconnect. Try again.")); }
+  else if (act === "more-wallet") { paintSheet(); moreSheet.showModal(); const f = $('.sheetwal button, .sheetwal a'); if (f) f.focus(); }
+  else if (act === "tx-start") startTx(t);
+  else if (act === "tx-go") runTx(t.dataset.slot);
+  else if (act === "tx-cancel") { const slot = t.dataset.slot; delete TX[slot]; paintTxSlot(slot, '[data-act="tx-start"]:not([disabled])'); }
+  else if (act === "goto-owner") { e.preventDefault(); if (cur && cur.view === "policy") { const oc = $("#oc-h"); if (oc) { oc.scrollIntoView({ block: "start" }); oc.setAttribute("tabindex", "-1"); oc.focus({ preventScroll: true }); } } else location.hash = "#/policy?focus=owner"; }
 });
+document.addEventListener("change", (e) => { const b = e.target; if (b.dataset && b.dataset.oob && TX[b.dataset.oob]) TX[b.dataset.oob].oob = b.checked; });
 document.addEventListener("submit", (e) => {
   if (e.target.id === "pform") { e.preventDefault(); submitPolicy(e.target); }
   if (e.target.id === "chatform") { e.preventDefault(); const i = $("#chat-q"); const q = i.value; i.value = ""; ask(q); }
 });
 document.addEventListener("input", (e) => {
-  const inp = e.target; if (!inp.closest || !inp.closest("#pform") || !PF.edits) return;
+  const inp = e.target;
+  if (inp.classList && inp.classList.contains("ocinp")) { FIELD_VALS[inp.id] = inp.value; return; }
+  if (!inp.closest || !inp.closest("#pform") || !PF.edits) return;
   PF.edits[inp.name] = inp.value;
   const p = S.policy.data;
   const tag = $(`[data-edited="${inp.name}"]`); if (tag) tag.hidden = String(inp.value).trim() === String(p[inp.name]);
@@ -1898,8 +2390,141 @@ $('[data-slot="envtags-top"]').innerHTML = part(envTags("top"));
 $('[data-slot="envtags-side"]').innerHTML = part(envTags("side"));
 $('[data-slot="footlinks"]').innerHTML = part(h`<a href="${PRODUCT}"${DEMO ? "" : raw(' target="_blank" rel="noopener"')}>Product page${DEMO ? "" : raw('<span class="vh"> (opens in a new tab)</span>')}</a><span aria-hidden="true">·</span><a href="${GITHUB}" target="_blank" rel="noopener">GitHub<span class="vh"> (opens in a new tab)</span></a>`);
 paintDemo();
+paintWallet();
+walletBoot();
 onRoute();
 loadAll();
+</script>
+<script type="module">
+/* Wallet module. Optional: if the CDN is blocked this never runs, window.TW never appears and the
+   app stays read-only exactly as before. Pinned: @hot-labs/near-connect 0.12.0 (zero runtime
+   dependencies; jsDelivr +esm bundle sha384-f3y9zSYOtg1HHwq/4/hbu8xZ//yn5j2mt8zREsCiLSbSnDHqEPwHEesM83PKy8Lj
+   on 2026-11-13). The wallet list is pinned below and never fetched from upstream. */
+import { NearConnector } from "https://cdn.jsdelivr.net/npm/@hot-labs/near-connect@0.12.0/+esm";
+
+const NETWORK = "testnet";
+const RPC = "https://rpc.testnet.fastnear.com";
+const TREASURY = "treasury.takara-ai-hq.testnet";
+// Filtered copy of hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069 repository/manifest.json.
+// Executors pinned to commits where one exists (Meteor and Intear can't be). Bump -takara.N when an executor URL changes.
+const WALLET_MANIFEST = { version: "takara-1", wallets: [
+  {"id":"meteor-wallet","name":"Meteor Wallet","icon":"https://raw.githubusercontent.com/Meteor-Wallet/meteor_wallet_sdk/main/assets/meteor-logo-svg.svg","description":"The most simple and secure wallet to manage your crypto, access DeFi, and explore Web3","website":"https://meteorwallet.app/","version":"1.1.1-takara.1","executor":"https://raw.githubusercontent.com/Meteor-Wallet/meteor_wallet_sdk/data-storage/storage/meteor-near-connect-latest.js","type":"sandbox","features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"signInWithFunctionCallKey":true,"signDelegateActions":true,"mainnet":true,"testnet":true},"platform":{"web":"https://wallet.meteorwallet.app","chrome":"https://chromewebstore.google.com/detail/meteor-wallet/pcndjhkinnkaohffealmlmhaepkpmgkb","android":"https://play.google.com/store/apps/details?id=app.meteorwallet.v2","ios":"https://apps.apple.com/us/app/meteor-wallet/id6739558223"},"permissions":{"storage":true,"allowsOpen":["https://chromewebstore.google.com","https://wallet.meteorwallet.app","https://meteorwallet.app","meteorwallet://","meteorwalletdev://"],"external":["meteorCom","meteorComV2"]}},
+  {"id":"intear-wallet","name":"Intear Wallet","icon":"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='49.152' height='49.152' viewBox='0 0 36.864 36.864' fill='%230079fb'><path d='M18.487 32.306c-4.599.067-8.487-3.315-9.181-7.846-.278-1.81.068-3.077.628-4.791 1.403-4.291 3.971-8.695 6.427-12.51l.949-1.478c.309-.484.487-1.03 1.115-1.125.512.052.64.423.897.807 2.484 3.706 8.36 13.272 8.334 17.704-.029 5.044-4.068 9.27-9.169 9.238zm-.063-25.712c-2.557 3.771-4.933 7.827-6.631 12.055-.838 2.086-1.485 3.738-1.052 5.983.693 3.599 3.997 6.409 7.684 6.303 4.346.06 7.767-3.49 7.827-7.766.042-2.97-3.226-9.081-4.764-11.757-.373-.65-2.709-4.575-3.064-4.818zM13.18 24.15c-.768.067-.771-.701-.769-1.27.004-1.585.41-2.564.69-3.114.179-.512.807-1.39 1.38-1.807.334-.208.836-.51 1.137-.21.362.547.163.6-.06.906a6.14 6.14 0 0 0-1.754 4.195c-.003.577.098 1.181-.625 1.299zm7.543 5.012c-.598-.034-.626-.334-.735-.811.143-.444.303-.695.753-.698 1.166-.664 2.362-1.655 2.564-3.328.194-.569.104-1.219.864-1.332.852 0 .743 1.326.622 1.885-.923 2.883-2.483 3.648-4.068 4.284z'/></svg>","description":"A fast and secure wallet for everyday interactions with dapps","website":"https://intea.rs/","version":"1.0.0-takara.1","executor":"https://wallet.intear.tech/near-selector.js","type":"sandbox","features":{"signMessage":true,"signTransaction":false,"signAndSendTransaction":true,"signAndSendTransactions":true,"signInWithoutAddKey":true,"verifyOwner":false,"testnet":true,"signDelegateActions":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true},"platform":{"web":"https://wallet.intear.tech"},"permissions":{"storage":true,"location":true,"allowsOpen":["https://wallet.intear.tech","https://staging.wallet.intear.tech","http://intearwallet.local","https://intearwallet.local","http://intearwallet.localhost:3000","intear://","https://logout-bridge-service.intear.tech"]}},
+  {"id":"mynearwallet","name":"MyNearWallet","icon":"https://storage.herewallet.app/upload/d0544304123d10518af961a15d5722ff1cef7abf62155f830e6d733e41f7da4b.png","description":"Web wallet for NEAR.","website":"https://mynearwallet.com","version":"1.0.0-takara.1","executor":"https://cdn.jsdelivr.net/gh/hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069/repository/mnw.js","type":"sandbox","platform":{"web":"https://app.mynearwallet.com"},"features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"testnet":true},"permissions":{"storage":true,"allowsOpen":["https://app.mynearwallet.com","https://testnet.mynearwallet.com"]}},
+  {"id":"nightly-wallet","name":"Nightly Wallet","icon":"https://storage.herewallet.app/upload/6947eb5c14c65a715fb49a08e5937dcecc994bf224b3869b9878bd7a7db068f9.webp","description":"Surf through the multichain Metaverse with Nightly","website":"https://nightly.app","version":"1.0.0-takara.1","executor":"https://cdn.jsdelivr.net/gh/hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069/repository/nightly.js","type":"sandbox","platform":{"chrome":"https://chromewebstore.google.com/detail/nightly/fiikommddbeccaoicoejoniammnalkfa"},"permissions":{"storage":true,"external":["nightly.near"],"allowsOpen":["https://nightly.app","https://chromewebstore.google.com/detail/nightly/fiikommddbeccaoicoejoniammnalkfa"]},"features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"testnet":true}},
+  {"id":"ledger","name":"Ledger","icon":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20768.91%20669.35%22%3E%3Cpath%20style%3D%22stroke%3A%23000%22%20d%3D%22M-2.876-2.76h774.662v674.871H-2.876z%22%2F%3E%3Cpath%20d%3D%22M150.057%20422.845v115.877h176.334v-25.698H175.749v-90.179zm443.103%200v90.179H442.519v25.692h176.334V422.845zM326.647%20246.504v176.334h115.872v-23.174H352.34v-153.16zm-176.59-115.877v115.877h25.692v-90.185h150.642v-25.692zm292.462%200v25.692H593.16v90.185h25.693V130.627z%22%20style%3D%22fill%3A%23fff%22%2F%3E%3C%2Fsvg%3E","description":"Sign transactions using hardware Ledger devices","website":"https://ledger.com","version":"1.0.0-takara.1","executor":"https://cdn.jsdelivr.net/gh/near/near-connect-ledger@8fe249268332fd0c3231fe3e32da3bf0956d9cef/ledger-executor.js","type":"sandbox","platform":{},"features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"signDelegateActions":true,"mainnet":true,"testnet":true},"permissions":{"storage":true,"usb":true,"hid":true,"bluetooth":true}},
+  {"id":"near-cli","name":"NEAR CLI","icon":"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a1a2e'/%3E%3Cpolyline points='18 40 28 30 18 20' fill='none' stroke='%2300d4aa' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='32' y1='42' x2='46' y2='42' stroke='%2300d4aa' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E","description":"Sign transactions using near-cli-rs in your terminal","website":"https://near.cli.rs","version":"1.0.0-takara.1","executor":"https://cdn.jsdelivr.net/gh/near/near-cli-connect@dc5cb123e3a8e42ed095739f4ea058b767a80ad2/dist/near-cli.js","type":"sandbox","platform":{},"features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"signDelegateActions":true,"signInWithFunctionCallKey":true,"mainnet":true,"testnet":true},"permissions":{"storage":true,"clipboardWrite":true}},
+] };
+
+// Guard 1: drop "near-wallet-injected" messages from other windows (the library doesn't check origin).
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "near-wallet-injected" && e.source !== window) e.stopImmediatePropagation();
+}, true);
+
+// Guard 2: localStorage minus the library's persistent "debug-wallets" hook, so a one-time XSS
+// can't plant a permanent fake wallet.
+const storage = {
+  async get(k) { if (k === "debug-wallets") return null; try { return localStorage.getItem(k); } catch { return null; } },
+  async set(k, v) { if (k === "debug-wallets") return; try { localStorage.setItem(k, v); } catch { /* storage blocked */ } },
+  async remove(k) { try { localStorage.removeItem(k); } catch { /* storage blocked */ } },
+};
+
+// No signIn / addFunctionCallKey option: sign-in adds no access key, so every action needs an
+// explicit confirmation in the wallet with the wallet's own key.
+const connector = new NearConnector({
+  network: NETWORK,
+  manifest: WALLET_MANIFEST,
+  features: { signAndSendTransaction: true },
+  providers: { testnet: [RPC] },
+  autoConnect: false,
+  footerBranding: null,
+  storage,
+});
+
+const state = { status: "ready", accountId: null, walletName: null };
+const emit = () => window.dispatchEvent(new CustomEvent("takara:wallet", { detail: { ...state } }));
+const setAccount = (accountId, walletName) => { Object.assign(state, { status: accountId ? "connected" : "ready", accountId: accountId || null, walletName: walletName || null }); emit(); };
+
+connector.on("wallet:signIn", async (e) => {
+  const w = await connector.wallet().catch(() => null);
+  setAccount(e.accounts && e.accounts[0] && e.accounts[0].accountId, w && w.manifest && w.manifest.name);
+});
+connector.on("wallet:signOut", () => setAccount(null));
+
+async function rpc(method, params) {
+  const r = await fetch(RPC, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+  const j = await r.json();
+  if (j.error) throw Object.assign(new Error(j.error.cause ? j.error.cause.name : j.error.message), { rpc: j.error });
+  return j.result;
+}
+
+const PANIC = /Smart contract panicked: ([A-Z0-9_]+)|\b(E_[A-Z_]+)\b|Method new is private/;
+const B58 = /\b[1-9A-HJ-NP-Za-km-z]{43,44}\b/;
+function failureOf(outcome) {
+  const all = [outcome && outcome.status, ...((outcome && outcome.receipts_outcome) || []).map((r) => r.outcome && r.outcome.status)];
+  const f = all.find((s) => s && s.Failure);
+  return f ? JSON.stringify(f.Failure) : null;
+}
+function codeOf(s) { const m = String(s || "").match(PANIC); return m ? (m[1] || m[2] || "PRIVATE_NEW") : null; }
+
+// Each wallet reports results in its own shape, so the chain is the source of truth.
+async function settle(outcome, thrown, signerId, onHash) {
+  if (thrown) {
+    const msg = String((thrown && (thrown.message || thrown)) || "");
+    const hash = (msg.match(B58) || [])[0] || null;
+    const code = codeOf(msg);
+    if (!hash && !code && /reject|cancel|closed|denied/i.test(msg)) return { kind: "cancelled" };
+    if (!hash) return code ? { kind: "refused", code, hash: null } : { kind: "error", message: msg || "unknown wallet error" };
+    outcome = { transaction: { hash } };
+  }
+  const hash = outcome && ((outcome.transaction && outcome.transaction.hash) || outcome.transaction_outcome && outcome.transaction_outcome.id);
+  if (!hash) return { kind: "error", message: "the wallet returned no transaction" };
+  if (onHash) try { onHash(hash); } catch { /* UI only */ }
+  let tx;
+  try { tx = await rpc("tx", { tx_hash: hash, sender_account_id: signerId, wait_until: "FINAL" }); }
+  catch { return { kind: "submitted", hash }; }
+  const failure = failureOf(tx);
+  if (failure) return { kind: "refused", code: codeOf(failure) || "TX_FAILED", hash, raw: failure };
+  const logs = (tx.receipts_outcome || []).flatMap((r) => (r.outcome && r.outcome.logs) || []);
+  const events = logs.filter((l) => l.startsWith("EVENT_JSON:")).map((l) => { try { return JSON.parse(l.slice(11)); } catch { return null; } }).filter(Boolean);
+  const recovery = events.find((e) => e.event === "recovery_completed");
+  if (recovery && recovery.data && recovery.data[0] && recovery.data[0].ok === false) return { kind: "refused", code: "RECOVERY_REVERTED", hash, events };
+  const sv = tx.status && tx.status.SuccessValue;
+  let value = null; try { value = sv ? JSON.parse(atob(sv)) : null; } catch { /* not JSON */ }
+  return { kind: "done", hash, value, events };
+}
+
+window.TW = {
+  state,
+  TREASURY,
+  wallets: () => connector.availableWallets.map((w) => w.manifest.id),
+  async connect() { return connector.connect(); }, // rejects with "User rejected" when the chooser is closed
+  async disconnect() { return connector.disconnect(); },
+  async accountExists(id) {
+    try { await rpc("query", { request_type: "view_account", finality: "final", account_id: id }); return true; }
+    catch (e) { if (/UNKNOWN_ACCOUNT/.test(e.message)) return false; throw e; }
+  },
+  // spec comes from the page's TREASURY_ACTIONS allowlist, never from the server
+  async call(method, args, spec, onHash) {
+    if (!spec || typeof spec.gas !== "string" || typeof spec.deposit !== "string") return { kind: "error", message: "not an allowed action" };
+    const signerId = state.accountId;
+    if (!signerId) return { kind: "error", message: "no wallet connected" };
+    let outcome = null, thrown = null;
+    try {
+      const wallet = await connector.wallet();
+      outcome = await wallet.signAndSendTransaction({
+        signerId, receiverId: TREASURY,
+        actions: [{ type: "FunctionCall", params: { methodName: method, args, gas: spec.gas, deposit: spec.deposit } }],
+      });
+    } catch (e) { thrown = e; }
+    return settle(outcome, thrown, signerId, onHash);
+  },
+  rpc,
+};
+
+connector.getConnectedWallet()
+  .then(({ wallet, accounts }) => setAccount(accounts && accounts[0] && accounts[0].accountId, wallet && wallet.manifest && wallet.manifest.name))
+  .catch(() => setAccount(null));
 </script>
 </body>
 </html>

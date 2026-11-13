@@ -5,13 +5,15 @@
 // - The owner view uses TAKARA_ENGINE_SK, the FIXTURE treasury's ledger key, stored as an
 //   encrypted Vercel environment variable. A real business would never put its key on a server;
 //   this demo exposes only fictional data.
-// - Signing is never available here: no signer or agent key exists on this server.
+// - Signing never happens here: no signer, owner or agent key exists on this server. A policy
+//   signer or owner signs in their own browser wallet; /api/policy/diff only prepares the
+//   propose_policy arguments, which the browser re-checks before the wallet opens.
 import { readFileSync, writeFileSync, mkdtempSync, openSync, closeSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WASI } from "node:wasi";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
@@ -67,6 +69,7 @@ export async function publicLedger() {
   const changes = await view(T, "list_vendor_changes");
   return {
     treasury: T, network: "testnet", balance: fmt6(cfg.balance), paused: cfg.paused, agent: cfg.agent, owners: cfg.owners, signers: cfg.signers,
+    threshold: cfg.threshold, policy_expires_at: cfg.policy_expires_at,
     policy: { version: cfg.policy_version, hash: cfg.policy_hash }, engine: cfg.engine, ledger_state_hash: cfg.ledger_state_hash,
     commitments: commitments.map((c) => ({ id: c.id, state: c.state, priority: c.priority, flags: c.flags, evidence_hash: c.evidence_hash, commitment_hash: c.commitment_hash, vendor_ref: c.vendor_ref, request_no: c.attestation.request_no, output_hash: c.attestation.output_hash, settled_nonce: c.settled_nonce })),
     vendor_changes: changes,
@@ -166,15 +169,30 @@ export async function policyDiff(body = {}) {
     next[k] = v;
   }
   diff.version = { from: policy.version, to: next.version };
-  const sealed = await runEngine({ v: 1, op: "seal_policy_local", pt: JSON.stringify(next), eph: randomBytes(32).toString("hex"), sk: ownerKey() });
-  return { diff, next_hash: sealed.hash, signer: D.accounts.signer, current_hash: cfg.policy_hash, hosted_demo: true };
+  const nextPt = JSON.stringify(next);
+  const sealed = await runEngine({ v: 1, op: "seal_policy_local", pt: nextPt, eph: randomBytes(32).toString("hex"), sk: ownerKey() });
+  const sha256 = (s) => createHash("sha256").update(s).digest("hex");
+  return {
+    diff, next_hash: sealed.hash, signer: D.accounts.signer, signers: cfg.signers, threshold: cfg.threshold, current_hash: cfg.policy_hash, hosted_demo: true,
+    // Fictional fixture data only. A production build returns the plaintext from the owner's
+    // local server only. The browser hashes it to check `propose.hash` before signing.
+    next_pt: nextPt,
+    // Ready-to-sign propose_policy arguments. Signed in the policy signer's own wallet, never here.
+    propose: Object.keys(diff).length > 1 ? {
+      version: next.version,
+      hash: sealed.hash,
+      expires_at: String(BigInt(Date.now() + 365 * 86400_000) * 1_000_000n),
+      sealed: sealed.sealed,
+      diff_hash: sha256(JSON.stringify(diff)),
+    } : null,
+  };
 }
 
 export function signDisabled() {
   return {
     ok: false,
-    failure: "Signing is disabled on the hosted demo",
-    error: `Signing is disabled on the hosted demo: a public website must never hold a policy signer's key. The signer applies a policy version from their own machine (local dashboard, or: near contract call-function as-transaction ${T} propose_policy ... sign-as ${D.accounts.signer}). The contract rejects anyone else with E_NOT_POLICY_SIGNER.`,
+    failure: "Server-side signing is disabled on the hosted demo",
+    error: `This server never signs: a public website must never hold a policy signer's key. A policy signer signs the proposal in their own wallet from the app (Connect wallet), or from their machine (local dashboard, or: near contract call-function as-transaction ${T} propose_policy ... sign-as ${D.accounts.signer}). The contract rejects anyone else with E_NOT_POLICY_SIGNER.`,
   };
 }
 

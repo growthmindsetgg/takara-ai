@@ -4,14 +4,16 @@
 // - Public ledger: exactly what anyone can read on-chain (states, hashes, attestation refs).
 // - Owner view: deterministic figures from the engine report (owner's ledger key, local only),
 //   each with the query that produced it.
-// - Policy controls: three settings -> JSON diff -> explicit signature by a policy signer.
+// - Policy controls: three settings -> JSON diff + a ready-to-sign proposal. A policy signer signs
+//   it in their own browser wallet (the page never holds a key). The CLI-keychain endpoint
+//   /api/policy/sign stays as a secondary fallback for operators without a wallet.
 // - Chat: read-only. Answers come from recorded decisions and the deterministic report; it can
 //   never move money, approve anything, or change a vendor record.
 import { createServer } from "node:http";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes, createHash } from "node:crypto";
-import { view, call, explorer } from "../scripts/lib/near.mjs";
+import { view, call, explorer, outcome, recordDecision, RPC } from "../scripts/lib/near.mjs";
 import { runEngine } from "../scripts/lib/engine.mjs";
 import * as K from "../scripts/lib/takara.mjs";
 
@@ -37,6 +39,8 @@ async function publicLedger() {
     agent: cfg.agent,
     owners: cfg.owners,
     signers: cfg.signers,
+    threshold: cfg.threshold,
+    policy_expires_at: cfg.policy_expires_at,
     policy: { version: cfg.policy_version, hash: cfg.policy_hash },
     engine: cfg.engine,
     ledger_state_hash: cfg.ledger_state_hash,
@@ -98,11 +102,21 @@ async function chat(q) {
 // ------------------------------------------------------------------ policy controls
 const CONTROLS = ["max_auto_pay", "cooling_off_hours", "min_runway_days"];
 
+const sha256 = (s) => createHash("sha256").update(s).digest("hex"); // policy hash = sha256(plaintext), engine seal_policy_local
+
+// The local plaintext copy is only a cache. If a signer applied a new version from a wallet (or
+// anywhere else), rebuild it from the on-chain sealed policy with the owner's ledger key, and
+// prove the rebuild against the on-chain hash before trusting it.
 async function currentPolicy() {
-  const pt = readFileSync(POLICY_PLAIN, "utf8");
   const cfg = await view(K.T, "get_config");
-  const hash = (await runEngine({ v: 1, op: "seal_policy_local", pt, eph: randomBytes(32).toString("hex"), sk: K.ownerKeys().engine_sk })).hash;
-  if (hash !== cfg.policy_hash) throw new Error("local policy copy does not match the on-chain policy hash");
+  let pt = existsSync(POLICY_PLAIN) ? readFileSync(POLICY_PLAIN, "utf8") : null;
+  if (!pt || sha256(pt) !== cfg.policy_hash) {
+    const opened = await K.openSealed((await view(K.T, "get_policy")).sealed);
+    const candidate = opened && (typeof opened === "string" ? opened : JSON.stringify(opened));
+    if (!candidate || sha256(candidate) !== cfg.policy_hash) throw new Error("could not rebuild the on-chain policy from its sealed copy");
+    pt = candidate;
+    writeFileSync(POLICY_PLAIN, pt);
+  }
   return { pt, policy: JSON.parse(pt), cfg };
 }
 
@@ -120,18 +134,44 @@ async function policyDiff(body) {
   diff.version = { from: policy.version, to: next.version };
   const nextPt = JSON.stringify(next);
   const sealed = await runEngine({ v: 1, op: "seal_policy_local", pt: nextPt, eph: randomBytes(32).toString("hex"), sk: K.ownerKeys().engine_sk });
-  return { diff, next_hash: sealed.hash, sealed: sealed.sealed, next_pt: nextPt, signer: K.SIGNER, current_hash: cfg.policy_hash };
+  // Ready-to-sign propose_policy args. The browser re-checks hash, diff_hash, version and expiry
+  // before its wallet signs. Only a hash of the reviewed diff goes on-chain.
+  const propose = Object.keys(diff).length > 1 ? {
+    version: next.version,
+    hash: sealed.hash,
+    expires_at: String(BigInt(Date.now() + 365 * 86400_000) * 1_000_000n),
+    sealed: sealed.sealed,
+    diff_hash: sha256(JSON.stringify(diff)),
+  } : null;
+  return { diff, next_hash: sealed.hash, next_pt: nextPt, propose, signer: K.SIGNER, signers: cfg.signers, threshold: cfg.threshold, current_hash: cfg.policy_hash };
 }
 
+// Fallback for operators without a browser wallet: signs with the signer key in the NEAR CLI
+// legacy keychain on this machine. The wallet path in the page is the primary one.
 async function policySign(body) {
   const d = await policyDiff(body);
-  if (Object.keys(d.diff).length <= 1) throw new Error("nothing changed");
-  const expires = String(BigInt(Date.now() + 365 * 86400_000) * 1_000_000n);
-  // Only a hash of the reviewed diff goes on-chain: policy contents stay private.
-  const diffHash = createHash("sha256").update(JSON.stringify(d.diff)).digest("hex");
-  const r = await call(K.SIGNER, K.T, "propose_policy", { version: d.diff.version.to, hash: d.next_hash, expires_at: expires, sealed: d.sealed, diff_hash: diffHash }, { gas: "60.0 Tgas" });
+  if (!d.propose) throw new Error("nothing changed");
+  const r = await call(K.SIGNER, K.T, "propose_policy", d.propose, { gas: "60.0 Tgas" });
   if (r.ok) writeFileSync(POLICY_PLAIN, d.next_pt);
   return { ok: r.ok, failure: r.failure, tx: r.txHash, url: explorer(r.txHash), diff: d.diff, policy_hash: d.next_hash };
+}
+
+// A wallet transaction sent from the page, added to the local decision log so Activity shows it.
+// The server fetches the transaction itself: signer, method and outcome never come from the client.
+const RECORDABLE = new Set(["accept_commitment", "close_commitment", "approve_vendor_change", "reject_vendor_change", "propose_policy", "approve_policy", "pause", "unpause", "revoke_agent", "set_agent", "recover"]);
+async function recordWalletTx(body) {
+  const tx = String(body.tx || ""), sender = String(body.signer || "");
+  if (!/^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(tx)) throw new Error("invalid transaction hash");
+  if (!/^[a-z0-9._-]{2,64}$/.test(sender)) throw new Error("invalid signer account");
+  if (decisions().some((d) => d.tx === tx)) return { ok: true, recorded: false };
+  const res = await fetch(RPC, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tx", params: { tx_hash: tx, sender_account_id: sender, wait_until: "FINAL" } }) });
+  const j = await res.json().catch(() => ({}));
+  if (j.error || !j.result) throw new Error("transaction not found on testnet");
+  const t = j.result.transaction;
+  const fc = t.actions && t.actions[0] && t.actions[0].FunctionCall;
+  if (t.receiver_id !== K.T || !fc || !RECORDABLE.has(fc.method_name)) throw new Error("not a treasury action this app records");
+  recordDecision(t.signer_id, K.T, fc.method_name, await outcome(tx, t.signer_id));
+  return { ok: true, recorded: true };
 }
 
 // ------------------------------------------------------------------ http
@@ -155,8 +195,9 @@ createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/decisions") return send(res, 200, decisions().slice(-60).reverse());
     if (req.method === "POST" && url.pathname === "/api/chat") return send(res, 200, await chat((await readBody(req)).q));
     if (req.method === "GET" && url.pathname === "/api/policy/current") { const { policy, cfg } = await currentPolicy(); return send(res, 200, { version: cfg.policy_version, hash: cfg.policy_hash, max_auto_pay: Number(policy.max_auto_pay) / 10 ** policy.decimals, cooling_off_hours: policy.cooling_off_hours, min_runway_days: policy.min_runway_days }); }
-    if (req.method === "POST" && url.pathname === "/api/policy/diff") { const d = await policyDiff(await readBody(req)); delete d.sealed; delete d.next_pt; return send(res, 200, d); }
+    if (req.method === "POST" && url.pathname === "/api/policy/diff") return send(res, 200, await policyDiff(await readBody(req)));
     if (req.method === "POST" && url.pathname === "/api/policy/sign") return send(res, 200, await policySign(await readBody(req)));
+    if (req.method === "POST" && url.pathname === "/api/decisions/record") return send(res, 200, await recordWalletTx(await readBody(req)));
     send(res, 404, { error: "not found" });
   } catch (e) {
     send(res, 500, { error: e.message });

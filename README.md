@@ -53,6 +53,18 @@ node backend/server.mjs   # http://localhost:8787
 
 All sample invoices in `fixtures/invoices/` are fictional, use reserved `.example` domains, and the token (tUSDC) has no value.
 
+## Connect a NEAR wallet
+
+Open the app ([takara-ai.vercel.app/app](https://takara-ai.vercel.app/app)) and press **Connect wallet** (sidebar on desktop, wallet icon in the top bar on phones). Wallets: Meteor, Intear, MyNearWallet, Nightly, Ledger, NEAR CLI (testnet). The app reads your role from the contract and enables only what that role may do:
+
+| Connected account | What you can sign |
+|---|---|
+| Policy signer | Accept or close a claimed bill, approve or reject a vendor destination change (after an out-of-band check), sign a new policy version (the browser verifies the proposal's hash first) |
+| Owner | Pause or resume the treasury, revoke or restore the agent, recover funds, release an accepted reservation |
+| Anyone else | Nothing, but **Try anyway** sends the real transaction so you can watch the contract refuse it (`E_NOT_POLICY_SIGNER` / `E_NOT_OWNER`) |
+
+The site and its server never hold a key; every action is signed in your wallet and enforced by the contract. Details: [docs/wallet-connect-plan.md](docs/wallet-connect-plan.md).
+
 ## The ten checks
 
 `node scripts/judge.mjs` runs these in order against your treasury. Each line it prints is PASS/FAIL with the transaction link.
