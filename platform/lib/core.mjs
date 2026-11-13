@@ -14,7 +14,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WASI } from "node:wasi";
 import { randomBytes, createHash } from "node:crypto";
-import { answer } from "./chat.mjs";
+import { answer, dedupeDecisions } from "./chat.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
@@ -103,7 +103,7 @@ async function openSealed(sealed) {
 export function decisions() {
   const p = join(ROOT, "data", "decisions.jsonl");
   if (!existsSync(p)) return [];
-  return readFileSync(p, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  return dedupeDecisions(readFileSync(p, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l)));
 }
 
 /** Read-only chat: the shared plain-language intents (scripts/lib/chat.mjs, copied here at build). */

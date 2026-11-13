@@ -181,3 +181,83 @@ Every route was checked at 1280, at 1024 with and without the dock, at 1280 with
    - The finish card shows the policy diff for the three on-chain settings, signed v1 against your answers. The four browser-only answers follow.
    - When the answers match, it reads "Your answers match signed policy v1. Nothing to sign."
    - When they differ, "Review and sign v2" opens the existing diff, hash check and wallet stepper.
+
+# Pre-demo pass (2026-11-13/14): e2e test bugs B1–B9, wallets, polish
+
+Skills loaded and applied: `web-design-guidelines`, `fixing-accessibility`, `ux-copy`, `break-ui`, `emil-design-eng`. Each change below names the skill whose rule drove it.
+
+## ux-copy: honest settlement language (B2)
+- **One word for one state: "Settled".** It replaces "Paid, settling" and "Payouts already sent" everywhere:
+  - the equation ("1,400 in treasury − 577.5 settled − 805 reserved = 17.5 spendable"), on both pages and in Ask Banto;
+  - status pills and Money filters;
+  - the bill drawer's Received → Reserved → Settled stepper;
+  - receipts, the public view, vendor totals and member pay.
+- **The testnet note appears once per surface, quietly.** "Testnet: no tokens move; payouts run through NEAR Intents on mainnet" sits in the "How is this calculated?" row, the bill receipt, the Reports receipt footer, the copied receipt text, the product page's owner line and the "What is spendable?" answer.
+- **The activity sentence describes the ledger.** It now reads "Settled on the ledger: … Escrow released and a receipt recorded on-chain".
+- **No claim of a scheduler.** "Paid automatically when due" is gone. The drawer now says settlement runs as a backend command and a due-date scheduler is preview.
+- **Member copy (B1).** It names the event, then the plain reason. It never shows a company figure. Example: "Not accepted automatically: … Paying it would have gone below the company’s minimum runway."
+- **Engine errors (B5)** read "Engine unavailable: document not processed. Resend it." They are filed under Admin, not Caught.
+- **Ask Banto.** Yes/no questions start with "Yes." and "what did we pay" questions don't. "Twice" replaces "2 times". Identical open bills group as "2 copies of …".
+
+## fixing-accessibility
+- **Wallet pre-sheet focus.** "Not now", Escape and a backdrop click now return focus to the button that opened the sheet. Previously focus fell to `<body>`. Focus is not returned when the wallet chooser opens next.
+- **Member alerts.** Each row has a visible time (`<time>` with the full date in its title), a transaction link labelled for screen readers, and a "View claim" button whose hidden suffix names the claim.
+- **Headings and labels.** The new Alerts sections ("Renews in 14 days or less", "Recent events", "Sent to Ana", "What Ana hears about") are `h2` with `aria-labelledby` on their section.
+- **Pre-sheet.** The account the action needs is the lead sentence. Its row is outlined in brand green, so the cue is not colour alone: the label text also says "For approvals" or "For owner actions".
+- **Contrast.** New muted text (`.asof`) uses `--muted` (#67706B, 4.5:1 on white).
+
+## web-design-guidelines
+- **Locale.** Every new time goes through `Intl.DateTimeFormat`. ISO times from Ask Banto still render in the reader's own time zone.
+- **No layout reads in render.**
+- **Accounts stay intact.** New account strings carry `translate="no"`, and long accounts wrap (`overflow-wrap: anywhere`).
+- **Nothing new animates.** The only motion is still the existing drawer, sheet and number tween, all behind `prefers-reduced-motion`.
+
+## break-ui (worst realistic data, through the data boundary)
+- **Counts at 1 and above.**
+  - "1 bill on-chain was recorded after…" and "2 bills … were".
+  - Caught-for-you singulars and plurals are fixed: "2 reserve breaches blocked" used to read "2 reserve breach blocked".
+  - Interview Q8 counts payees, not payments: four payroll payments are one payee, so the old "5 payees" is now "2 payees" (B6).
+- **Empty states.**
+  - Member alerts with no events: "No alerts yet. You’ll hear when a claim is received, accepted, paid or refused."
+  - No upcoming renewals: "No renewals in the next 14 days. Next: … You’ll hear on <14 days before>, and again on <7 days before>."
+  - Recent events is hidden when there are none.
+- **Missing fields.**
+  - An alert with no amount (a closed bill that has left the owner report) drops the Amount line instead of showing "Amount  USDC".
+  - A settled bill without a settlement transaction in the bundled log shows "Settled on the testnet ledger" instead of an empty receipt section.
+- **Stale hosted log (B3).** Bills on-chain that are missing from the bundled log are counted: "N bills on-chain were recorded after this log was bundled".
+- **Time passing (B4).**
+  - An approved payout change whose cooling-off has ended no longer counts as waiting. That applies to the approval queue, Banto's summary and both badges.
+  - It moves to "Recent events: payout change cleared".
+  - The compare boxes read "Previous destination" and "New destination, approved", without vermilion.
+  - Ask Banto's reserved answer says the cooling-off is over.
+- **Checked widths.** 1280, 1024 and 375, local and hosted. No horizontal page scroll. The Money and Reports filter rows still scroll inside their own segmented control, as designed.
+
+## emil-design-eng
+- **One rich moment per member page.** My pay opens with the single latest alert. The full history lives on Alerts. No new colour, card style or motion was added.
+- **Lower priority looks lower priority.** "Renews in 14 days or less" uses the quiet clock icon, sits below Live now and is left out of the badge count.
+
+## Other review fixes in this pass
+- **Get started counts (B9).**
+  - Bills come live from the chain (13 here). Refused documents and unprocessed ones come from the log: 3 refused (duplicate, someone not on the team, while Banto was revoked) and 1 not processed.
+  - On the hosted copy the refusals are labelled "as of" the log time.
+- **Hosted activity is labelled (B3).** "Activity as of <latest entry>" appears on Overview, Reports, the intake log and member Alerts.
+- **Decision log.**
+  - Both servers dedupe by transaction and serve up to 200 entries, not the last 60. A backfill had doubled every first-run entry.
+  - `build-platform.mjs` refreshes the hosted copy on every build and logs the count and latest time.
+- **Member lens (B1).** Alerts is in Ana's sidebar and tabs (My pay · My claims · Alerts · Ask · More). It shows received, accepted, not accepted with reason, paid (settled), refused and payout-address changes for her claims only. The latest one is on My pay.
+- **Subscriptions.**
+  - New: "Renews in 14 days or less", a lower-priority section and rule.
+  - New: "Subscription closed" or "Bill closed", from the decision log.
+  - Both rules are in the rules table. Content is live; delivery stays preview.
+- **Gaps labelled.**
+  - People explains that adding a teammate means signing a new policy version, and gains a "Set up payroll" preview button with an honest "Live today".
+  - Demo scope lists teammates, payroll setup, weekly per-person payroll, the scheduler and testnet token movement as preview.
+  - The plan sheet says nothing is charged.
+- **Wallets.**
+  - The manifest is cut to Meteor (default), MyNearWallet, Intear and NEAR CLI. Evidence is in `docs/wallet-connect-plan.md` under "Wallet shortlist".
+  - The pre-sheet names the account each role needs.
+- **Product page.**
+  - Provisional vendors are named like the app ("Tinylogo", not "New vendor").
+  - The payout-change card says the cooling-off ended.
+  - The offline snapshot is regenerated from the live report and still labelled as a snapshot.
+- **"Manager" becomes "Signer"** in alerts recipients and the drawer action heading.

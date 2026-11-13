@@ -11,8 +11,15 @@ mkdirSync(join(P, "data"), { recursive: true });
 mkdirSync(join(P, "app"), { recursive: true });
 copyFileSync(join(ROOT, "dist", "takara-engine.wasm"), join(P, "data", "takara-engine.wasm"));
 copyFileSync(join(ROOT, "fixtures", "deployment.json"), join(P, "data", "deployment.json"));
+// The hosted app has no write path, so its activity feed is this file as of the build. Every build
+// refreshes it from the latest local log; the app labels the feed "Activity as of <latest entry>".
 const dec = join(ROOT, ".data", "decisions.jsonl");
-if (existsSync(dec)) copyFileSync(dec, join(P, "data", "decisions.jsonl"));
+if (existsSync(dec)) {
+  copyFileSync(dec, join(P, "data", "decisions.jsonl"));
+  const lines = readFileSync(dec, "utf8").trim().split("\n").filter(Boolean);
+  const latest = lines.length ? JSON.parse(lines[lines.length - 1]).at : "none";
+  console.log(`decision log: ${lines.length} entries, latest ${latest}`);
+} else console.warn("warning: .data/decisions.jsonl not found; the hosted activity feed keeps its previous copy");
 // shared read-only chat intents (the local server imports the same file from scripts/lib)
 copyFileSync(join(ROOT, "scripts", "lib", "chat.mjs"), join(P, "lib", "chat.mjs"));
 // product page + its static data

@@ -55,7 +55,7 @@ All sample invoices in `fixtures/invoices/` are fictional, use reserved `.exampl
 
 ## Connect a NEAR wallet
 
-Open the app ([takara-ai.vercel.app/app](https://takara-ai.vercel.app/app)) and press **Connect wallet** (sidebar on desktop, wallet icon in the top bar on phones). Wallets: Meteor, Intear, MyNearWallet, Nightly, Ledger, NEAR CLI (testnet). The app reads your role from the contract and enables only what that role may do:
+Open the app ([takara-ai.vercel.app/app](https://takara-ai.vercel.app/app)) and press **Connect wallet** (sidebar on desktop, wallet icon in the top bar on phones). Wallets on testnet: Meteor (recommended), MyNearWallet, Intear, and NEAR CLI for operators whose key lives in the terminal keychain. Approvals need `signer.takara-ai-hq.testnet`; owner actions need `takara-ai-hq.testnet`. The app reads your role from the contract and enables only what that role may do:
 
 | Connected account | What you can sign |
 |---|---|

@@ -707,7 +707,43 @@ A panel "Emergency controls" under "Who can change this". Every button is gated 
 
 ---
 
+## Wallet shortlist (2026-11-13)
+
+**Question.** Which wallets in the pinned manifest can sign in and sign a function call on NEAR **testnet** through `@hot-labs/near-connect@0.12.0`, and which suit someone recording a browser demo?
+
+**How it was checked.**
+- *Library.* `NearConnector` hides any wallet without `features.testnet` when `network` is `"testnet"`, then passes `network` to the wallet's sign-in. Source: [`build/NearConnector.js`](https://unpkg.com/@hot-labs/near-connect@0.12.0/build/NearConnector.js), the `this.network === "testnet" && !wallet.manifest.features?.testnet` filter.
+- *Executors.* Each pinned executor file was read for its testnet code path. The upstream manifest at the pinned commit [`b8207d0`](https://raw.githubusercontent.com/hot-dao/near-selector/b8207d0b303914f264c50be5ac849d5fe028f069/repository/manifest.json) matches the current `main` for all six wallets.
+- *Wallet sources.* Each wallet's own repository or docs.
+- *In the app.* The local app (`http://localhost:8787`) was opened in the in-app browser. For each wallet: Connect wallet, then Choose wallet, then pick it. No sign-in was attempted and no credentials were entered. The browser pane blocks popups that an automated click opens, so where a wallet tried to open a window, the window's address is the evidence. Screenshots are in the scratchpad `predemo` folder (`wallet-0*.jpg`).
+
+| Wallet | Testnet sign-in and function call | Evidence (primary source, plus what the app showed) | Demo fit | Decision |
+|---|---|---|---|---|
+| **Meteor** | Yes | Executor ([`meteor-near-connect-latest.js`](https://raw.githubusercontent.com/Meteor-Wallet/meteor_wallet_sdk/data-storage/storage/meteor-near-connect-latest.js)) routes testnet to `https://wallet.meteorwallet.app/connect/testnet`, and its testnet RPC is `test.rpc.fastnear.com`. The upstream manifest marks `testnet: true`, so no patch is needed. In the app, the "Meteor Connect" panel loaded with a Meteor Web button and a mobile QR code, and no console errors. | Web wallet, extension or phone. Nothing to install for the web flow. | **Keep: recommended default** (first in the list) |
+| **MyNearWallet** | Yes, with our manifest patch | Executor ([`mnw.js` @ b8207d0](https://cdn.jsdelivr.net/gh/hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069/repository/mnw.js)) has `testnet: new MyNearWalletConnector("https://testnet.mynearwallet.com", {networkId: "testnet", …})` and picks it from the network near-connect passes. In the app, picking it tried to open a popup to **`testnet.mynearwallet.com`** (blocked only because the click was automated). That domain answers 200. | Web wallet, nothing to install. It needs popups allowed for the app's site. | **Keep** (second). Our copy sets `features.testnet` and allows `https://testnet.mynearwallet.com`. |
+| **Intear** | Yes | Executor ([`wallet.intear.tech/near-selector.js`](https://wallet.intear.tech/near-selector.js)) calls `requestConnection({ networkId, … })`. The wallet repo ([INTEARnear/wallet](https://github.com/INTEARnear/wallet), `network_context.rs`) has `Network::Testnet`, and its UI lets you pick `.testnet` names. In the app, the "Connect Intear Wallet" chooser loaded (Web, App, Web Beta, Self-Hosted), and Web tried to open `wallet.intear.tech`. | Web wallet, nothing to install. | **Keep** (third) |
+| **NEAR CLI** | Yes | Executor ([`near-cli.js` @ dc5cb12](https://cdn.jsdelivr.net/gh/near/near-cli-connect@dc5cb123e3a8e42ed095739f4ea058b767a80ad2/dist/near-cli.js)) builds `near … network-config testnet` commands. In the app, "Connect with NEAR CLI, step 1 of 3" loaded. | Needs near-cli-rs and a terminal, so it's clunky on camera. It is the only option that keeps a key in the operator's CLI keychain, which is where this repo's Signer key lives. | **Keep, last, for operators** |
+| Nightly | Not verified | Executor ([`nightly.js` @ b8207d0](https://cdn.jsdelivr.net/gh/hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069/repository/nightly.js)) has a testnet RPC config, but `connect` sends no network to the extension and uses whatever account is active there. In the app, without the extension, the panel stayed blank after 10 s: a dead end on camera. | Chrome extension only. | **Removed** |
+| Ledger | Yes, in code | Executor ([`ledger-executor.js` @ 8fe2492](https://cdn.jsdelivr.net/gh/near/near-connect-ledger@8fe249268332fd0c3231fe3e32da3bf0956d9cef/ledger-executor.js)) has a testnet RPC and WebHID/WebUSB. Not exercised in the app, because there was no device. | Needs the hardware device and the NEAR app on it. | **Removed** |
+
+**Result.** `WALLET_MANIFEST` in `web/index.html` is now `takara-2`: Meteor, MyNearWallet, Intear, NEAR CLI, in that order. The chooser lists them in manifest order.
+- No executor URL changed, so the `-takara.1` version suffixes stay.
+- Security is unchanged: the manifest is still pinned, not fetched, and the role gating and the policy hash check are untouched.
+
+**Which account does what.** The connect pre-sheet now says this before the chooser opens:
+- **Approvals** need `signer.takara-ai-hq.testnet`.
+- **Owner actions** need `takara-ai-hq.testnet`.
+
+**Still open.**
+- A real testnet sign-in and an `accept_commitment` signature have not been run through any of the three web wallets. Do one dry run before recording.
+- Using a web wallet as the Signer means importing the Signer's key into that wallet. The founder does that; this pass never handled keys.
+- Otherwise, use the NEAR CLI entry with the key that is already in the keychain.
+
+---
+
 ## Appendix A: pinned testnet wallet manifest (paste into `WALLET_MANIFEST`)
+
+> Superseded on 2026-11-13 by the shortlist above: the live manifest in `web/index.html` (`takara-2`) keeps Meteor, MyNearWallet, Intear and NEAR CLI, in that order. Nightly and Ledger below are kept for the record only.
 
 Generated from upstream `hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069/repository/manifest.json`. It keeps six testnet wallets, pins executors where an immutable commit exists, patches MyNearWallet for testnet, and suffixes versions with `-takara.1`.
 

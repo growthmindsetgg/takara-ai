@@ -16,7 +16,7 @@ import { randomBytes, createHash } from "node:crypto";
 import { view, call, explorer, outcome, recordDecision, RPC } from "../scripts/lib/near.mjs";
 import { runEngine } from "../scripts/lib/engine.mjs";
 import * as K from "../scripts/lib/takara.mjs";
-import { answer } from "../scripts/lib/chat.mjs";
+import { answer, dedupeDecisions } from "../scripts/lib/chat.mjs";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const POLICY_PLAIN = join(K.ROOT, ".secrets", "policy.plain.json");
@@ -53,7 +53,7 @@ async function publicLedger() {
 
 function decisions() {
   if (!existsSync(DECISIONS)) return [];
-  return readFileSync(DECISIONS, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  return dedupeDecisions(readFileSync(DECISIONS, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l)));
 }
 
 // ------------------------------------------------------------------ read-only chat
@@ -159,7 +159,7 @@ createServer(async (req, res) => {
     if (req.headers["x-takara-token"] !== TOKEN) return send(res, 403, { error: "missing or wrong dashboard token" });
     if (req.method === "POST" && !String(req.headers["content-type"]).startsWith("application/json")) return send(res, 415, { error: "JSON only" });
     if (req.method === "GET" && url.pathname === "/api/owner/report") return send(res, 200, await K.report());
-    if (req.method === "GET" && url.pathname === "/api/decisions") return send(res, 200, decisions().slice(-60).reverse());
+    if (req.method === "GET" && url.pathname === "/api/decisions") return send(res, 200, decisions().slice(-200).reverse());
     if (req.method === "POST" && url.pathname === "/api/chat") return send(res, 200, await chat((await readBody(req)).q));
     if (req.method === "GET" && url.pathname === "/api/policy/current") { const { policy, cfg } = await currentPolicy(); return send(res, 200, { version: cfg.policy_version, hash: cfg.policy_hash, max_auto_pay: Number(policy.max_auto_pay) / 10 ** policy.decimals, cooling_off_hours: policy.cooling_off_hours, min_runway_days: policy.min_runway_days }); }
     if (req.method === "POST" && url.pathname === "/api/policy/diff") return send(res, 200, await policyDiff(await readBody(req)));

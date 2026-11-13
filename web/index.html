@@ -603,6 +603,7 @@ dialog::backdrop { background: rgba(14,26,22,.32); }
 .pre-accts .r { font-weight: 500; }
 .pre-accts .mono { font-size: var(--t-12); color: var(--ink-2); overflow-wrap: anywhere; }
 .pre-accts .w { grid-column: 1 / -1; font-size: var(--t-13); color: var(--ink-2); }
+.pre-accts li.need { box-shadow: inset 0 0 0 1px var(--brand); background: var(--surface); }
 @media (prefers-reduced-motion: no-preference) {
   .drawer[open] { animation: drIn var(--enter) var(--ease); }
   .modal[open] { animation: mdIn var(--enter) var(--ease); }
@@ -886,6 +887,9 @@ dialog::backdrop { background: rgba(14,26,22,.32); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
+  .latest { margin-bottom: 24px; }
+  .arules { display: grid; gap: 8px; font-size: var(--t-14); color: var(--ink-2); padding-left: 18px; list-style: disc; }
+  .asof { font-size: 13px; line-height: 20px; color: var(--muted); padding: 12px 20px 0; }
 </style>
 </head>
 <body>
@@ -1125,6 +1129,13 @@ function decisionsList() {
   for (const x of d) { const k = x.tx || JSON.stringify(x); if (seen.has(k)) continue; seen.add(k); out.push(x); }
   return out;
 }
+// The hosted copy can't write its log: its decisions are the file bundled at deploy time. Say so, with the time.
+function activityAsOf() {
+  const d = Array.isArray(S.decisions.data) ? S.decisions.data : [];
+  let t = null; for (const x of d) { const v = Date.parse(x.at); if (Number.isFinite(v) && (t == null || v > t)) t = v; }
+  return t;
+}
+const asOfLine = () => { const t = DEMO ? activityAsOf() : null; return t ? h`<p class="asof">Activity as of ${timeEl(t, fmtDateTime(t))}. This hosted copy shows the log recorded at deploy time; balances and bills above are live.</p>` : ""; };
 // Readable names: provisional vendors are named from their payout account, never "new:6a77…".
 const titleFromAcct = (a) => { const head = String(a || "").split(".")[0]; return head ? head.split(/[-_]/).map(cap).join(" ") : "New vendor"; };
 function cleanName(c) {
@@ -1205,13 +1216,16 @@ function model() {
       if (b.change && b.change.decided_at && pol) b.coolingUntil = nsToMs(b.change.decided_at) + pol.cooling_off_hours * 3600000;
       else if (untilFromDec[b.sid]) b.coolingUntil = untilFromDec[b.sid];
     }
+    // An approved change whose cooling-off has run out is no longer waiting on anything (compare against now, always).
+    b.coolEnded = c.vendor_change === "approved_cooling_off" && b.coolingUntil != null && b.coolingUntil <= now;
     b.claimedAt = claimedAt[b.sid] || null;
     b.recur = c.recurrence === "m" ? "Monthly" : c.recurrence === "w" ? "Weekly" : null;
     b.destination = c.destination; b.proposed = c.proposed_destination || null; b.chain = c.chain;
     let w = null;
     if (c.state === "settled" || c.state === "closed") w = null;
     else if (c.vendor_change === "suspended_destination_mismatch") w = { who: "signer", task: "approve or reject the new payout destination", since: b.change && b.change.requested_at ? nsToMs(b.change.requested_at) : null };
-    else if (c.vendor_change === "approved_cooling_off") w = { who: "timer", label: "Cooling-off timer", task: b.coolingUntil == null ? "payment unlocks when the cooling-off period ends" : b.coolingUntil > now ? `payment unlocks ${fmtDateTime(b.coolingUntil)}` : "cooling-off has ended; payment can be authorized", since: b.change && b.change.decided_at ? nsToMs(b.change.decided_at) : null };
+    else if (c.vendor_change === "approved_cooling_off" && !b.coolEnded) w = { who: "timer", label: "Cooling-off timer", task: b.coolingUntil == null ? "payment unlocks when the cooling-off period ends" : `payment unlocks ${fmtDateTime(b.coolingUntil)}`, since: b.change && b.change.decided_at ? nsToMs(b.change.decided_at) : null };
+    else if (c.vendor_change === "approved_cooling_off" && c.state === "claimed") w = { who: "signer", task: "accept this bill so money is reserved" };
     else if (c.state === "claimed" && (b.flags.newOver || (pol && b.amount > pol.max_auto_pay))) w = { who: "signer", task: "accept this bill so money is reserved" };
     else if (c.state === "claimed") w = { who: "policy", label: `${AGENT.name}’s check`, task: "accept within policy or refuse" };
     if (w && w.since == null) w.since = b.claimedAt;
@@ -1220,12 +1234,12 @@ function model() {
     b.waitsOn = w;
     const vc = c.vendor_change;
     if (vc === "suspended_destination_mismatch") b.status = ["Frozen", "bad"];
-    else if (vc === "approved_cooling_off" && c.state !== "settled") b.status = [Q_LABEL.timer, "wait"];
+    else if (vc === "approved_cooling_off" && c.state !== "settled" && !b.coolEnded) b.status = [Q_LABEL.timer, "wait"];
     else if (vc === "rejected" && c.state !== "settled") b.status = ["Change rejected", "bad"];
     else if (c.state === "claimed" && w && w.who === "signer") b.status = readOnlyLens() ? ["Needs a Signer", "wait"] : [Q_LABEL.signer, "wait"];
     else if (c.state === "claimed") b.status = [Q_LABEL.policy, "quiet"];
     else if (c.state === "accepted") b.status = ["Reserved", "good"];
-    else if (c.state === "settled") b.status = ["Paid", "paid"];
+    else if (c.state === "settled") b.status = ["Settled", "paid"];
     else if (c.state === "closed") b.status = ["Closed", "quiet"];
     else b.status = ["Recorded", "quiet"];
     return b;
@@ -1238,8 +1252,6 @@ function model() {
   M.policyItems = bills.filter((b) => b.waitsOn && b.waitsOn.who === "policy");
   M.caught = computeCaught(M);
   const f = M.fig;
-  // Paid but not yet reconciled against the balance: say "Paid, settling", never "paid" as if the balance moved.
-  if ((Number(f.settled_outflow) || 0) > 0) bills.forEach((b) => { if (b.state === "settled") b.status = ["Paid, settling", "paid"]; });
   M.bal = Number(String(f.treasury_balance).replace(/,/g, "")) || 0; M.paid = Number(f.settled_outflow) || 0; M.res = Number(f.reserved) || 0; M.sp = Number(f.spendable) || 0;
   M.avail = M.bal - M.paid; M.burn = Number(f.daily_recurring_burn) || 0;
   M.unres = bills.filter((b) => b.state === "claimed").reduce((a, b) => a + b.amount, 0);
@@ -1304,7 +1316,7 @@ const REASONS = {
   below_min_runway: { kind: "caught", label: "Below runway floor", s: (v, x) => ["Blocked:", h`paying ${x.bill(v.commitment_id)} would leave less than your ${x.minRunway ? `${x.minRunway}-day runway` : "runway floor"}.`] },
   duplicate_evidence: { kind: "caught", label: "Duplicate invoice", s: (v, x) => ["Rejected a duplicate:", h`this invoice was already recorded as ${x.bill(v.original)}.`] },
   vendor_destination_mismatch: { kind: "caught", label: "Payout destination changed", s: (v, x) => { const b = x.b(v.commitment_id); return ["Frozen:", b && b.proposed ? h`an invoice for ${x.vendor(v.commitment_id)} asks to pay ${acct(b.proposed)} instead of ${acct(b.destination)}.` : h`an invoice asks to pay a different destination than the registered one.`]; } },
-  vendor_change_cooling_off: { kind: "held", label: "In cooling-off", s: (v, x) => ["Held:", h`payment to ${x.vendor(v.commitment_id)} waits out the cooling-off period until ${fmtDateTime(nsToMs(v.until))}.`] },
+  vendor_change_cooling_off: { kind: "held", label: "In cooling-off", s: (v, x) => ["Held:", h`payment to ${x.vendor(v.commitment_id)} ${nsToMs(v.until) <= Date.now() ? "had to wait out" : "waits out"} the cooling-off period until ${fmtDateTime(nsToMs(v.until))}.`] },
   vendor_change_rejected: { kind: "caught", label: "Destination change rejected", s: (v, x) => ["Refused:", h`the new destination for ${x.vendor(v.commitment_id)} was rejected, so it won’t be paid there.`] },
   needs_signer_acceptance: { kind: "held", label: "Needs a signer", s: (v, x) => { const b = x.b(v.commitment_id); return ["Held for a Signer:", h`${x.bill(v.commitment_id)} needs a Signer’s acceptance.${b && b.flags.newOver ? " It is a new vendor above the auto limit." : ""}`]; } },
   nonce_used: { kind: "caught", label: "Replayed authorization", s: (v, x) => ["Refused a replay:", h`a used payment authorization for ${x.bill(v.commitment_id)} was submitted again.`] },
@@ -1317,6 +1329,8 @@ const REASONS = {
 };
 REASONS.missing_destination = REASONS.vendor_destination_unknown;
 REASONS.unknown_requester = REASONS.member_not_in_roster;
+// Operational, not a catch: the engine didn't run, so nothing was decided and nothing is counted as caught.
+REASONS.engine_error = { kind: "admin", label: "Engine unavailable", s: () => ["Engine unavailable:", h`document not processed. Resend it.`] };
 const humanCode = (c) => String(c).replace(/_/g, " ");
 const METHOD = { approve_vendor_change: "approve a payout destination change", reject_vendor_change: "reject a payout destination change", propose_policy: "change the policy", approve_policy: "approve a policy version", recover: "recover the treasury’s funds", register_claim: "record a bill", accept_commitment: "accept a bill", close_commitment: "close a bill", pause: "pause the treasury", unpause: "resume the treasury", revoke_agent: "revoke the agent", set_agent: "set the agent", settle: "pay a bill" };
 const methodL = (m) => METHOD[m] || m;
@@ -1383,9 +1397,9 @@ function decisionItem(d, m) {
       }
       case "commitment_accepted":
         return dd.by === "signer" ? out("money", "Accepted:", h`${actorP(dd.signer)} accepted ${x.bill(cid)}. The money is now reserved.`) : out("money", "Accepted", h`${x.bill(cid)} automatically, within policy. The money is now reserved.`);
-      case "settlement_receipt": return out("money", "Paid, settling:", h`${x.bill(cid)}. The receipt is on-chain; the balance catches up when payouts are reconciled.`);
+      case "settlement_receipt": return out("money", "Settled on the ledger:", h`${x.bill(cid)}. Escrow released and a receipt recorded on-chain.`);
       case "authorization_issued": return out("admin", "Authorized", h`payment of ${x.bill(cid)}, valid until ${fmtDateTime(nsToMs(dd.expiry))}.`);
-      case "vendor_change_approved": return out("held", "Approved, cooling off:", h`${actorP(dd.by)} approved the new destination for ${x.vendor(cid)}. Payment stays frozen${bb && bb.coolingUntil ? ` until ${fmtDateTime(bb.coolingUntil)}` : " until the cooling-off period ends"}.`);
+      case "vendor_change_approved": return out(bb && bb.coolEnded ? "admin" : "held", bb && bb.coolEnded ? "New address approved:" : "Approved, cooling off:", h`${actorP(dd.by)} approved the new destination for ${x.vendor(cid)}. ${bb && bb.coolEnded ? `Payment stayed frozen until the cooling-off ended ${fmtDateTime(bb.coolingUntil)}.` : `Payment stays frozen${bb && bb.coolingUntil ? ` until ${fmtDateTime(bb.coolingUntil)}` : " until the cooling-off period ends"}.`}`);
       case "recovery_started": return out("money", "Recovery started:", h`${actorP(dd.by)} began moving ${fmtBase(dd.amount)} to ${acct(dd.to)}.`);
       case "recovery_completed": return out("money", "Recovered:", h`${fmtBase(dd.amount)} moved to ${acct(dd.to)} by the owner, with no agent involved.`);
       case "treasury_funded": return out("money", "Funded:", h`${actorP(dd.from)} added ${fmtBase(dd.amount)}. Balance ${fmtBase(dd.balance)}.`);
@@ -1505,14 +1519,14 @@ const pvTag = () => h`<span class="pvtag" title="Preview: sample only, not live 
 const pvBtn = (label, key, cls = "") => h`<button class="btn btn-pv ${cls}" type="button" data-act="how" data-how="${key}">${label}<span class="pvtag">Preview</span></button>`;
 const pvFoot = () => "";
 /* ---------- the reconciled money equation: shown wherever a balance appears ---------- */
-const eqText = (m) => `${num(m.bal)} in treasury${m.paid ? ` − ${num(m.paid)} paid, settling` : ""} − ${num(m.res)} reserved = ${num(m.sp)} ${symbol()} spendable`;
-const eqHTML = (m, style = "") => h`<p class="eq"${style ? raw(` style="${esc(style)}"`) : ""}><span><b>${num(m.bal)}</b> in treasury</span>${m.paid ? h`<span class="op" aria-label="minus">−</span><span><b>${num(m.paid)}</b> paid, settling</span>` : ""}<span class="op" aria-label="minus">−</span><span><b>${num(m.res)}</b> reserved</span><span class="op" aria-label="equals">=</span><span class="res"><b>${num(m.sp)}</b> spendable <span class="eq-u">${symbol()}</span></span></p>`;
+const eqText = (m) => `${num(m.bal)} in treasury${m.paid ? ` − ${num(m.paid)} settled` : ""} − ${num(m.res)} reserved = ${num(m.sp)} ${symbol()} spendable`;
+const eqHTML = (m, style = "") => h`<p class="eq"${style ? raw(` style="${esc(style)}"`) : ""}><span><b>${num(m.bal)}</b> in treasury</span>${m.paid ? h`<span class="op" aria-label="minus">−</span><span><b>${num(m.paid)}</b> settled</span>` : ""}<span class="op" aria-label="minus">−</span><span><b>${num(m.res)}</b> reserved</span><span class="op" aria-label="equals">=</span><span class="res"><b>${num(m.sp)}</b> spendable <span class="eq-u">${symbol()}</span></span></p>`;
 const sealedTag = () => h`<span class="sealed" title="Encrypted; readable only inside the engine's trusted execution environment">${IC.lock(12)}SEALED · TEE</span>`;
 
 function issueSentence(k, b, m) {
   const hrs = m.pol ? m.pol.cooling_off_hours : null;
   switch (k) {
-    case "dest": return h`This invoice asks to pay ${acct(b.proposed || "a different account")} instead of the registered ${acct(b.destination)}. Payment stays frozen until a Signer approves the change and the ${hrs != null ? `${hrs}-hour ` : ""}cooling-off passes.`;
+    case "dest": return b.coolEnded ? h`This invoice asked to pay ${acct(b.proposed || "a different account")} instead of ${acct(b.destination)}. Payment was frozen; a Signer approved the new address and the ${hrs != null ? `${hrs}-hour ` : ""}cooling-off ended ${fmtDateTime(b.coolingUntil)}.` : h`This invoice asks to pay ${acct(b.proposed || "a different account")} instead of the registered ${acct(b.destination)}. Payment stays frozen until a Signer approves the change and the ${hrs != null ? `${hrs}-hour ` : ""}cooling-off passes.`;
     case "inject": return h`The invoice text contained instructions for ${AGENT.name}. Takara treats document text as data and ignored them. The policy did not change.`;
     case "newOver": return h`This is the first bill from this vendor and it is above the new-vendor auto limit, so a Signer must accept it.`;
     case "prov": return h`First bill from this vendor, small enough to pay without a signature. ${AGENT.name} flagged it so you can check the vendor.`;
@@ -1520,6 +1534,7 @@ function issueSentence(k, b, m) {
 }
 function headline(b, m) {
   const vc = b.c.vendor_change;
+  if (b.coolEnded) return "A Signer approved the new payout address and the cooling-off is over.";
   if (vc === "suspended_destination_mismatch" || vc === "approved_cooling_off") return "The invoice asks to pay a different account than the one on file.";
   if (b.flags.newOver) return `First bill from a new vendor, above the auto limit. Nothing is reserved until a Signer accepts it.`;
   if (m.pol && b.amount > m.pol.max_auto_pay && b.state === "claimed") return `Above your ${moneyT(m.pol.max_auto_pay)} auto-pay limit.`;
@@ -1535,7 +1550,7 @@ function blocksText(b, m) {
   const after = m.sp - b.amount;
   return `Payment of ${moneyT(b.amount)} to ${b.destination}${b.due ? `, due ${fmtDate(b.due)}` : ""}. ${after < 0 ? `Accepting it would leave ${moneyT(after)} spendable, so you’d also need to add funds.` : `Accepting it leaves ${moneyT(after)} spendable.`}`;
 }
-const compareBoxes = (b) => h`<div class="cmp"><div class="box"><p class="box-t">Registered destination (in use)</p><p class="box-v" translate="no">${b.destination}</p><p class="box-c">${(b.chain || "").toUpperCase()} · USDC</p></div><span class="neq" aria-hidden="true">≠</span><span class="vh">differs from</span><div class="box prop"><p class="box-t">Proposed by the invoice</p><p class="box-v" translate="no">${b.proposed}</p><p class="box-c">${(b.chain || "").toUpperCase()} · USDC</p></div></div>`;
+const compareBoxes = (b) => h`<div class="cmp"><div class="box"><p class="box-t">${b.c.vendor_change === "approved_cooling_off" ? "Previous destination" : "Registered destination (in use)"}</p><p class="box-v" translate="no">${b.destination}</p><p class="box-c">${(b.chain || "").toUpperCase()} · USDC</p></div><span class="neq" aria-hidden="true">≠</span><span class="vh">differs from</span><div class="box${b.coolEnded ? "" : " prop"}"><p class="box-t">${b.c.vendor_change === "approved_cooling_off" ? (b.coolEnded ? "New destination, approved" : "New destination, cooling off") : "Proposed by the invoice"}</p><p class="box-v" translate="no">${b.proposed}</p><p class="box-c">${(b.chain || "").toUpperCase()} · USDC</p></div></div>`;
 function howApproved(b, m) {
   const w = b.waitsOn;
   if (w.who === "signer") return "A Signer approves in their own wallet. The app only prepares the transaction; the contract refuses any other account.";
@@ -1601,7 +1616,7 @@ function billCards(list) {
 }
 
 /* ---------- vendors ---------- */
-const VSTAT = [["Payout change frozen", "bad"], ["Cooling off", "wait"], ["Change rejected", "quiet"], ["New, needs a Signer", "wait"], ["Provisional", "wait"], ["Registered", "good"]];
+const VSTAT = [["Payout change frozen", "bad"], ["Cooling off", "wait"], ["Change rejected", "quiet"], ["New, needs a Signer", "wait"], ["Provisional", "wait"], ["Registered", "good"], ["New address approved", "good"]];
 function vendorGroups(m) {
   const g = new Map();
   for (const b of m.bills) { if (!g.has(b.vid)) g.set(b.vid, []); g.get(b.vid).push(b); }
@@ -1610,7 +1625,8 @@ function vendorGroups(m) {
     const has = (fn) => bills.some(fn);
     let s = 5;
     if (has((b) => b.c.vendor_change === "suspended_destination_mismatch")) s = 0;
-    else if (has((b) => b.c.vendor_change === "approved_cooling_off")) s = 1;
+    else if (has((b) => b.c.vendor_change === "approved_cooling_off" && !b.coolEnded)) s = 1;
+    else if (has((b) => b.coolEnded)) s = 6;
     else if (has((b) => b.c.vendor_change === "rejected")) s = 2;
     else if (reg.vkind === "new" && has((b) => b.state === "claimed")) s = 3;
     else if (has((b) => b.flags.prov)) s = 4;
@@ -1686,22 +1702,22 @@ const LENSES = () => ({ owner: "Owner", manager: "Signer", member: "Member · An
 let LENS = store.get("takara.lens", "session");
 function lens() { if (LENS && LENSES()[LENS]) return LENS; const r = walletRoles(); return r.has("owner") ? "owner" : r.has("signer") ? "manager" : "owner"; }
 const readOnlyLens = () => ["member", "auditor", "public"].includes(lens());
-const LENS_ALLOW = { member: ["overview", "claims", "receipts", "ask"], auditor: ["money", "reports", "ledger", "ask"], public: ["ledger"] };
+const LENS_ALLOW = { member: ["overview", "claims", "receipts", "alerts", "ask"], auditor: ["money", "reports", "ledger", "ask"], public: ["ledger"] };
 const MEMBER_ONLY = ["claims", "receipts"];
 // Each lens gets its own navigation: Ana sees her pay, claims and receipts; an auditor sees records only.
 const NAV_BY_LENS = {
-  member: [["Me", [["overview", "My pay", "money"], ["claims", "My claims", "approvals"], ["receipts", "Receipts", "reports"]]]],
+  member: [["Me", [["overview", "My pay", "money"], ["claims", "My claims", "approvals"], ["receipts", "Receipts", "reports"], ["alerts", "Alerts", "alerts"]]]],
   auditor: [["Records, read-only", [["money", "Money", "money"], ["reports", "Reports & receipts", "reports"], ["ledger", "Public view", "ledger"]]]],
   public: [["Public", [["ledger", "Public view", "ledger"]]]],
 };
-const TABS_BY_LENS = { member: ["overview", "claims", "receipts"], auditor: ["money", "reports", "ledger"], public: ["ledger"] };
+const TABS_BY_LENS = { member: ["overview", "claims", "alerts"], auditor: ["money", "reports", "ledger"], public: ["ledger"] };
 const navFor = () => NAV_BY_LENS[lens()] || NAV;
 const tabsFor = () => TABS_BY_LENS[lens()] || ["overview", "approvals", "money"];
 function lensGate(view) {
   const l = lens(), allow = LENS_ALLOW[l];
   if (!allow && MEMBER_ONLY.includes(view)) return h`<section class="panel gate"><h2>This page is Ana’s member view.</h2><p>Choose “Member · Ana” in Viewing as to see her pay, claims and receipts.</p><a class="btn btn-secondary" href="#/reports?tab=receipts">Open all receipts</a></section>`;
   if (!allow || allow.includes(view)) return null;
-  if (l === "member") return h`<section class="panel gate"><h2>Members don’t see company totals or colleagues’ pay.</h2><p>Ana sees her own payments, her own claims and her own receipts. Nothing about anyone else.</p><a class="btn btn-secondary" href="#/overview">Open My pay</a></section>`;
+  if (l === "member") return h`<section class="panel gate"><h2>Members don’t see company totals or colleagues’ pay.</h2><p>Ana sees her own payments, claims, receipts and alerts. Nothing about anyone else.</p><a class="btn btn-secondary" href="#/overview">Open My pay</a></section>`;
   if (l === "auditor") return h`<section class="panel gate"><h2>Auditors see records only, read-only, for ${audLabel()}.</h2><p>Money, reports and the public view inside the granted range. Every action button is hidden.</p><a class="btn btn-secondary" href="#/reports">Open Reports</a></section>`;
   return h`<section class="panel gate"><h2>The public chain observer sees commitments, hashes and attestations.</h2><p>No names, no amounts, no destinations.</p><a class="btn btn-secondary" href="#/ledger">Open Public view</a></section>`;
 }
@@ -1712,7 +1728,7 @@ const lensNote = () => (lens() === "owner" ? "" : h`<p class="lensnote" role="no
 function computeAlerts(m) {
   const t = todayDay(), p = m.pub || {};
   const sig = (p.signers || [])[0] || "", own = (p.owners || [])[0] || "";
-  const MGR = ["Manager", sig], OWN = ["Owner", own];
+  const MGR = ["Signer", sig], OWN = ["Owner", own];
   const out = [];
   if (m.res > m.avail) {
     const due = m.bills.filter((b) => b.state === "accepted" && b.due).sort(dueSort)[0];
@@ -1722,9 +1738,11 @@ function computeAlerts(m) {
     const due = claimed.filter((b) => b.due).sort(dueSort)[0];
     out.push({ key: "shortfall", tone: "wait", rule: "Shortfall predicted", s: h`<b>Shortfall predicted:</b> if the ${plural(claimed.length, "bill")} not yet reserved (${money(m.unres)}) are accepted, bills would exceed available money by ${money(m.res + m.unres - m.avail)}.`, amount: m.res + m.unres - m.avail, deadline: due ? due.due : null, to: [OWN, MGR], action: ["Review waiting bills", "#/approvals"] });
   }
+  const recent = [];
   for (const ch of p.vendor_changes || []) {
     const b = m.byId[String(ch.commitment_id)]; if (!b) continue;
     const s = ch.settlement_status || ch.status;
+    if (b.coolEnded || b.state === "settled") { recent.push({ key: `dest-${ch.id}`, tone: "good", rule: "Payout change cleared", s: h`<b>Payout change cleared:</b> ${b.name}’s new address ${acct(b.proposed || "on file")} was approved by a Signer${b.coolingUntil ? `, and the cooling-off ended ${fmtDateTime(b.coolingUntil)}` : ""}. Its next payment goes there.`, amount: b.amount, deadline: b.due, at: b.coolingUntil, to: [OWN, MGR], action: ["View bill", `#/bills/${b.sid}`], open: `bill-${b.sid}` }); continue; }
     const tail = s === "approved_cooling_off" ? `a Signer approved; cooling-off ends ${b.coolingUntil ? fmtDateTime(b.coolingUntil) : "after the cooling-off period"}` : s === "rejected" ? "a Signer rejected it" : "it waits on a Signer";
     out.push({ key: `dest-${ch.id}`, tone: "bad", rule: "Destination change", s: h`<b>Payout change:</b> ${b.name} asked to be paid at ${acct(b.proposed || "a new account")}. Payment was frozen; ${tail}.`, amount: b.amount, deadline: b.coolingUntil ? Math.floor(b.coolingUntil / DAY) : b.due, deadlineText: b.coolingUntil ? fmtDateTime(b.coolingUntil) : null, to: [OWN, MGR], action: ["View change", `#/bills/${b.sid}`], open: `bill-${b.sid}` });
   }
@@ -1732,16 +1750,66 @@ function computeAlerts(m) {
     if (b.c.vendor_change) continue;
     out.push({ key: `appr-${b.sid}`, tone: "wait", rule: "Approval waiting", s: h`<b>Approval waiting:</b> ${b.isNew ? "new vendor " : ""}${b.name}, ${money(b.amount)}${b.waitsOn.since ? `, waiting ${ageText(b.waitsOn.since)}` : ""}.`, amount: b.amount, deadline: b.due, to: [MGR], action: ["Open in Approvals", "#/approvals"] });
   }
-  for (const b of m.bills.filter((x) => x.mkind === "subscription" && (x.state === "accepted" || x.state === "claimed") && x.due != null && x.due >= t && x.due <= t + 7).sort(dueSort)) {
+  const subs = m.bills.filter((x) => x.mkind === "subscription" && (x.state === "accepted" || x.state === "claimed") && x.due != null && x.due >= t).sort(dueSort);
+  for (const b of subs.filter((x) => x.due <= t + 7)) {
     out.push({ key: `renew-${b.sid}`, tone: "wait", rule: "Renewal approaching", s: h`<b>Renewal:</b> ${b.name}, ${money(b.amount)} ${relDays(b.due)}.`, amount: b.amount, deadline: b.due, to: [MGR], action: ["View bill", `#/bills/${b.sid}`], open: `bill-${b.sid}` });
   }
-  const settled = m.bills.filter((b) => b.state === "settled").map((b) => ({ key: `paid-${b.sid}`, tone: "good", rule: "Payment settled", s: h`<b>Paid:</b> ${b.name}, ${money(b.amount)}.`, amount: b.amount, deadline: null, to: [["Payee only", b.destination]], action: ["View receipt", `#/reports?tab=receipts&r=${b.sid}`], b }));
-  const nextRenewal = m.bills.filter((x) => x.mkind === "subscription" && (x.state === "accepted" || x.state === "claimed") && x.due != null && x.due > t + 7).sort(dueSort)[0] || null;
-  return { live: out, settled, nextRenewal };
+  // Lower priority: renews in 14 days or less. Shown on Alerts, not counted in the badge.
+  const upcoming = subs.filter((x) => x.due > t + 7 && x.due <= t + 14).map((b) => ({ key: `soon-${b.sid}`, tone: "quiet", rule: "Renews in 14 days or less", s: h`<b>Renews soon:</b> ${b.name}, ${money(b.amount)} ${relDays(b.due)}, ${b.state === "accepted" ? "already reserved" : "not reserved yet"}.`, amount: b.amount, deadline: b.due, to: [MGR], action: ["View bill", `#/bills/${b.sid}`], open: `bill-${b.sid}` }));
+  // Closed commitments, from the decision log (a closed bill leaves the owner report, so the name comes from this session when known).
+  for (const d of m.decs) for (const e of d.events || []) {
+    if (e.event !== "commitment_closed" || !e.data || !e.data[0]) continue;
+    const cid = String(e.data[0].commitment_id), kb = m.byId[cid] || d.bill || null, at = Date.parse(d.at);
+    const nm = kb ? kb.name : `Bill #${cid}`, sub = kb && (kb.mkind === "subscription" || kb.recur);
+    recent.push({ key: `closed-${cid}`, tone: "good", rule: sub ? "Subscription closed" : "Bill closed", s: h`<b>${sub ? "Subscription closed" : "Closed"}:</b> ${nm}${kb ? h`, ${money(kb.amount)}` : ""}. ${kb && kb.state === "claimed" ? "It was never reserved, and it won’t be paid." : `Its envelope is released, so it won’t be paid${sub ? " or renew" : ""}.`}`, amount: kb ? kb.amount : null, deadline: null, at, to: [OWN, MGR], action: ["See activity", "#/reports?filter=admin"] });
+  }
+  recent.sort((a, b) => (b.at || 0) - (a.at || 0));
+  const settled = m.bills.filter((b) => b.state === "settled").map((b) => ({ key: `paid-${b.sid}`, tone: "good", rule: "Payment settled", s: h`<b>Settled:</b> ${b.name}, ${money(b.amount)}.`, amount: b.amount, deadline: null, to: [["Payee only", b.destination]], action: ["View receipt", `#/reports?tab=receipts&r=${b.sid}`], b }));
+  const nextRenewal = subs.find((x) => x.due > t + 14) || null;
+  return { live: out, settled, nextRenewal, upcoming, recent };
+}
+/* ---------- member alerts: Ana's own claims only, from the decision log. Never a company figure. ---------- */
+const MEMBER_REFUSAL = {
+  would_break_commitments: "Paying it then would have used money already set aside for other bills",
+  below_min_runway: "Paying it would have gone below the company’s minimum runway",
+  needs_signer_acceptance: "It is above what Banto may accept on its own",
+  duplicate_evidence: "It was a copy of a claim already recorded",
+};
+function memberAlerts(m, vid = "member:ana") {
+  if (!m) return [];
+  const mine = m.bills.filter((b) => b.vid === vid), ids = new Set(mine.map((b) => b.sid)), out = [];
+  const what = (b) => h`your ${KIND[b.mkind].toLowerCase()} of ${money(b.amount)}`;
+  for (const d of m.decs) {
+    const at = Date.parse(d.at), v = d.value;
+    for (const e of d.events || []) {
+      const dd = (e.data && e.data[0]) || {}, cid = dd.commitment_id != null ? String(dd.commitment_id) : null;
+      if (!cid || !ids.has(cid)) continue;
+      const b = m.byId[cid], base = { at, tx: d.tx, b };
+      if (e.event === "commitment_claimed") out.push(Object.assign({ key: `recv-${cid}`, tone: "quiet", rule: "Claim received", s: h`<b>Claim received:</b> ${what(b)}. Nothing is reserved until it’s accepted.` }, base));
+      else if (e.event === "commitment_accepted") out.push(Object.assign({ key: `acc-${cid}`, tone: "good", rule: "Claim accepted", s: h`<b>Accepted:</b> ${what(b)}, ${dd.by === "signer" ? "by a Signer" : `by ${AGENT.name}, within policy`}. The money is set aside for you.` }, base));
+      else if (e.event === "settlement_receipt") out.push(Object.assign({ key: `paid-${cid}`, tone: "good", rule: "Paid (settled)", s: h`<b>Paid (settled):</b> ${what(b)}. Settled on the testnet ledger with a receipt on-chain.` }, base));
+      else if (e.event === "commitment_closed") out.push(Object.assign({ key: `closed-${cid}`, tone: "bad", rule: "Claim refused", s: h`<b>Claim refused:</b> ${what(b)} was closed by a Signer${SAVED_REASONS[d.tx] ? h`. Reason: “${SAVED_REASONS[d.tx]}”` : ""}.` }, base));
+    }
+    if (v && typeof v === "object" && v.ok === false && v.reason && ids.has(String(v.commitment_id))) {
+      const b = m.byId[String(v.commitment_id)];
+      out.push({ key: `ref-${d.tx}`, tone: "wait", rule: "Refused, with reason", at, tx: d.tx, b, s: h`<b>Not accepted automatically:</b> ${what(b)}. ${MEMBER_REFUSAL[v.reason] || cap(humanCode(v.reason))}.${b.state === "claimed" ? " It waits for a Signer." : ""}` });
+    }
+  }
+  for (const ch of (m.pub && m.pub.vendor_changes) || []) {
+    if (!ids.has(String(ch.commitment_id))) continue;
+    const b = m.byId[String(ch.commitment_id)], st0 = ch.settlement_status || ch.status;
+    out.push({ key: `addr-${ch.id}`, tone: "bad", rule: "Payout address change", at: ch.requested_at ? nsToMs(ch.requested_at) : null, b, s: h`<b>Payout address change:</b> a claim asked to pay ${acct(b.proposed || "a new address")} instead of ${acct(b.destination)}. ${st0 === "suspended_destination_mismatch" ? "Payment is frozen until a Signer approves it." : st0 === "rejected" ? "A Signer rejected it." : "A Signer approved it after a cooling-off."}` });
+  }
+  return out.sort((a, b) => (b.at || 0) - (a.at || 0));
+}
+function memberAlertRow(a) {
+  const ic = a.tone === "bad" ? IC.slash() : a.tone === "good" ? IC.check() : IC.clock();
+  const meta = [a.at ? timeEl(a.at, fmtDateTime(a.at)) : null, "To Ana only", a.tx ? txLink(a.tx) : null];
+  return h`<li class="al t-${a.tone === "quiet" ? "wait" : a.tone}"><span class="al-ic">${ic}</span><div><p class="al-s">${a.s}</p><p class="al-m">${join(meta.map((x) => (x ? h`<span>${x}</span>` : null)), "")}</p></div><a class="btn btn-secondary btn-sm al-a" href="#/bills/${a.b.sid}" data-open="bill-${a.b.sid}">View claim<span class="vh">: ${KIND[a.b.mkind]}, ${moneyT(a.b.amount)}</span></a></li>`;
 }
 const recipients = (to) => join(to.map(([r, a]) => h`${r} ${a ? h`(${acct(a)})` : ""}`), ", ");
 function alertRow(a, small) {
-  const meta = [h`Amount ${money(a.amount)}`];
+  const meta = a.amount != null ? [h`Amount ${money(a.amount)}`] : [];
   meta.push(a.deadlineText ? `Deadline ${a.deadlineText}` : a.deadline ? `Deadline ${fmtDate(a.deadline)}` : "No deadline");
   if (!small) meta.push(h`To ${recipients(a.to)}`);
   const ic = a.tone === "bad" ? IC.slash() : a.tone === "good" ? IC.check() : IC.clock();
@@ -1761,7 +1829,7 @@ VIEWS.overview = {
       <div class="c8 stack ov-l">
         <section class="panel" aria-labelledby="hero-h"><h2 class="vh" id="hero-h">Money at a glance</h2>${sec("hero", ["report"], ["policy", "public", "decisions"], heroBody, heroSk, "Loading treasury figures")}</section>
         <section class="panel" aria-labelledby="pj-h">${sec("proj", ["report"], ["policy"], projBody, () => h`<div class="proj" style="border-top:0">${skBar("40%", 14)}${skBar("100%", 180, "margin-top:16px;border-radius:8px")}</div>`, "Loading the cash projection")}</section>
-        <section class="panel" aria-labelledby="act-h"><div class="panel-h"><h2 id="act-h">Activity</h2><a class="more" href="#/reports">All activity</a></div>${sec("ov-act", ["decisions"], ["report", "public", "policy"], () => { const m = model(); const all = activityItems(m), runs = runCount(all); const items = feedItems(all, { tests: "hide" }).slice(0, 12); return items.length ? h`<div class="actwrap">${actGroups(items, m)}</div>${runs ? h`<p class="hiddenrow">Business events only. ${plural(runs, "security test run")} (judge checks) <a href="#/reports?filter=tests">in Reports</a>.</p>` : ""}` : h`<p class="empty">No decisions are recorded on this deployment yet.</p>`; }, () => skRows(6, 52), "Loading activity")}</section>
+        <section class="panel" aria-labelledby="act-h"><div class="panel-h"><h2 id="act-h">Activity</h2><a class="more" href="#/reports">All activity</a></div>${sec("ov-act", ["decisions"], ["report", "public", "policy"], () => { const m = model(); const all = activityItems(m), runs = runCount(all); const items = feedItems(all, { tests: "hide" }).slice(0, 12); return items.length ? h`${asOfLine()}<div class="actwrap">${actGroups(items, m)}</div>${runs ? h`<p class="hiddenrow">Business events only. ${plural(runs, "security test run")} (judge checks) <a href="#/reports?filter=tests">in Reports</a>.</p>` : ""}` : h`<p class="empty">No decisions are recorded on this deployment yet.</p>`; }, () => skRows(6, 52), "Loading activity")}</section>
       </div>
       <div class="c4 stack ov-r">
         <section class="panel" aria-labelledby="rail-h"><div class="panel-h"><h2 id="rail-h">Approval queue</h2><a class="more" href="#/approvals">Open approvals</a></div>${sec("rail", ["report"], ["policy", "public", "decisions"], railBody, () => skRows(3, 52), "Loading the approval queue")}</section>
@@ -1780,11 +1848,11 @@ function bantoSay() {
   return h`<div class="say">${avatar()}<p><b>${AGENT.name}</b> · Nothing needs you.${next ? ` Next payment: ${next.name}, ${moneyT(next.amount)} on ${fmtDate(next.due)}, already reserved.` : ""}</p><a class="btn btn-secondary btn-sm" href="#/money">See what’s due</a></div>`;
 }
 function heroSk() { return h`<div class="hero-in">${skBar("120px", 12)}${skBar("200px", 44, "margin-top:10px")}${skBar("100%", 40, "margin-top:28px;border-radius:8px")}${skBar("60%", 10, "margin-top:14px")}</div><div style="height:96px;border-top:1px solid var(--line)"></div>`; }
-const BIZ_SHORT = { dest: "payout change frozen", inject: "hidden instructions ignored", dup: "duplicate refused", reserve: "reserve breach blocked" };
-const bizLine = (c) => BIZ_CATS.filter((k) => c.counts[k] > 0).map((k) => `${c.counts[k]} ${BIZ_SHORT[k]}`).join(" · ");
+const BIZ_SHORT = { dest: ["payout change frozen", "payout changes frozen"], inject: ["hidden instruction ignored", "hidden instructions ignored"], dup: ["duplicate refused", "duplicates refused"], reserve: ["reserve breach blocked", "reserve breaches blocked"] };
+const bizLine = (c) => BIZ_CATS.filter((k) => c.counts[k] > 0).map((k) => `${c.counts[k]} ${BIZ_SHORT[k][c.counts[k] === 1 ? 0 : 1]}`).join(" · ");
 function heroBody() {
   const m = model(), f = m.fig, neg = m.sp < 0;
-  const rows = [["treasury_balance", "In treasury", "The treasury contract’s balance, read from NEAR."], ["settled_outflow", "Paid, settling", "Payouts already sent. The contract balance catches up when payouts are reconciled, so they still count against it until then."], ["reserved", "Reserved", "Accepted bills that aren’t paid yet. Each is an envelope in the strip."], ["spendable", "Spendable", "In treasury − paid, settling − reserved."], ["daily_recurring_burn", "Recurring bills per day", "Accepted recurring bills as a monthly amount, divided by 30."], ["runway_days", "Runway", "Days the money left after paid, settling covers your recurring bills."]];
+  const rows = [["treasury_balance", "In treasury", "The treasury contract’s balance, read from NEAR."], ["settled_outflow", "Settled", "Bills settled on the ledger: escrow released, nonce burned, receipt on-chain. They count against the balance until payouts are reconciled. Testnet: no tokens move; payouts run through NEAR Intents on mainnet."], ["reserved", "Reserved", "Accepted bills that aren’t paid yet. Each is an envelope in the strip."], ["spendable", "Spendable", "In treasury − settled − reserved."], ["daily_recurring_burn", "Recurring bills per day", "Accepted recurring bills as a monthly amount, divided by 30."], ["runway_days", "Runway", "Days the money left after settled bills covers your recurring bills."]];
   const rd = f.runway_days == null ? null : Number(f.runway_days), fl = m.pol ? Number(m.pol.min_runway_days) : null;
   const rctx = rd == null ? "No recurring bills" : fl == null ? "" : rd >= fl * 2 ? `Above your ${fl}-day floor` : rd >= fl ? `Close to your ${fl}-day floor` : `Below your ${fl}-day floor`;
   const q = queueCounts(m), sum = m.signerItems.reduce((a, b) => a + b.amount, 0);
@@ -1831,11 +1899,11 @@ function projBody() {
   const last = steps[steps.length - 1];
   const below = floor != null && P.end < floor;
   const minDays = m.pol ? m.pol.min_runway_days : null;
-  const summary = steps.length ? `Starts at ${moneyT(m.avail)} today (${num(m.bal)} in treasury − ${num(m.paid)} paid, settling) and ends at ${moneyT(P.end)} on ${fmtDate(last.day)}${floor != null ? (below ? `, under your ${minDays}-day runway floor of ${moneyT(floor)}` : `, above your ${minDays}-day runway floor of ${moneyT(floor)}`) : ""}.` : `No reserved bill is due in the next 60 days. Cash stays at ${moneyT(m.avail)}.`;
+  const summary = steps.length ? `Starts at ${moneyT(m.avail)} today (${num(m.bal)} in treasury − ${num(m.paid)} settled) and ends at ${moneyT(P.end)} on ${fmtDate(last.day)}${floor != null ? (below ? `, under your ${minDays}-day runway floor of ${moneyT(floor)}` : `, above your ${minDays}-day runway floor of ${moneyT(floor)}`) : ""}.` : `No reserved bill is due in the next 60 days. Cash stays at ${moneyT(m.avail)}.`;
   const tip = (s) => `${fmtDate(s.day)} · ${s.b.name} −${num(s.b.amount)} · cash left ${num(s.bal)} ${symbol()}`;
   return h`<div class="proj" style="border-top:0"><div class="proj-h"><h2 class="h2" id="pj-h">Cash over the next 60 days</h2><p>${summary}</p></div>
     <div class="proj-wrap" data-proj>
-    <svg viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="pj-t pj-d"><title id="pj-t">Cash over the next 60 days</title><desc id="pj-d">Step line. Starts at ${num(m.avail)} ${symbol()}, which is ${num(m.bal)} in treasury minus ${num(m.paid)} paid, settling. ${steps.map((s) => `${fmtDate(s.day)}: ${s.b.name} ${num(s.b.amount)}, leaving ${num(s.bal)}.`).join(" ")}${floor != null ? ` Protected runway floor: ${num(floor)}.` : ""} The table below has the same numbers.</desc>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="pj-t pj-d"><title id="pj-t">Cash over the next 60 days</title><desc id="pj-d">Step line. Starts at ${num(m.avail)} ${symbol()}, which is ${num(m.bal)} in treasury minus ${num(m.paid)} settled. ${steps.map((s) => `${fmtDate(s.day)}: ${s.b.name} ${num(s.b.amount)}, leaving ${num(s.bal)}.`).join(" ")}${floor != null ? ` Protected runway floor: ${num(floor)}.` : ""} The table below has the same numbers.</desc>
       ${yt.map((v) => h`<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="gd${v === 0 ? " zero" : ""}"/><text class="ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${num(Math.round(v))}</text>`)}
       ${xt.map((dd, i) => h`<text class="ax" x="${x(dd)}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === xt.length - 1 ? "end" : "middle"}">${fmtDate(dd)}</text>`)}
       <path d="${area}" class="ar"/>
@@ -1848,7 +1916,7 @@ function projBody() {
     </svg></div>
     <p class="proj-note">${P.notIn.length ? `Not included: ${moneyT(P.notInSum)} in ${plural(P.notIn.length, "bill")} not reserved yet (${queueLine(m)}). ` : ""}Each recurring bill is shown once, for the cycle already on file.</p>
     <details class="disc" data-k="pjt"><summary>${IC.chev()}Show as a table</summary><table class="projt"><caption class="vh">Cash over the next 60 days</caption><thead><tr><th scope="col">Date</th><th scope="col">Bill</th><th scope="col" class="num">Change</th><th scope="col" class="num">Cash left</th></tr></thead><tbody>
-      <tr><td>${fmtDate(t0)}</td><td>Today: ${num(m.bal)} in treasury − ${num(m.paid)} paid, settling</td><td class="num"></td><td class="num">${num(m.avail)}</td></tr>
+      <tr><td>${fmtDate(t0)}</td><td>Today: ${num(m.bal)} in treasury − ${num(m.paid)} settled</td><td class="num"></td><td class="num">${num(m.avail)}</td></tr>
       ${steps.map((s) => h`<tr><td>${fmtDate(s.day)}</td><td>${s.b.name}</td><td class="num">−${num(s.b.amount)}</td><td class="num">${num(s.bal)}</td></tr>`)}</tbody></table></details></div>`;
 }
 function bindProj(root) { // hover tooltip for the step markers; the table is the keyboard and screen-reader path
@@ -1925,7 +1993,7 @@ function approvalCard(b, m) {
 
 /* ---------- Money ---------- */
 const MKINDS = [["all", "All"], ["invoice", "Invoices"], ["subscription", "Subscriptions"], ["payroll", "Payroll"], ["reimbursement", "Reimbursements"]];
-const BILL_FILTERS = [["all", "All"], ["needs", Q_LABEL.signer], ["timer", Q_LABEL.timer], ["check", Q_LABEL.policy], ["reserved", "Reserved"], ["paid", "Paid, settling"], ["flagged", "Flagged"], ["closed", "Closed"]];
+const BILL_FILTERS = [["all", "All"], ["needs", Q_LABEL.signer], ["timer", Q_LABEL.timer], ["check", Q_LABEL.policy], ["reserved", "Reserved"], ["paid", "Settled"], ["flagged", "Flagged"], ["closed", "Closed"]];
 const billFilter = (key) => ({ all: () => true, needs: (b) => !!b.waitsOn && b.waitsOn.who === "signer", timer: (b) => !!b.waitsOn && b.waitsOn.who === "timer", check: (b) => !!b.waitsOn && b.waitsOn.who === "policy", reserved: (b) => b.state === "accepted", paid: (b) => b.state === "settled", flagged: (b) => b.anyFlag, closed: (b) => b.state === "closed" })[key];
 const billSort = (a, b) => { const sa = a.state === "settled", sb = b.state === "settled"; if (sa !== sb) return sa ? 1 : -1; return (a.due == null) - (b.due == null) || (a.due || 0) - (b.due || 0) || a.id - b.id; };
 const inAud = (b) => b.claimedAt != null && Math.floor(b.claimedAt / DAY) >= AUD.from && Math.floor(b.claimedAt / DAY) <= AUD.to;
@@ -1947,7 +2015,7 @@ VIEWS.money = {
     return h`<div class="toolbar"><div class="l"><nav class="seg" aria-label="Kind">${MKINDS.map(([k, l]) => h`<a href="${moneyHref(k, stt)}"${k === kind ? raw(' aria-current="true"') : ""}>${l} <span class="c">${base.filter((b) => k === "all" || b.mkind === k).length}</span></a>`)}</nav></div>
       <div class="r">${readOnlyLens() ? "" : addMoneyMenu()}<button class="btn btn-secondary btn-sm" type="button" data-act="csv" data-scope="money">${IC.down()}Export CSV</button></div></div>
       <div class="toolbar"><nav class="seg" aria-label="Status">${filters.map(([k, l]) => h`<a href="${moneyHref(kind, k)}"${k === stt ? raw(' aria-current="true"') : ""}>${l} <span class="c">${ofKind.filter(billFilter(k)).length}</span></a>`)}</nav></div>
-      <p class="legendline"><span class="flow">Received → Reserved → Paid → Closed</span><span>Only Reserved reduces what you can spend. Receiving a document never creates an obligation.</span></p>
+      <p class="legendline"><span class="flow">Received → Reserved → Settled → Closed</span><span>Only Reserved reduces what you can spend. Receiving a document never creates an obligation.</span></p>
       ${lens() === "auditor" ? h`<p class="note" style="margin-bottom:16px">Auditor range ${audLabel()}: bills recorded inside the range, read-only.</p>` : h`${eqHTML(m, "margin-bottom:8px")}<p class="sumline"><b>${base.filter((b) => b.state !== "settled" && b.state !== "closed").length}</b> open · ${queueLine(m)} · <b>${moneyT(sum((b) => b.state === "claimed"))}</b> not reserved yet</p>`}
       ${list.length ? h`<div class="tblbox">${billTable(list, `Money, ${list.length} bills`)}${billCards(list)}</div>` : h`<div class="panel empty">Nothing here. ${stt === "all" && kind === "all" ? "Takara records a bill when a document arrives. Nothing is reserved until it’s accepted." : "Try another filter."}</div>`}`;
   }, () => h`${skBar("480px", 40, "max-width:100%;border-radius:8px;margin-bottom:16px")}<div class="panel">${skRows(7, 56)}</div>`, "Loading money"),
@@ -1978,7 +2046,7 @@ VIEWS.vendors = {
     const m = model(); const all = vendorGroups(m).filter((v) => v.kind !== "team" && v.kind !== "payroll").sort((a, b) => a.st - b.st || a.reg.name.localeCompare(b.reg.name));
     const ch = (m.pub && m.pub.vendor_changes) || [], hrs = m.pol ? m.pol.cooling_off_hours : null;
     return h`<div class="toolbar"><p class="l" style="color:var(--ink-2)">${ch.length ? `${plural(ch.length, "payout change")} caught and frozen.` : "No payout changes caught yet."} ${hrs != null ? `Approved changes wait ${plural(hrs, "hour")} before any payment.` : ""}</p><div class="r">${pvBtn("Add vendor", "addVendor", "btn-sm")}${pvBtn("Import CSV", "importVendors", "btn-sm")}</div></div>
-      ${all.length ? h`<div class="tblbox"><div class="panel tblwrap"><table class="tbl"><caption class="vh">Vendors</caption><colgroup><col><col style="width:24%"><col style="width:112px"><col style="width:64px"><col style="width:112px"><col style="width:112px"><col style="width:184px"></colgroup><thead><tr><th scope="col">Vendor</th><th scope="col">Pays to</th><th scope="col">Pays in</th><th scope="col" class="num">Bills</th><th scope="col" class="num">Open</th><th scope="col" class="num">Paid</th><th scope="col">Status</th></tr></thead><tbody>${all.map((v) => h`<tr class="tr"><td><a class="stretch t-name" href="#/vendors/${encodeURIComponent(v.vid)}" data-open="vendor-${v.vid}">${v.reg.name}</a><div class="t-sub">${vSub(v)}</div></td><td><div class="dest" translate="no" title="${v.reg.destination}">${v.reg.destination}</div></td><td class="sm">${(v.reg.chain || "").toUpperCase()} · ${symbol()}</td><td class="num tnum">${v.bills.length}</td><td class="num">${money(v.open)}</td><td class="num">${money(v.paid)}</td><td>${vSt(v)}</td></tr>`)}</tbody></table></div>
+      ${all.length ? h`<div class="tblbox"><div class="panel tblwrap"><table class="tbl"><caption class="vh">Vendors</caption><colgroup><col><col style="width:24%"><col style="width:112px"><col style="width:64px"><col style="width:112px"><col style="width:112px"><col style="width:184px"></colgroup><thead><tr><th scope="col">Vendor</th><th scope="col">Pays to</th><th scope="col">Pays in</th><th scope="col" class="num">Bills</th><th scope="col" class="num">Open</th><th scope="col" class="num">Settled</th><th scope="col">Status</th></tr></thead><tbody>${all.map((v) => h`<tr class="tr"><td><a class="stretch t-name" href="#/vendors/${encodeURIComponent(v.vid)}" data-open="vendor-${v.vid}">${v.reg.name}</a><div class="t-sub">${vSub(v)}</div></td><td><div class="dest" translate="no" title="${v.reg.destination}">${v.reg.destination}</div></td><td class="sm">${(v.reg.chain || "").toUpperCase()} · ${symbol()}</td><td class="num tnum">${v.bills.length}</td><td class="num">${money(v.open)}</td><td class="num">${money(v.paid)}</td><td>${vSt(v)}</td></tr>`)}</tbody></table></div>
       <ul class="panel cards">${all.map((v) => h`<li class="crd"><div class="crd-1"><a class="stretch t-name" href="#/vendors/${encodeURIComponent(v.vid)}" data-open="vendor-${v.vid}">${v.reg.name}</a>${vSt(v)}</div><div class="crd-2"><span class="dest">${v.reg.destination}</span><span>${(v.reg.chain || "").toUpperCase()} · ${symbol()}</span></div></li>`)}</ul></div>` : h`<div class="panel empty">No vendors yet. Vendors are added when their first bill is accepted.</div>`}
       <p class="footnote">Payroll and team members are on <a href="#/people">People</a> and under <a href="#/money?kind=payroll">Money › Payroll</a>. The vendor registry is sealed: names and destinations are encrypted on-chain ${sealedTag()}</p>`;
   }, () => h`<div class="panel">${skRows(5, 56)}</div>`, "Loading vendors"),
@@ -1996,19 +2064,20 @@ function membersOf(m) {
 }
 function receiptText(m, b) {
   const s = settleInfo(m, b.sid), pc = m.pub && (m.pub.commitments || []).find((x) => String(x.id) === b.sid);
-  return [`Takara receipt (unsigned format)`, `Payee: ${b.name} (${b.destination}, ${(b.chain || "").toUpperCase()})`, `Amount: ${moneyT(b.amount).replace(THIN, " ")}`, s ? `Paid: ${DTFULL.format(new Date(s.at))}` : null, `Bill: #${b.sid} (${KIND[b.mkind]})`, pc ? `Commitment hash: ${pc.commitment_hash}` : null, s ? `Settlement transaction: ${TXURL(s.tx)}` : null, pc ? `Attestation: request ${pc.request_no}, output hash ${pc.output_hash}` : null, `Treasury: ${m.pub ? m.pub.treasury : ""} on NEAR testnet`, `This receipt shows one line only. Fictional fixture data.`].filter(Boolean).join("\n");
+  return [`Takara receipt (unsigned format)`, `Payee: ${b.name} (${b.destination}, ${(b.chain || "").toUpperCase()})`, `Amount: ${moneyT(b.amount).replace(THIN, " ")}`, s ? `Settled on the ledger: ${DTFULL.format(new Date(s.at))}` : null, `Bill: #${b.sid} (${KIND[b.mkind]})`, pc ? `Commitment hash: ${pc.commitment_hash}` : null, s ? `Settlement transaction: ${TXURL(s.tx)}` : null, pc ? `Attestation: request ${pc.request_no}, output hash ${pc.output_hash}` : null, `Treasury: ${m.pub ? m.pub.treasury : ""} on NEAR testnet`, `Testnet: no tokens move; payouts run through NEAR Intents on mainnet.`, `This receipt shows one line only. Fictional fixture data.`].filter(Boolean).join("\n");
 }
 
 /* ---------- My pay (Member · Ana lens) ---------- */
 function anaOf(m) { return membersOf(m).find((x) => x.id === "ana") || null; }
-const paidWord = (m) => (m.paid > 0 ? "Paid, settling" : "Paid");
+const paidWord = () => "Settled";
 function myPay() {
   return sec("mypay", ["report"], ["public", "decisions"], () => {
     const m = model(); const me = anaOf(m);
     if (!me) return h`<div class="panel empty">No payments for this member yet.</div>`;
     const paid = me.bills.filter((b) => b.state === "settled"), open = me.bills.filter((b) => b.state === "claimed" || b.state === "accepted");
     const total = paid.reduce((a, b) => a + b.amount, 0);
-    return h`<div class="g12"><section class="panel c8"><div class="panel-h"><h2>My payments</h2><span class="muted sm">${plural(paid.length, "payment")} · ${moneyT(total)}</span></div>
+    const latest = memberAlerts(m)[0];
+    return h`${latest ? h`<section class="panel latest" aria-labelledby="lt-h"><div class="panel-h"><h2 id="lt-h">Latest alert</h2><a class="more" href="#/alerts">All alerts</a></div><ul>${memberAlertRow(latest)}</ul></section>` : ""}<div class="g12"><section class="panel c8"><div class="panel-h"><h2>My payments</h2><span class="muted sm">${plural(paid.length, "payment")} · ${moneyT(total)}</span></div>
       ${paid.length ? h`<ul class="rows">${paid.map((b) => { const s = settleInfo(m, b.sid); return h`<li><a class="row" href="#/bills/${b.sid}" data-open="bill-${b.sid}"><span class="row-n">${KIND[b.mkind]}</span><span class="row-a">${money(b.amount)}</span><span class="row-m">${st(paidWord(m), "paid")} · ${s ? fmtDateTime(s.at) : "NEAR testnet"}</span></a></li>`; })}</ul>` : h`<p class="empty">No payments yet.</p>`}
       <p class="panel-f sm muted">${open.length ? `${plural(open.length, "claim")} open. ` : "No open claims. "}<a href="#/claims">My claims</a> · <a href="#/receipts">Receipts</a></p></section>
       <aside class="c4 stack"><section class="panel"><div class="panel-h"><h2>Payout address</h2></div><div class="panel-b"><p class="mono" style="overflow-wrap:anywhere">${me.dest}</p><p class="sm muted" style="margin-top:4px">${(me.chain || "").toUpperCase()} · ${symbol()}</p><div class="formfoot">${pvBtn("Change address", "changeAddress", "btn-sm")}</div></div></section>
@@ -2045,11 +2114,12 @@ VIEWS.people = {
     const p = S.public.data, m = S.report.data ? model() : null, mem = membersOf(m);
     const owners = p.owners || [], signers = p.signers || [];
     const payroll = m ? m.bills.filter((b) => b.mkind === "payroll" && b.state !== "settled" && b.state !== "closed").sort(dueSort) : [];
-    return h`<div class="toolbar"><p class="l" style="color:var(--ink-2)">Four roles plus ${AGENT.name}. Every confidentiality rule depends on which one you are.</p><div class="r">${pvBtn("Invite", "invite", "btn-sm")}${pvBtn("Import CSV", "importPeople", "btn-sm")}</div></div>
+    return h`<div class="toolbar"><p class="l" style="color:var(--ink-2)">Four roles plus ${AGENT.name}. Every confidentiality rule depends on which one you are.</p><div class="r">${pvBtn("Invite", "invite", "btn-sm")}${pvBtn("Set up payroll", "payrollSetup", "btn-sm")}${pvBtn("Import CSV", "importPeople", "btn-sm")}</div></div>
+      <p class="note" style="margin-bottom:16px">Adding a teammate means signing a new policy version: the team roster lives inside the signed policy, so a Signer approves every change.</p>
       <section class="panel" aria-label="Roles"><ul class="roles">
         <li><div><h3>Owner</h3><p class="map">contract owners</p></div><div class="mem">${owners.map(acct)}</div><div><p class="cando">Pause or resume, revoke or restore ${AGENT.name}, recover funds, release a reservation. Wallet buttons on <a href="#/policy?focus=owner">Policy</a>.</p>${owners.length < 2 ? h`<p class="rec">Recommended: add a second owner before mainnet, so one lost device can’t lock you out.</p>` : ""}</div></li>
         <li><div><h3>Signer</h3><p class="map">approves bills and signs policy · ${p.threshold || 1} of ${signers.length}</p></div><div class="mem">${signers.map(acct)}</div><div><p class="cando">Accepts or closes bills, approves or rejects payout changes, signs policy changes. Every action is signed in the Signer’s own wallet.</p><p class="rec">The founder plan calls this role Manager. On-chain, the same key also signs policy.</p></div></li>
-        <li><div><h3>Member</h3><p class="map">gets paid · no on-chain authority</p></div><div class="mem">${mem.length ? mem.map((x) => h`<a href="#/people/${encodeURIComponent(x.id)}" data-open="person-${x.id}">${x.name} · ${x.dest}</a><span class="sm muted">${(x.chain || "").toUpperCase()} · ${symbol()}</span>`) : h`<span class="muted">${S.report.status === "error" ? "Members need the owner report." : "No members yet."}</span>`}${payroll.map((b) => h`<a href="#/bills/${b.sid}" data-open="bill-${b.sid}">Payroll run · ${moneyT(b.amount)} ${b.recur ? b.recur.toLowerCase() : ""}</a><span class="sm muted">to ${b.destination}${b.due ? `, next ${fmtDate(b.due)}` : ""}</span>`)}</div><div><p class="cando">Gets paid, by payroll or a reimbursement. Submitting claims and setting their own payout address is ${pvTag()}</p></div></li>
+        <li><div><h3>Member</h3><p class="map">gets paid · no on-chain authority</p></div><div class="mem">${mem.length ? mem.map((x) => h`<a href="#/people/${encodeURIComponent(x.id)}" data-open="person-${x.id}">${x.name} · ${x.dest}</a><span class="sm muted">${(x.chain || "").toUpperCase()} · ${symbol()}</span>`) : h`<span class="muted">${S.report.status === "error" ? "Members need the owner report." : "No members yet."}</span>`}${payroll.map((b) => h`<a href="#/bills/${b.sid}" data-open="bill-${b.sid}">Payroll run · ${moneyT(b.amount)} ${b.recur ? b.recur.toLowerCase() : ""}</a><span class="sm muted">to ${b.destination}${b.due ? `, next ${fmtDate(b.due)}` : ""}</span>`)}</div><div><p class="cando">Gets paid, by payroll or a reimbursement. Payroll today is one aggregate payee on a monthly cycle. Per-person and weekly payroll, submitting claims in the app and setting their own payout address are ${pvTag()}</p></div></li>
         <li class="pv"><div><h3>Auditor</h3><p class="map">none on-chain</p></div><div class="mem"><span class="sample">Sample accountant · ${audLabel()}</span></div><div><p class="cando">Read-only inside a granted date range. ${pvTag()}</p></div></li>
         <li><div><h3>${avatar(true)}${AGENT.name} (agent)</h3><p class="map">contract agent</p></div><div class="mem">${p.agent ? h`${acct(p.agent)}<span class="sm muted">${STATUS_WORD[agentStatus()]}</span>` : h`<span class="muted">Revoked by an owner</span>`}</div><div><p class="cando">Records bills, requests decisions, pays what the engine authorized. Never an owner or Signer action.</p></div></li>
       </ul></section>
@@ -2063,20 +2133,29 @@ VIEWS.people = {
 /* ---------- Alerts ---------- */
 VIEWS.alerts = {
   title: "Alerts", h1: "Alerts",
-  desc: () => `What ${AGENT.name} would send, to whom, right now.`,
+  desc: () => (lens() === "member" ? "What Ana hears about her own claims and payments." : `What ${AGENT.name} would send, to whom, right now.`),
   body: () => sec("alerts", ["report"], ["public", "policy", "decisions"], () => {
     const m = model(), A = computeAlerts(m);
-    if (lens() === "member") { const mine = A.settled.filter((a) => a.b.vid === "member:ana"); return h`<section class="panel"><div class="panel-h"><h2>Sent to Ana</h2></div><ul>${mine.map((a) => alertRow(a))}</ul></section>`; }
+    if (lens() === "member") {
+      const mine = memberAlerts(m);
+      return h`<div class="g12"><section class="panel c8" aria-labelledby="al-ana"><div class="panel-h"><h2 id="al-ana">Sent to Ana <span class="muted mono">${mine.length}</span></h2><p class="sub">Newest first. Only Ana’s own claims and payments.</p></div>${asOfLine()}${mine.length ? h`<ul>${mine.map(memberAlertRow)}</ul>` : h`<p class="empty">No alerts yet. You’ll hear when a claim is received, accepted, paid or refused.</p>`}</section>
+        <aside class="c4 stack"><section class="panel" aria-labelledby="al-arules"><div class="panel-h"><h2 id="al-arules">What Ana hears about</h2></div><div class="panel-b"><ul class="arules"><li>A claim is received</li><li>A claim is accepted, and by whom</li><li>A claim is paid (settled)</li><li>A claim is refused, with the reason</li><li>A payout address change on her claims</li></ul><p class="sm muted" style="margin-top:12px">Never company totals, other people’s pay or other bills. Delivery to Telegram or email is ${pvTag()}</p></div></section></aside></div>`;
+    }
     const nr = A.nextRenewal;
-    return h`<section class="panel" aria-labelledby="al-live"><div class="panel-h"><h2 id="al-live">Live now <span class="muted mono">${A.live.length}</span></h2><p class="sub">Each carries the amount, the deadline and one action.</p></div>
+    return h`<section class="panel" aria-labelledby="al-live"><div class="panel-h"><h2 id="al-live">Live now <span class="muted mono">${A.live.length}</span></h2><p class="sub">Each carries the amount, the deadline and one action. The content is live; delivery to Telegram or email is preview.</p></div>
       ${A.live.length ? h`<ul>${A.live.map((a) => alertRow(a))}</ul>` : h`<p class="empty">Nothing to send right now.</p>`}
-      ${A.live.some((a) => a.rule === "Renewal approaching") ? "" : h`<p class="panel-f sm muted">No renewals in the next 7 days.${nr ? ` Next renewal: ${nr.name}, ${moneyT(nr.amount)} on ${fmtDate(nr.due)}. You’ll hear on ${fmtDate(nr.due - 7)}.` : ""}</p>`}</section>
+      ${A.live.some((a) => a.rule === "Renewal approaching") ? "" : h`<p class="panel-f sm muted">No renewals in the next 7 days.</p>`}</section>
+      <section class="panel gap" aria-labelledby="al-soon"><div class="panel-h"><h2 id="al-soon">Renews in 14 days or less <span class="muted mono">${A.upcoming.length}</span></h2><p class="sub">Lower priority. A heads-up before the 7-day alert, so a subscription you no longer use can be closed in time.</p></div>
+      ${A.upcoming.length ? h`<ul>${A.upcoming.map((a) => alertRow(a))}</ul>` : h`<p class="empty">No renewals in the next 14 days.${nr ? ` Next: ${nr.name}, ${moneyT(nr.amount)} on ${fmtDate(nr.due)}. You’ll hear on ${fmtDate(nr.due - 14)}, and again on ${fmtDate(nr.due - 7)}.` : ""}</p>`}</section>
+      ${A.recent.length ? h`<section class="panel gap" aria-labelledby="al-rec"><div class="panel-h"><h2 id="al-rec">Recent events</h2><p class="sub">Resolved or informational. Nothing to do.</p></div><ul>${A.recent.map((a) => alertRow(a))}</ul></section>` : ""}
       <div class="g12 gap"><section class="panel c7" aria-labelledby="al-paid"><div class="panel-h"><h2 id="al-paid">Sent to payees only</h2><p class="sub">A payee sees their own payment, nobody else’s.</p></div><ul>${A.settled.map((a) => alertRow(a))}</ul></section>
       <section class="panel pv c5" aria-labelledby="al-lapse"><div class="panel-h"><h2 id="al-lapse">Plan lapsing</h2>${pvTag()}</div><div class="panel-b"><p class="sm" style="color:var(--ink-2)">You’re on the free design-partner plan, so nothing lapses. Once billing starts, the owner gets a warning like this at 14, 7 and 1 days:</p><p class="sample" style="margin-top:8px">“Sample: your plan ends in 7 days. Payroll run, 600 USDC on Dec 1, would still be paid during the 14-day grace period. Railway, 120 USDC on Jan 12, would freeze.”</p><div class="formfoot"><a class="btn btn-secondary btn-sm" href="#/plan">See plan</a></div></div></section></div>
       <section class="panel gap" aria-labelledby="al-rules"><div class="panel-h"><h2 id="al-rules">The rules</h2></div><div style="overflow-x:auto;padding-top:8px"><table class="rules"><thead><tr><th scope="col">Alert</th><th scope="col">When</th><th scope="col">Who</th></tr></thead><tbody>
         <tr><td>Renewal approaching</td><td>7 days before, and again at 1 day</td><td>Signer</td></tr>
-        <tr><td>Shortfall predicted</td><td>As soon as committed exceeds available</td><td>Owner and manager</td></tr>
-        <tr><td>Destination change</td><td>Immediately, payment already frozen. Payout-change alerts keep sending even if your plan lapses.</td><td>Owner and manager, both</td></tr>
+        <tr><td>Renews in 14 days or less</td><td>14 days before, lower priority</td><td>Signer</td></tr>
+        <tr><td>Subscription closed</td><td>When a Signer or owner closes a recurring bill; its envelope is released</td><td>Owner and Signer</td></tr>
+        <tr><td>Shortfall predicted</td><td>As soon as committed exceeds available</td><td>Owner and Signer</td></tr>
+        <tr><td>Destination change</td><td>Immediately, payment already frozen. Payout-change alerts keep sending even if your plan lapses.</td><td>Owner and Signer, both</td></tr>
         <tr><td>Approval waiting</td><td>On arrival, then daily while it sits</td><td>The approver</td></tr>
         <tr><td>Payment settled</td><td>On settlement</td><td>The payee only</td></tr>
         <tr><td>Plan lapsing</td><td>14, 7 and 1 days before ${pvTag()}</td><td>Owner</td></tr></tbody></table></div></section>
@@ -2088,7 +2167,7 @@ VIEWS.alerts = {
 };
 
 /* ---------- Reports & receipts ---------- */
-const ACT_FILTERS = [["business", "Business"], ["caught", "Caught"], ["held", "Held"], ["money", "Money moved"], ["admin", "Admin"], ["tests", "Security tests"], ["all", "All"]];
+const ACT_FILTERS = [["business", "Business"], ["caught", "Caught"], ["held", "Held"], ["money", "Money"], ["admin", "Admin"], ["tests", "Security tests"], ["all", "All"]];
 const RTABS = [["activity", "Activity"], ["receipts", "Receipts"], ["export", "Export"], ["intake", "Intake log"]];
 VIEWS.reports = {
   title: "Reports & receipts", h1: "Reports & receipts",
@@ -2115,15 +2194,15 @@ function reportActivity(r) {
   const catRows = (cats) => join(cats.map((k) => { const l = CATS.find((x) => x[0] === k)[1]; return h`<div><dt>${l}</dt><dd>${m.caught.counts[k]}</dd></div>`; }), "");
   const breakdown = f === "caught" && m ? h`<div class="panel-b" style="border-bottom:1px solid var(--line)"><div class="who catsplit"><h3>Business catches</h3><dl>${catRows(BIZ_CATS)}<div><dt><b>Caught for you</b></dt><dd>${m.caught.biz}</dd></div></dl></div><div class="who catsplit"><h3>Blocked in the security test run (judge checks)</h3><dl>${catRows(TEST_CATS)}<div><dt><b>Test-run blocks</b></dt><dd>${m.caught.test}</dd></div></dl></div></div>` : "";
   return h`<div class="toolbar"><nav class="seg" aria-label="Filter activity">${ACT_FILTERS.map(([k, l]) => h`<a href="#/reports${k === "business" ? "" : "?filter=" + k}"${k === f ? raw(' aria-current="true"') : ""}>${l} <span class="c">${count(k)}</span></a>`)}</nav>${lens() === "auditor" ? h`<span class="sm muted">Range ${audLabel()}</span>` : ""}</div>
-    <section class="panel" aria-label="Activity list">${breakdown}${shown.length ? h`<div class="actwrap">${actGroups(shown, m, { openTests: f === "tests" })}</div>` : h`<p class="empty">${items.length ? "Nothing in this category." : "No decisions recorded on this deployment yet."}</p>`}${f === "business" && runs ? h`<p class="hiddenrow">Hidden: ${plural(runs, "security test run")} from the judge checks. <a href="#/reports?filter=tests">Show security tests</a></p>` : ""}</section>`;
+    <section class="panel" aria-label="Activity list">${asOfLine()}${breakdown}${shown.length ? h`<div class="actwrap">${actGroups(shown, m, { openTests: f === "tests" })}</div>` : h`<p class="empty">${items.length ? "Nothing in this category." : "No decisions recorded on this deployment yet."}</p>`}${f === "business" && runs ? h`<p class="hiddenrow">Hidden: ${plural(runs, "security test run")} from the judge checks. <a href="#/reports?filter=tests">Show security tests</a></p>` : ""}</section>`;
 }
 function reportReceipts() {
   const m = model(); let paid = m.bills.filter((b) => b.state === "settled");
   if (lens() === "auditor") paid = paid.filter((b) => { const s = settleInfo(m, b.sid); return s && Math.floor(s.at / DAY) >= AUD.from && Math.floor(s.at / DAY) <= AUD.to; });
   return h`<section class="panel" aria-label="Receipts">${paid.length ? paid.map((b) => { const s = settleInfo(m, b.sid), pc = m.pub && (m.pub.commitments || []).find((x) => String(x.id) === b.sid); return h`<article class="rcpt" id="r-${b.sid}"><div class="rcpt-1"><h3>${b.name}</h3><span class="kindt">${KIND[b.mkind]}</span>${money(b.amount)}</div>
-      <dl class="ddl" style="margin-top:12px">${s ? h`<dt>Paid</dt><dd>${timeEl(s.at, fmtDateTime(s.at))} · ${txLink(s.tx, "Settlement transaction")}</dd>` : ""}<dt>Bill</dt><dd class="mono">#${b.sid}</dd><dt>Payee</dt><dd class="mono">${b.destination}</dd>${pc ? h`<dt>Commitment hash</dt><dd>${hashC(pc.commitment_hash, "commitment hash")}</dd><dt>Attestation</dt><dd>${attLink(pc.request_no)} · output ${hashC(pc.output_hash, "output hash")}</dd>` : ""}</dl>
-      <div class="formfoot"><button class="btn btn-secondary btn-sm" type="button" data-act="copy-receipt" data-id="${b.sid}">${IC.copy()}Copy receipt</button>${readOnlyLens() ? "" : pvBtn("Share with payee", "shareReceipt", "btn-sm")}</div></article>`; }) : h`<p class="empty">No paid bills yet. A receipt appears here for every settled bill.</p>`}
-    <div class="panel-b" style="border-top:1px dashed var(--line-2)"><p class="sm muted">Each receipt shows only its own line. Signed receipts that a third party can verify are ${pvTag()}</p></div></section>`;
+      <dl class="ddl" style="margin-top:12px">${s ? h`<dt>Settled</dt><dd>${timeEl(s.at, fmtDateTime(s.at))} · ${txLink(s.tx, "Settlement transaction")}</dd>` : h`<dt>Settled</dt><dd>On the testnet ledger</dd>`}<dt>Bill</dt><dd class="mono">#${b.sid}</dd><dt>Payee</dt><dd class="mono">${b.destination}</dd>${pc ? h`<dt>Commitment hash</dt><dd>${hashC(pc.commitment_hash, "commitment hash")}</dd><dt>Attestation</dt><dd>${attLink(pc.request_no)} · output ${hashC(pc.output_hash, "output hash")}</dd>` : ""}</dl>
+      <div class="formfoot"><button class="btn btn-secondary btn-sm" type="button" data-act="copy-receipt" data-id="${b.sid}">${IC.copy()}Copy receipt</button>${readOnlyLens() ? "" : pvBtn("Share with payee", "shareReceipt", "btn-sm")}</div></article>`; }) : h`<p class="empty">No settled bills yet. A receipt appears here for every settled bill.</p>`}
+    <div class="panel-b" style="border-top:1px dashed var(--line-2)"><p class="sm muted">Each receipt shows only its own line. A receipt records settlement on the testnet ledger; no tokens move on testnet, and payouts run through NEAR Intents on mainnet. Signed receipts that a third party can verify are ${pvTag()}</p></div></section>`;
 }
 function reportExport() {
   const iso = (d) => new Date(d * DAY).toISOString().slice(0, 10);
@@ -2143,15 +2222,18 @@ function intakeItems(m) {
     let kind = "admin", lead = "Document in →", rest;
     if (d.ok === false) { kind = "caught"; rest = h`refused: ${failCode(d.failure) === "E_AGENT_REVOKED" ? `${AGENT.name}’s access was revoked at the time` : humanCode(failCode(d.failure) || "transaction error").toLowerCase()}.`; }
     else if (v && v.ok === false && v.reason === "duplicate_evidence") { kind = "caught"; const o = m && m.byId[String(v.original)]; rest = h`refused: a duplicate of bill #${v.original}${o ? ` (${o.name}, ${moneyT(o.amount)})` : ""}. No obligation created.`; }
+    else if (v && v.ok === false && v.reason === "engine_error") { kind = "admin"; lead = "Engine unavailable:"; rest = h`document not processed. Resend it. Nothing was recorded or decided.`; }
+    else if (v && v.ok === false && (v.reason === "unknown_requester" || v.reason === "member_not_in_roster")) { kind = "caught"; rest = h`refused: the sender isn’t on the team roster. No obligation created.`; }
     else if (ev) { const cid = String(ev.data[0].commitment_id), b = m && m.byId[cid]; rest = h`recorded as bill #${cid}${b ? h` (${b.name}, ${money(b.amount)})` : ""}. Not reserved.${v && v.reason === "vendor_destination_mismatch" ? " Payout frozen: destination differs." : ""}`; out.push({ at, tx: d.tx, kind, lead, rest, cid, actor: d.signer }); continue; }
-    else rest = h`${v && v.reason ? humanCode(v.reason) : "recorded"}.`;
+    else { if (v && v.ok === false) kind = "caught"; rest = h`${v && v.ok === false ? "refused: " : ""}${v && v.reason ? humanCode(v.reason) : "recorded"}.`; }
     out.push({ at, tx: d.tx, kind, lead, rest, cid: null, actor: d.signer });
   }
   return out;
 }
 function reportIntake() {
   const m = model(); const items = intakeItems(m);
-  return h`<section class="panel" aria-labelledby="in-h"><div class="panel-h"><h2 id="in-h">Documents received</h2><p class="sub">Receiving a document never creates an obligation. Only an accepted bill reserves money.</p></div>${items.length ? h`<div class="actwrap">${actGroups(items, m)}</div>` : h`<p class="empty">No documents received yet.</p>`}</section>`;
+  const unseen = m ? m.bills.filter((b) => b.claimedAt == null).length : 0;
+  return h`<section class="panel" aria-labelledby="in-h"><div class="panel-h"><h2 id="in-h">Documents received</h2><p class="sub">Receiving a document never creates an obligation. Only an accepted bill reserves money.</p></div>${asOfLine()}${unseen ? h`<p class="asof">${plural(unseen, "bill")} on-chain ${unseen === 1 ? "was" : "were"} recorded after this log was bundled. <a href="#/money">See Money</a></p>` : ""}${items.length ? h`<div class="actwrap">${actGroups(items, m)}</div>` : h`<p class="empty">No documents received yet.</p>`}</section>`;
 }
 
 /* ---------- Plan & billing ---------- */
@@ -2195,13 +2277,24 @@ function setupSteps() {
   if (m) {
     const vg = vendorGroups(m), reg = vg.filter((v) => v.kind === "vendor" || v.kind === "payroll"), nw = vg.filter((v) => v.kind === "new"), mem = membersOf(m);
     steps.push({ t: `${plural(reg.length, "vendor")} and ${plural(mem.length, "team member")} registered.`, done: reg.length + mem.length > 0, proof: `${[...reg.map((v) => v.reg.name), ...mem.map((x) => x.name)].join(", ")}. New vendors: ${nw.length}.`, acts: h`<a href="#/vendors">Vendors</a><a href="#/people">People</a>` });
-    const intake = intakeItems(m), recorded = new Set(), dup = new Set();
-    for (const d of decs) { if (d.method !== "register_claim") continue; const ev = (d.events || []).find((e) => e.event === "commitment_claimed"); if (ev) recorded.add(String(ev.data[0].commitment_id)); else if (d.value && d.value.reason === "duplicate_evidence") dup.add(String(d.value.original)); }
-    steps.push({ t: `${recorded.size + dup.size} documents in, ${plural(recorded.size, "bill")} recorded, ${dup.size} duplicate refused.`, done: recorded.size > 0, proof: "Receiving a document never created an obligation.", acts: h`<a href="#/reports?tab=intake">Intake log</a>${intake.length ? "" : ""}` });
+    // Bills recorded: live from the chain. Refused and unprocessed documents: from the decision log.
+    const recorded = new Set(), why = { dup: 0, roster: 0, revoked: 0, other: 0 }; let notRun = 0;
+    for (const d of decs) {
+      if (d.method !== "register_claim") continue;
+      const ev = (d.events || []).find((e) => e.event === "commitment_claimed"), v = d.value;
+      if (ev) recorded.add(String(ev.data[0].commitment_id));
+      else if (v && v.reason === "engine_error") notRun++;
+      else if (d.ok === false) why[failCode(d.failure) === "E_AGENT_REVOKED" ? "revoked" : "other"]++;
+      else if (v && v.ok === false) why[v.reason === "duplicate_evidence" ? "dup" : v.reason === "unknown_requester" || v.reason === "member_not_in_roster" ? "roster" : "other"]++;
+    }
+    const billsN = Math.max(((p && p.commitments) || []).length, recorded.size), refusedN = why.dup + why.roster + why.revoked + why.other;
+    const whyTxt = [why.dup ? `${why.dup} duplicate` : null, why.roster ? `${why.roster} from someone not on the team` : null, why.revoked ? `${why.revoked} while ${AGENT.name} was revoked` : null, why.other ? `${why.other} other` : null].filter(Boolean).join(", ");
+    steps.push({ t: `${billsN + refusedN + notRun} documents in: ${plural(billsN, "bill")} recorded, ${refusedN} refused${notRun ? `, ${notRun} not processed` : ""}.`, done: billsN > 0,
+      proof: h`Receiving a document never created an obligation.${refusedN ? ` Refused: ${whyTxt}.` : ""}${notRun ? ` Not processed: ${notRun} while the policy engine was unavailable; resend it.` : ""}${DEMO && activityAsOf() ? ` Refusals counted from the activity log as of ${fmtDateTime(activityAsOf())}.` : ""}`, acts: h`<a href="#/reports?tab=intake">Intake log</a>` });
     steps.push({ t: `Spendable ${moneyT(m.sp)}. Runway ${m.fig.runway_days ?? "n/a"} days.`, done: true, proof: h`${eqHTML(m, "margin-bottom:8px")}${reserveStrip(m, { small: true, legend: false })}`, acts: h`<a href="#/overview">Overview</a>` });
     const firsts = m.bills.filter((b) => b.state === "settled").map((b) => ({ b, s: settleInfo(m, b.sid) })).filter((x) => x.s).sort((a, b) => a.s.at - b.s.at);
     const f = firsts[0];
-    steps.push({ t: f ? `First payout settled ${fmtDate(Math.floor(f.s.at / DAY))}: ${f.b.name}, ${moneyT(f.b.amount)}.` : "First payout not settled yet.", done: !!f, proof: h`This is where you’d pick a plan. As a design partner you don’t pay.`, acts: h`${f ? txLink(f.s.tx, "Settlement transaction") : ""}<a class="btn btn-secondary btn-sm" href="#/plan">See plans</a>` });
+    steps.push({ t: f ? `First bill settled on the ledger ${fmtDate(Math.floor(f.s.at / DAY))}: ${f.b.name}, ${moneyT(f.b.amount)}.` : "No bill settled yet.", done: !!f, proof: h`This is where you’d pick a plan. As a design partner you don’t pay.`, acts: h`${f ? txLink(f.s.tx, "Settlement transaction") : ""}<a class="btn btn-secondary btn-sm" href="#/plan">See plans</a>` });
   }
   return steps;
 }
@@ -2228,6 +2321,8 @@ const QS = () => [
   { n: 9, key: "alerts", q: "Where should alerts go: Telegram, email or both?", field: "Alert channels" },
   { n: 10, key: "never", q: `Anything ${AGENT.name} must never do?`, field: "Never rules" },
 ];
+// One row per payee (by payee id), never one per payment: four payroll payments are still one payee.
+const rosterOf = (m) => (m ? [...new Map(m.bills.filter((b) => b.mkind === "payroll" || b.vkind === "team").sort((a, b) => b.id - a.id).map((b) => [b.vid, b])).values()].sort((a, b) => (a.mkind === "payroll" ? 0 : 1) - (b.mkind === "payroll" ? 0 : 1) || a.name.localeCompare(b.name)) : []);
 function ivInit() {
   const p = S.public.data, pol = S.policy.data, m = S.report.data ? model() : null;
   const live = { max_auto_pay: pol ? String(pol.max_auto_pay) : "", min_runway_days: pol ? String(pol.min_runway_days) : "", cooling_off_hours: pol ? String(pol.cooling_off_hours) : "" };
@@ -2261,7 +2356,7 @@ function ivBody() {
     if (q.key === "max_auto_pay" || q.key === "min_runway_days") ctl = h`<div class="inp"><label class="vh" for="iv-in">${q.field}</label><input class="ivn" id="iv-in" name="${q.key}" type="number" inputmode="numeric" min="${q.key === "max_auto_pay" ? 1 : 0}" max="${q.key === "max_auto_pay" ? "" : 720}" step="1" value="${a[q.key]}" aria-describedby="iv-cur iv-err"><span class="u">${q.key === "max_auto_pay" ? "USDC" : "days"}</span></div><p class="sm muted" id="iv-cur">Current policy: ${q.key === "max_auto_pay" ? moneyT(S.policy.data.max_auto_pay) : plural(S.policy.data.min_runway_days, "day")}. Feeds the real policy diff.</p><p class="f-err" id="iv-err" role="alert" hidden></p>`;
     if (q.key === "recurring") { const subs = m ? [...new Map(m.bills.filter((b) => b.mkind === "subscription").map((b) => [b.vid, b])).values()] : []; ctl = h`<ul class="lrows">${subs.map((b) => h`<li><span>${b.name}</span>${money(b.amount)}<span class="m">${b.recur || "Recurring"}${b.due ? `, day ${new Date(b.due * DAY).getUTCDate()} of the month` : ""}</span></li>`)}</ul><p class="sm muted">From your live bills. Editing the list here is ${pvTag()}</p>
       <label for="iv-in" style="font-weight:500;margin-top:8px">Cooling-off after a payout change</label><div class="inp"><input class="ivn" id="iv-in" name="cooling_off_hours" type="number" inputmode="numeric" min="0" max="720" step="1" value="${a.cooling_off_hours}" aria-describedby="iv-err"><span class="u">hours</span></div><p class="f-err" id="iv-err" role="alert" hidden></p>`; }
-    if (q.key === "roster") { const ros = m ? [...m.bills.filter((b) => b.mkind === "payroll"), ...membersOf(m).map((x) => x.bills[0])] : []; ctl = h`<ul class="lrows">${ros.map((b) => h`<li><span>${b.name}</span><span class="mono sm">${(b.chain || "").toUpperCase()} · ${symbol()}</span><span class="m mono">${b.destination}</span></li>`)}</ul><p class="sm muted">Editing routes here is ${pvTag()}</p>`; }
+    if (q.key === "roster") { const ros = rosterOf(m); ctl = h`<ul class="lrows">${ros.map((b) => h`<li><span>${b.name}${b.mkind === "payroll" ? " (one aggregate payee)" : ""}</span><span class="mono sm">${(b.chain || "").toUpperCase()} · ${symbol()}</span><span class="m mono">${b.destination}</span></li>`)}</ul><p class="sm muted">From the signed roster. Payroll is one aggregate payee, paid monthly. Per-person and weekly payroll, and editing routes here, are ${pvTag()}</p>`; }
     if (q.key === "alerts") ctl = h`<label class="toggle"><input type="checkbox" name="tg"${a.alerts.tg ? raw(" checked") : ""}>Telegram <span class="sample sm">@sample_fixture_ops</span></label><label class="toggle"><input type="checkbox" name="em"${a.alerts.em ? raw(" checked") : ""}>Email <span class="sample sm">sample-owner@example.com</span></label><p class="sm muted">Saved in this browser. Delivery is ${pvTag()}</p>`;
     if (q.key === "never") ctl = h`<p class="sm" style="color:var(--ink-2)">Already impossible, enforced by the contract: change its own limits · withdraw funds · pay a changed destination without a Signer and a cooling-off period · act after an owner revokes it.</p><label class="vh" for="iv-in">Anything else</label><textarea class="txt" id="iv-in" name="never" placeholder="For example: never pay a vendor on its first invoice without asking">${a.never}</textarea><p class="sm muted">Saved in this browser. The contract doesn’t enforce extra rules yet.</p>`;
     card = h`<form id="ivform" class="iv-card" novalidate><div class="iv-top">${avatar()}<span>${AGENT.name}</span><span class="of">Question ${q.n} of 10</span></div><div class="prog" role="progressbar" aria-label="Interview progress" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${q.n}" aria-valuetext="Question ${q.n} of 10"><i style="width:${q.n * 10}%"></i></div>
@@ -2274,7 +2369,7 @@ function ivBody() {
     if (k === "recurring") return `${plural(m ? new Set(m.bills.filter((b) => b.mkind === "subscription").map((b) => b.vid)).size : 0, "service")} · ${a.cooling_off_hours} h`;
     if (k === "owners") return `${(p.owners || []).length} key`; if (k === "signers") return `${(p.signers || []).length} Signer · ${p.threshold || 1} of ${(p.signers || []).length}`;
     if (k === "scope") return a.scope === "payroll" ? "Payroll + bills" : "Bills only"; if (k === "alerts") return [a.alerts.tg && "Telegram", a.alerts.em && "Email"].filter(Boolean).join(" + ") || "None";
-    if (k === "roster") return m ? `${m.bills.filter((b) => b.mkind === "payroll").length + membersOf(m).length} payees` : ""; if (k === "never") return a.never ? "1 rule" : "None added";
+    if (k === "roster") return m ? plural(rosterOf(m).length, "payee") : ""; if (k === "never") return a.never ? "1 rule" : "None added";
     if (k === "profile") return a.profile.startsWith("Sample") ? "Sample profile" : a.profile;
     return a[k];
   };
@@ -2365,7 +2460,7 @@ function policyForm() {
 }
 
 /* ---------- Public view ---------- */
-const stateWord = (s) => ({ claimed: ["Received", "quiet"], accepted: ["Reserved", "good"], settled: ["Paid", "paid"], closed: ["Closed", "quiet"] })[s] || ["Recorded", "quiet"];
+const stateWord = (s) => ({ claimed: ["Received", "quiet"], accepted: ["Reserved", "good"], settled: ["Settled", "paid"], closed: ["Closed", "quiet"] })[s] || ["Recorded", "quiet"];
 const CHANGE_SENT = { suspended_destination_mismatch: "frozen, waiting for a Signer", approved_cooling_off: "approved, in cooling-off", rejected: "rejected" };
 const flagsFromBits = (f) => ({ dest: !!(f & 8), inject: !!(f & 4), newOver: !!(f & 2), prov: !!(f & 1) });
 VIEWS.ledger = {
@@ -2397,15 +2492,18 @@ VIEWS.ledger = {
 /* ---------- Ask Banto: a persistent dock, plus the #/ask page ---------- */
 const CHAT = { msgs: [], autoQ: null, busy: false };
 const SUGGEST = { // every chip here is answered by the shared chat intents (scripts/lib/chat.mjs); tested on both paths
-  overview: ["Why was the 400 payment blocked?", "What renews next month?", "Can we afford a contractor at 2,000 a month?", "Any payout changes?"],
+  overview: ["Why was the 400 payment blocked?", "Was Ana reimbursed?", "What renews next month?", "Can we afford a contractor at 2,000 a month?", "Any payout changes?"],
   approvals: ["Why is the 900 payment waiting?", "Any payout changes?", "What is spendable?"],
-  money: ["What renews next month?", "What is reserved?", "List bills"],
-  vendors: ["Any payout changes?", "Why is the 900 payment waiting?"],
+  money: ["Has Railway been paid?", "What renews next month?", "What is reserved?", "List bills"],
+  vendors: ["Any payout changes?", "Has Railway been paid?", "Why is the 900 payment waiting?"],
   policy: ["Can we afford a contractor at 2,000 a month?", "What is spendable?", "Why was the 400 payment blocked?"],
   alerts: ["Any payout changes?", "What renews next month?", "What is spendable?"],
   plan: ["What renews next month?", "Can we afford a contractor at 2,000 a month?"],
+  people: ["Was Ana reimbursed?", "Has payroll been paid?", "What did we pay Ana?"],
+  reports: ["Was Ana reimbursed?", "Why was the 400 payment blocked?", "List bills"],
+  member: ["Was Ana reimbursed?", "What did we pay Ana?"],
 };
-const suggestFor = () => SUGGEST[cur && SUGGEST[cur.view] ? cur.view : "overview"];
+const suggestFor = () => (lens() === "member" ? SUGGEST.member : SUGGEST[cur && SUGGEST[cur.view] ? cur.view : "overview"]);
 const REASON_LABEL = Object.fromEntries(Object.entries(REASONS).map(([k, v]) => [k, v.label]));
 function fmtAnswer(text) {
   let s = esc(text);
@@ -2473,7 +2571,7 @@ function billDrawer(id) {
   if (!b) return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">Bill #${id}</h2></div><p class="dr-sec">This bill isn’t on this treasury. <a href="#/money">See all money</a></p>`;
   if (lens() === "member" && b.vid !== "member:ana") return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">Not visible to members</h2></div><p class="dr-sec">Members see their own payments only. <a href="#/overview">Open My pay</a></p>`;
   const idx = { claimed: 0, accepted: 1, settled: 2, closed: 2 }[b.state] ?? 0;
-  const steps = ["Received", "Reserved", "Paid"].map((t, i) => [t, i <= idx ? "done" : i === idx + 1 ? "now" : ""]);
+  const steps = ["Received", "Reserved", "Settled"].map((t, i) => [t, i <= idx ? "done" : i === idx + 1 ? "now" : ""]);
   const w = b.waitsOn, il = ISSUES.filter(([k]) => b.flags[k]);
   const pub = m.pub && (m.pub.commitments || []).find((x) => String(x.id) === b.sid);
   const acts = activityItems(m).filter((i) => i.cid != null && String(i.cid) === b.sid);
@@ -2493,15 +2591,15 @@ function billDrawer(id) {
   const ba = billActions(b, "drw");
   return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">${b.name}</h2><div class="dr-tags"><span>${kindLabel(b)}</span>${b.isNew ? h`<span>New vendor</span>` : ""}</div>
       <div class="dr-amt">${money(b.amount)}${stOf(b)}</div></div>
-    <section class="dr-sec" aria-labelledby="ds-tl"><h3 id="ds-tl">Progress</h3><ol class="tl">${steps.map(([t, c]) => h`<li class="${c}">${t}${c === "done" ? raw('<span class="vh"> (done)</span>') : c === "now" ? raw('<span class="vh"> (next)</span>') : ""}</li>`)}</ol>${w ? h`<p class="tl-note">Waiting on ${w.labelHTML}: ${w.task}.</p>` : b.state === "accepted" ? h`<p class="tl-note">Paid automatically when due, by ${AGENT.name}.</p>` : ""}</section>
-    ${b.state !== "settled" && b.state !== "closed" ? h`<section class="dr-sec" aria-labelledby="ds-rs"><h3 id="ds-rs">${ghost ? "Where it would sit if accepted" : "Where this bill sits"}</h3>${reserveStrip(m, { highlight: b.state === "accepted" ? b.sid : null, ghost, small: true, legend: false })}<p class="tl-note">${ghost ? (m.sp - b.amount < 0 ? `It needs its own envelope: accepting it would leave ${moneyT(m.sp - b.amount)} spendable.` : `Accepting it leaves ${moneyT(m.sp - b.amount)} spendable.`) : b.state === "accepted" ? `Its envelope holds ${moneyT(b.amount)} until it’s paid.` : ""}</p></section>` : ""}
-    ${ba ? h`<section class="dr-sec" aria-labelledby="ds-act"><h3 id="ds-act">${b.state === "accepted" ? "Owner action" : "Manager action"}</h3>${ba}</section>` : ""}
+    <section class="dr-sec" aria-labelledby="ds-tl"><h3 id="ds-tl">Progress</h3><ol class="tl">${steps.map(([t, c]) => h`<li class="${c}">${t}${c === "done" ? raw('<span class="vh"> (done)</span>') : c === "now" ? raw('<span class="vh"> (next)</span>') : ""}</li>`)}</ol>${w ? h`<p class="tl-note">Waiting on ${w.labelHTML}: ${w.task}.</p>` : b.state === "accepted" ? h`<p class="tl-note">Its money is reserved until ${AGENT.name} settles it within policy. In this demo, settlement runs as a backend command; a due-date scheduler is preview.</p>` : ""}</section>
+    ${b.state !== "settled" && b.state !== "closed" ? h`<section class="dr-sec" aria-labelledby="ds-rs"><h3 id="ds-rs">${ghost ? "Where it would sit if accepted" : "Where this bill sits"}</h3>${reserveStrip(m, { highlight: b.state === "accepted" ? b.sid : null, ghost, small: true, legend: false })}<p class="tl-note">${ghost ? (m.sp - b.amount < 0 ? `It needs its own envelope: accepting it would leave ${moneyT(m.sp - b.amount)} spendable.` : `Accepting it leaves ${moneyT(m.sp - b.amount)} spendable.`) : b.state === "accepted" ? `Its envelope holds ${moneyT(b.amount)} until it’s settled.` : ""}</p></section>` : ""}
+    ${ba ? h`<section class="dr-sec" aria-labelledby="ds-act"><h3 id="ds-act">${b.state === "accepted" ? "Owner action" : "Signer action"}</h3>${ba}</section>` : ""}
     ${il.length ? h`<section class="dr-sec" aria-labelledby="ds-is"><h3 id="ds-is">Issues</h3><ul class="issl">${il.map(([k, t]) => h`<li><b>${t}.</b> ${issueSentence(k, b, m)}</li>`)}</ul></section>` : ""}
     <section class="dr-sec" aria-labelledby="ds-de"><h3 id="ds-de">Destination</h3>${b.proposed ? compareBoxes(b) : h`<div class="box"><p class="box-t">Registered destination</p><p class="box-v" translate="no">${b.destination}</p><p class="box-c">${(b.chain || "").toUpperCase()} · ${symbol()}</p></div>`}</section>
     <section class="dr-sec" aria-labelledby="ds-dt"><h3 id="ds-dt">Details</h3><dl class="ddl">${details.map(([k, v]) => h`<dt>${k}</dt><dd>${v}</dd>`)}</dl></section>
     <section class="dr-sec pv" style="padding:12px 16px;border-radius:8px" aria-labelledby="ds-rt"><h3 id="ds-rt" style="display:flex;gap:8px;justify-content:space-between">Route ${pvTag()}</h3><p class="sample sm">If a route is unavailable or costs more than usual, ${AGENT.name} tells you instead of taking a worse one.</p></section>
     ${acts.length ? h`<section class="dr-sec" aria-labelledby="ds-ac"><h3 id="ds-ac">Activity for this bill</h3><ul class="acts" style="padding:0">${groupItems(acts).map((i) => actItem(Object.assign({}, i, { cid: null }), m))}</ul></section>` : ""}
-    ${s ? h`<section class="dr-sec" aria-labelledby="ds-rc"><h3 id="ds-rc">Receipt</h3><p class="sm" style="color:var(--ink-2)">Paid, settling: sent ${timeEl(s.at, fmtDateTime(s.at))} on NEAR testnet · ${txLink(s.tx)}. The balance catches up when payouts are reconciled.</p><div class="formfoot"><button class="btn btn-secondary btn-sm" type="button" data-act="copy-receipt" data-id="${b.sid}">${IC.copy()}Copy receipt</button></div></section>` : ""}
+    ${s ? h`<section class="dr-sec" aria-labelledby="ds-rc"><h3 id="ds-rc">Receipt</h3><p class="sm" style="color:var(--ink-2)">Settled on the ledger ${timeEl(s.at, fmtDateTime(s.at))} · ${txLink(s.tx)}. Escrow released, nonce burned, receipt on-chain.</p><p class="sm muted" style="margin-top:4px">Testnet: no tokens move; payouts run through NEAR Intents on mainnet.</p><div class="formfoot"><button class="btn btn-secondary btn-sm" type="button" data-act="copy-receipt" data-id="${b.sid}">${IC.copy()}Copy receipt</button></div></section>` : b.state === "settled" ? h`<section class="dr-sec" aria-labelledby="ds-rc"><h3 id="ds-rc">Receipt</h3><p class="sm" style="color:var(--ink-2)">Settled on the testnet ledger. Its settlement transaction is in the treasury’s on-chain history${DEMO ? "; this hosted copy’s activity log predates it" : ""}.</p><p class="sm muted" style="margin-top:4px">Testnet: no tokens move; payouts run through NEAR Intents on mainnet.</p></section>` : ""}
     ${pub ? h`<details class="disc dr-sec" data-k="proof"><summary>${IC.chev()}On-chain proof</summary><dl class="ddl" style="margin-top:8px">
       <dt>Commitment hash</dt><dd>${hashC(pub.commitment_hash, "commitment hash")}</dd><dt>Evidence hash</dt><dd>${hashC(pub.evidence_hash, "evidence hash")}</dd>
       <dt>Attestation</dt><dd>${attLink(pub.request_no)}</dd>${pub.settled_nonce ? h`<dt>Settled nonce</dt><dd>${hashC(pub.settled_nonce, "settled nonce")}</dd>` : ""}</dl></details>` : ""}
@@ -2515,7 +2613,7 @@ function vendorDrawer(vid) {
   const cb = v.changeBill, ch = cb && cb.change;
   return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">${v.reg.name}</h2><div class="dr-tags"><span>${vSub(v)}</span></div><div class="dr-amt">${vSt(v)}</div></div>
     <section class="dr-sec" aria-labelledby="vs-d"><h3 id="vs-d">Registered destination</h3><div class="box"><p class="box-v" translate="no">${v.reg.destination}${copyBtn(v.reg.destination, "payout destination")}</p><p class="box-c">Pays in ${(v.reg.chain || "").toUpperCase()} · ${symbol()}</p></div></section>
-    <section class="dr-sec" aria-labelledby="vs-t"><h3 id="vs-t">Totals</h3><dl class="ddl"><dt>Open</dt><dd>${money(v.open)}</dd><dt>Paid</dt><dd>${money(v.paid)}</dd></dl></section>
+    <section class="dr-sec" aria-labelledby="vs-t"><h3 id="vs-t">Totals</h3><dl class="ddl"><dt>Open</dt><dd>${money(v.open)}</dd><dt>Settled</dt><dd>${money(v.paid)}</dd></dl></section>
     ${cb ? h`<section class="dr-sec" aria-labelledby="vs-c"><h3 id="vs-c">Payout destination change</h3>${compareBoxes(cb)}${ch ? h`<p class="tl-note">${cap(CHANGE_SENT[ch.settlement_status || ch.status] || humanCode(ch.settlement_status || ch.status || "recorded"))}.${ch.decided_by ? h` Decided by ${roleOf(ch.decided_by)} (${acct(ch.decided_by)})${ch.decided_at ? ` on ${fmtDateTime(nsToMs(ch.decided_at))}` : ""}.` : ""}</p>` : ""}</section>` : ""}
     <section class="dr-sec" aria-labelledby="vs-b"><h3 id="vs-b">Bills</h3><ul class="rows" style="padding:0">${[...v.bills].sort(billSort).map((b) => h`<li><a class="row" href="#/bills/${b.sid}"><span class="row-n">Bill #${b.sid}${b.due ? `, due ${fmtDate(b.due)}` : ""}</span><span class="row-a">${money(b.amount)}</span><span class="row-m">${stOf(b)}</span></a></li>`)}</ul></section>
     <section class="dr-sec pv" style="padding:12px 16px;border-radius:8px" aria-labelledby="vs-n"><h3 id="vs-n" style="display:flex;gap:8px;justify-content:space-between">Network warnings ${pvTag()}</h3><p class="sample sm">No warnings from other Takara businesses. The shared registry stays private and only ever warns. <button class="linkbtn" type="button" data-act="how" data-how="registry">How this will work</button></p></section>`;
@@ -2528,7 +2626,7 @@ function personDrawer(pid) {
   const paid = x.bills.filter((b) => b.state === "settled"), open = x.bills.filter((b) => b.state === "claimed" || b.state === "accepted"), rec = x.bills.filter((b) => b.recur && b.state !== "settled");
   return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">${x.name}</h2><div class="dr-tags"><span>Member</span><span>Team member</span></div></div>
     <section class="dr-sec"><h3>Payout</h3><div class="box"><p class="box-v" translate="no">${x.dest}${copyBtn(x.dest, "payout address")}</p><p class="box-c">${(x.chain || "").toUpperCase()} · ${symbol()}</p></div></section>
-    <section class="dr-sec"><h3>Payments</h3>${paid.length ? h`<ul class="rows" style="padding:0">${paid.map((b) => { const s = settleInfo(m, b.sid); return h`<li><a class="row" href="#/bills/${b.sid}"><span class="row-n">${KIND[b.mkind]}</span><span class="row-a">${money(b.amount)}</span><span class="row-m">${s ? `Paid ${fmtDateTime(s.at)}` : "Paid"}</span></a></li>`; })}</ul>` : h`<p class="muted">No payments yet.</p>`}</section>
+    <section class="dr-sec"><h3>Payments</h3>${paid.length ? h`<ul class="rows" style="padding:0">${paid.map((b) => { const s = settleInfo(m, b.sid); return h`<li><a class="row" href="#/bills/${b.sid}"><span class="row-n">${KIND[b.mkind]}</span><span class="row-a">${money(b.amount)}</span><span class="row-m">${s ? `Settled ${fmtDateTime(s.at)}` : "Settled"}</span></a></li>`; })}</ul>` : h`<p class="muted">No payments yet.</p>`}</section>
     <section class="dr-sec"><h3>Open</h3><dl class="ddl"><dt>Open claims</dt><dd>${open.length}</dd><dt>Recurring commitments</dt><dd>${rec.length}</dd></dl></section>
     <section class="dr-sec"><h3>Actions</h3><div class="formfoot" style="margin-top:0">${pvBtn("Approve address", "approveAddress", "btn-sm")}${pvBtn("Change address", "changeAddress", "btn-sm")}<button class="btn btn-pv btn-sm" type="button" data-act="offboard" data-id="${x.id}">Offboard<span class="pvtag">Preview</span></button></div></section>
     <p class="dr-sec note">Members’ pay is visible to owners and Signers only. Other members never see it.</p>`;
@@ -2593,7 +2691,8 @@ const HOW = {
   email: ["Forward an email", "Every company gets an address like bills@fixtureco.takara.example. A forwarded invoice becomes one claimed bill.", "Email intake runs today as a backend command over .eml files, with the sender’s mail-server signature checked.", 4],
   upload: ["Upload a file", "Drop a PDF or image; it becomes one claimed bill.", "The same intake path the email command uses today.", 4],
   form: ["Fill a form", "A manager can enter anything by hand, including things the agent never saw.", "Recording a bill on-chain is agent-only in this contract.", 4],
-  invite: ["Invite people", "Invite by email or link. The member sets their own payout chain, token and address, a Signer approves it once, and a small test transfer confirms it.", "Ana is already a payee in the signed roster.", 1],
+  invite: ["Invite people", "Invite by email or link. The member sets their own payout chain, token and address, a Signer approves it once, and a small test transfer confirms it.", "The team roster lives inside the signed policy, so adding a teammate today means a Signer signs a new policy version. Ana is already on the roster.", 1],
+  payrollSetup: ["Set up payroll", "Pay each person on their own schedule, weekly or monthly, each to their own address, privately through NEAR Intents.", "Payroll runs today as one aggregate payee in the signed roster, on a monthly cycle, and its bills are accepted and settled within policy on the testnet ledger. Per-person and weekly schedules are not built yet.", 2],
   importPeople: ["Import people from CSV", "Upload a CSV; Takara checks it against the registry (duplicate destination, unknown chain, missing token) and shows what would change before anything applies.", "The roster lives inside the signed policy today.", 3],
   importVendors: ["Import vendors from CSV", "Same as people: validated against the registry, shown as a change you approve.", "The sealed vendor registry is live today.", 3],
   addVendor: ["Add a vendor", "Name, payout destination, chain and token. New vendors above the auto limit always land in Approvals first.", "New-vendor checks and the payout-change freeze are live today.", 3],
@@ -2603,9 +2702,9 @@ const HOW = {
   quickbooks: ["Export to QuickBooks", "Push commitments, vendors and receipts to QuickBooks.", "CSV export works today.", 8],
   xero: ["Export to Xero", "Push commitments, vendors and receipts to Xero.", "CSV export works today.", 8],
   auditorGrant: ["Grant auditor access", "Give an accountant read-only access to a date range.", "The Auditor lens shows exactly what they would see.", 8],
-  choosePlan: ["Choose a plan", "Pick 1, 3 or 12 months. Paid from your treasury as a bill you accept, so it shows in Approvals like any other.", "Design partners use Takara free during the pilot.", 9],
+  choosePlan: ["Choose a plan", "Pick 1, 3 or 12 months. Paid from your treasury as a bill you accept, so it shows in Approvals like any other.", "Nothing is charged in this demo. Design partners use Takara free during the pilot, and the lapse simulator on this page runs over your real bills.", 9],
   alertDelivery: ["Alert delivery", "Telegram, email or both, per company and per person. Payroll alerts never include amounts outside the app.", "Alert content is computed live on the Alerts page today.", 6],
-  submitClaim: ["Submit a claim", "A member forwards a receipt and is paid back on their own chain, privately.", "Ana’s 400 USDC reimbursement was paid on testnet.", 1],
+  submitClaim: ["Submit a claim", "A member forwards a receipt and is paid back on their own chain, privately.", "Ana’s reimbursements were recorded from forwarded receipts and settled on the testnet ledger.", 1],
   treasuryDeploy: ["Create a treasury", "In the product, setup runs before any contract exists; the treasury is deployed at your first payout.", "This treasury was deployed from the command line (about 3.6 NEAR of storage).", 1],
   registry: ["Shared vendor registry", "Keyed hashes inside the enclave let one business warn another about a changed destination. A warning signal only, never auto-verification.", "Each treasury already keeps a sealed, signed registry of its own.", 10],
 };
@@ -2744,8 +2843,8 @@ function paintSheet() {
 const scopeDlg = $("#scope"); let scopeOpener = null;
 function openScope(from) {
   const ok = IC.check(14), pv = IC.dot(14);
-  const LIVE = ["The treasury contract on NEAR testnet, read live", "Reserved, spendable and runway from the engine report: in treasury − paid, settling − reserved", "Approve, reject and payout-change decisions, signed in a Signer’s own wallet", "Policy changes: the diff, the browser hash check and the wallet signature", "Owner controls: pause, revoke Banto, recover funds", "Ask Banto, read-only, answering from the ledger", "Activity, receipts (unsigned) and CSV export", "The public view, exactly as anyone can read it"];
-  const PREVIEW = ["Adding money by form or upload, and invoice email in the app", "Invites, CSV import, payout-address approval and offboarding", "Alert delivery to Telegram and email", "Plans and billing", "Auditor access grants and QuickBooks or Xero export", "Signed receipts, member claims, escalation and routing", "The shared vendor registry across businesses"];
+  const LIVE = ["The treasury contract on NEAR testnet, read live", "Reserved, spendable and runway from the engine report: in treasury − settled − reserved", "Approve, reject and payout-change decisions, signed in a Signer’s own wallet", "Policy changes: the diff, the browser hash check and the wallet signature", "Owner controls: pause, revoke Banto, recover funds", "Ask Banto, read-only, answering from the ledger", "Activity, receipts (unsigned) and CSV export", "The public view, exactly as anyone can read it"];
+  const PREVIEW = ["Adding money by form or upload, and invoice email in the app", "Adding teammates from the app (today a Signer signs a new policy version), invites, CSV import, payout-address approval and offboarding", "Payroll setup, per-person and weekly payroll (today payroll is one aggregate payee, monthly)", "A due-date scheduler (settlement runs as a backend command in this demo)", "Token movement on testnet (settlement is recorded on the ledger; payouts run through NEAR Intents on mainnet)", "Alert delivery to Telegram and email", "Buying a plan, and billing", "Auditor access grants and QuickBooks or Xero export", "Signed receipts, member claims, escalation and routing", "The shared vendor registry across businesses"];
   $("#scope-body").innerHTML = part(h`<h2 id="scope-title" tabindex="-1">Demo scope</h2><p class="lead">A fictional company on NEAR testnet. tUSDC is a test token with no value.</p>
     <h3>Live in this demo</h3><ul>${LIVE.map((x) => h`<li>${ok}<span>${x}</span></li>`)}</ul>
     <h3>Preview, marked ${pvTag()} on the page</h3><ul class="pvl">${PREVIEW.map((x) => h`<li>${pv}<span>${x}</span></li>`)}</ul>
@@ -2990,13 +3089,15 @@ function closeDialogs() { // the wallet chooser sits under the top layer: close 
 }
 // A light pre-sheet gives the wallet chooser context: which account does what.
 function openPreSheet(need, from) {
-  if (!window.TW) return toast("Wallets are unavailable on this page. A manager can still use the NEAR CLI.");
+  if (!window.TW) return toast("Wallets are unavailable on this page. A Signer can still use the NEAR CLI.");
   const p = S.public.data || {};
-  const mgr = h`<li><span class="r">Manager</span><span class="mono">${(p.signers || []).join(", ") || "Signer"}</span><span class="w">Approve or reject bills and payout changes, sign policy.</span></li>`;
-  const own = h`<li><span class="r">Owner</span><span class="mono">${(p.owners || []).join(", ") || "owner"}</span><span class="w">Pause, revoke ${AGENT.name}, recover funds, release a reservation.</span></li>`;
-  $("#pre-body").innerHTML = part(h`<h2 id="pre-title" tabindex="-1">Connect a wallet</h2><p class="lead">Connect the Signer to approve, or the owner to pause, revoke or recover.</p>
+  const sigA = (p.signers || [])[0] || "signer.takara-ai-hq.testnet", ownA = (p.owners || [])[0] || "takara-ai-hq.testnet";
+  const mgr = h`<li${need !== "owner" ? raw(' class="need"') : ""}><span class="r">For approvals: the Signer</span><span class="mono" translate="no">${sigA}</span><span class="w">Approve or reject bills and payout changes, sign policy changes.</span></li>`;
+  const own = h`<li${need === "owner" ? raw(' class="need"') : ""}><span class="r">For owner actions: the owner</span><span class="mono" translate="no">${ownA}</span><span class="w">Pause or resume, revoke ${AGENT.name}, recover funds, release a reservation.</span></li>`;
+  $("#pre-body").innerHTML = part(h`<h2 id="pre-title" tabindex="-1">Connect a wallet</h2><p class="lead">${need === "owner" ? h`Owner actions need ${acct(ownA)} on NEAR testnet.` : h`Approvals need ${acct(sigA)} on NEAR testnet.`}</p>
     <ul class="pre-accts">${need === "owner" ? h`${own}${mgr}` : h`${mgr}${own}`}</ul>
-    <p class="sm muted" style="margin-top:12px">Anyone else can connect to look around; the contract refuses their actions. Signing in adds no key, so every action asks your wallet first.</p>
+    <p class="sm" style="margin-top:12px;color:var(--ink-2)">Works on testnet with Meteor, MyNearWallet or Intear in the browser, or the NEAR CLI if the key lives in your terminal keychain.</p>
+    <p class="sm muted" style="margin-top:8px">Any other account can connect to look around; the contract refuses its actions. Signing in adds no key, so every action asks your wallet first.</p>
     <div class="dfoot"><button class="btn btn-secondary" type="button" data-act="pre-close">Not now</button><button class="btn btn-primary" type="button" data-act="pre-go">${IC.wallet()}Choose wallet</button></div>`);
   preDlg._from = from || document.activeElement;
   if (!preDlg.open) preDlg.showModal();
@@ -3004,8 +3105,11 @@ function openPreSheet(need, from) {
 }
 preDlg.addEventListener("click", (e) => { if (e.target === preDlg) { INTENT = null; preDlg.close(); } });
 preDlg.addEventListener("cancel", () => { INTENT = null; });
+// "Not now", Escape or a backdrop click hands focus back to the button that opened the sheet (not when the chooser opens next).
+preDlg.addEventListener("close", () => { const f = preDlg._from; preDlg._from = null; if (!preDlg._going && f && f.isConnected) f.focus(); preDlg._going = false; });
 async function connectWallet() {
-  if (!window.TW) return toast("Wallets are unavailable on this page. A manager can still use the NEAR CLI.");
+  if (!window.TW) return toast("Wallets are unavailable on this page. A Signer can still use the NEAR CLI.");
+  if (preDlg.open) preDlg._going = true;
   closeDialogs();
   try { await window.TW.connect(); }
   catch (e) { INTENT = null; const m = String((e && e.message) || e || ""); if (!/reject|cancel|closed/i.test(m)) toast(`Couldn’t connect: ${m}`); }
@@ -3148,6 +3252,8 @@ async function sendTx(method, args, onHash) {
   const spec = TREASURY_ACTIONS[method];
   if (!spec || !window.TW) return { kind: "error", message: "not an allowed action" };
   const signer = WALLET.accountId, note = NEXT_NOTE; NEXT_NOTE = null;
+  const m0 = model(), kb = m0 && args && args.commitment_id != null ? m0.byId[String(args.commitment_id)] : null; // a closed bill leaves the report: keep its name for Alerts
+  const bill = kb ? { name: kb.name, amount: kb.amount, mkind: kb.mkind, recur: kb.recur, state: kb.state } : null;
   store.set("takara.pendingTx", JSON.stringify({ method, args, at: Date.now() }), "session");
   let r;
   try { r = await window.TW.call(method, args, spec, onHash); } catch (e) { r = { kind: "error", message: String((e && e.message) || e) }; }
@@ -3155,7 +3261,7 @@ async function sendTx(method, args, onHash) {
   r.signer = signer;
   if (r.hash && (r.kind === "done" || r.kind === "refused")) {
     if (note) { SAVED_REASONS[r.hash] = note; store.set("takara.reasons", JSON.stringify(SAVED_REASONS), "session"); }
-    SESSION_TX.unshift({ at: new Date().toISOString(), tx: r.hash, signer, contract: TREASURY_ID, method, ok: r.kind === "done", failure: r.kind === "refused" ? r.code : null, value: r.value || null, events: (r.events || []).filter((e) => e.standard === "takara-ai"), session: true, note });
+    SESSION_TX.unshift({ at: new Date().toISOString(), tx: r.hash, signer, contract: TREASURY_ID, method, ok: r.kind === "done", failure: r.kind === "refused" ? r.code : null, value: r.value || null, events: (r.events || []).filter((e) => e.standard === "takara-ai"), session: true, note, bill });
     if (!DEMO) api("/api/decisions/record", { tx: r.hash, signer }).then(() => load("decisions", { quiet: true })).catch(() => { /* the session list still shows it */ });
     M = null;
   }
@@ -3378,12 +3484,13 @@ const RPC = "https://rpc.testnet.fastnear.com";
 const TREASURY = "treasury.takara-ai-hq.testnet";
 // Filtered copy of hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069 repository/manifest.json.
 // Executors pinned to commits where one exists (Meteor and Intear can't be). Bump -takara.N when an executor URL changes.
-const WALLET_MANIFEST = { version: "takara-1", wallets: [
+// Shortlist 2026-11-13 (docs/wallet-connect-plan.md): only wallets that sign in and sign function calls on NEAR
+// testnet and suit a recorded browser demo, recommended first. Nightly (extension only, blank without it) and
+// Ledger (hardware) were removed. NEAR CLI stays last, for an operator whose key lives in the terminal keychain.
+const WALLET_MANIFEST = { version: "takara-2", wallets: [
   {"id":"meteor-wallet","name":"Meteor Wallet","icon":"https://raw.githubusercontent.com/Meteor-Wallet/meteor_wallet_sdk/main/assets/meteor-logo-svg.svg","description":"The most simple and secure wallet to manage your crypto, access DeFi, and explore Web3","website":"https://meteorwallet.app/","version":"1.1.1-takara.1","executor":"https://raw.githubusercontent.com/Meteor-Wallet/meteor_wallet_sdk/data-storage/storage/meteor-near-connect-latest.js","type":"sandbox","features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"signInWithFunctionCallKey":true,"signDelegateActions":true,"mainnet":true,"testnet":true},"platform":{"web":"https://wallet.meteorwallet.app","chrome":"https://chromewebstore.google.com/detail/meteor-wallet/pcndjhkinnkaohffealmlmhaepkpmgkb","android":"https://play.google.com/store/apps/details?id=app.meteorwallet.v2","ios":"https://apps.apple.com/us/app/meteor-wallet/id6739558223"},"permissions":{"storage":true,"allowsOpen":["https://chromewebstore.google.com","https://wallet.meteorwallet.app","https://meteorwallet.app","meteorwallet://","meteorwalletdev://"],"external":["meteorCom","meteorComV2"]}},
-  {"id":"intear-wallet","name":"Intear Wallet","icon":"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='49.152' height='49.152' viewBox='0 0 36.864 36.864' fill='%230079fb'><path d='M18.487 32.306c-4.599.067-8.487-3.315-9.181-7.846-.278-1.81.068-3.077.628-4.791 1.403-4.291 3.971-8.695 6.427-12.51l.949-1.478c.309-.484.487-1.03 1.115-1.125.512.052.64.423.897.807 2.484 3.706 8.36 13.272 8.334 17.704-.029 5.044-4.068 9.27-9.169 9.238zm-.063-25.712c-2.557 3.771-4.933 7.827-6.631 12.055-.838 2.086-1.485 3.738-1.052 5.983.693 3.599 3.997 6.409 7.684 6.303 4.346.06 7.767-3.49 7.827-7.766.042-2.97-3.226-9.081-4.764-11.757-.373-.65-2.709-4.575-3.064-4.818zM13.18 24.15c-.768.067-.771-.701-.769-1.27.004-1.585.41-2.564.69-3.114.179-.512.807-1.39 1.38-1.807.334-.208.836-.51 1.137-.21.362.547.163.6-.06.906a6.14 6.14 0 0 0-1.754 4.195c-.003.577.098 1.181-.625 1.299zm7.543 5.012c-.598-.034-.626-.334-.735-.811.143-.444.303-.695.753-.698 1.166-.664 2.362-1.655 2.564-3.328.194-.569.104-1.219.864-1.332.852 0 .743 1.326.622 1.885-.923 2.883-2.483 3.648-4.068 4.284z'/></svg>","description":"A fast and secure wallet for everyday interactions with dapps","website":"https://intea.rs/","version":"1.0.0-takara.1","executor":"https://wallet.intear.tech/near-selector.js","type":"sandbox","features":{"signMessage":true,"signTransaction":false,"signAndSendTransaction":true,"signAndSendTransactions":true,"signInWithoutAddKey":true,"verifyOwner":false,"testnet":true,"signDelegateActions":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true},"platform":{"web":"https://wallet.intear.tech"},"permissions":{"storage":true,"location":true,"allowsOpen":["https://wallet.intear.tech","https://staging.wallet.intear.tech","http://intearwallet.local","https://intearwallet.local","http://intearwallet.localhost:3000","intear://","https://logout-bridge-service.intear.tech"]}},
   {"id":"mynearwallet","name":"MyNearWallet","icon":"https://storage.herewallet.app/upload/d0544304123d10518af961a15d5722ff1cef7abf62155f830e6d733e41f7da4b.png","description":"Web wallet for NEAR.","website":"https://mynearwallet.com","version":"1.0.0-takara.1","executor":"https://cdn.jsdelivr.net/gh/hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069/repository/mnw.js","type":"sandbox","platform":{"web":"https://app.mynearwallet.com"},"features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"testnet":true},"permissions":{"storage":true,"allowsOpen":["https://app.mynearwallet.com","https://testnet.mynearwallet.com"]}},
-  {"id":"nightly-wallet","name":"Nightly Wallet","icon":"https://storage.herewallet.app/upload/6947eb5c14c65a715fb49a08e5937dcecc994bf224b3869b9878bd7a7db068f9.webp","description":"Surf through the multichain Metaverse with Nightly","website":"https://nightly.app","version":"1.0.0-takara.1","executor":"https://cdn.jsdelivr.net/gh/hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069/repository/nightly.js","type":"sandbox","platform":{"chrome":"https://chromewebstore.google.com/detail/nightly/fiikommddbeccaoicoejoniammnalkfa"},"permissions":{"storage":true,"external":["nightly.near"],"allowsOpen":["https://nightly.app","https://chromewebstore.google.com/detail/nightly/fiikommddbeccaoicoejoniammnalkfa"]},"features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"testnet":true}},
-  {"id":"ledger","name":"Ledger","icon":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20768.91%20669.35%22%3E%3Cpath%20style%3D%22stroke%3A%23000%22%20d%3D%22M-2.876-2.76h774.662v674.871H-2.876z%22%2F%3E%3Cpath%20d%3D%22M150.057%20422.845v115.877h176.334v-25.698H175.749v-90.179zm443.103%200v90.179H442.519v25.692h176.334V422.845zM326.647%20246.504v176.334h115.872v-23.174H352.34v-153.16zm-176.59-115.877v115.877h25.692v-90.185h150.642v-25.692zm292.462%200v25.692H593.16v90.185h25.693V130.627z%22%20style%3D%22fill%3A%23fff%22%2F%3E%3C%2Fsvg%3E","description":"Sign transactions using hardware Ledger devices","website":"https://ledger.com","version":"1.0.0-takara.1","executor":"https://cdn.jsdelivr.net/gh/near/near-connect-ledger@8fe249268332fd0c3231fe3e32da3bf0956d9cef/ledger-executor.js","type":"sandbox","platform":{},"features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"signDelegateActions":true,"mainnet":true,"testnet":true},"permissions":{"storage":true,"usb":true,"hid":true,"bluetooth":true}},
+  {"id":"intear-wallet","name":"Intear Wallet","icon":"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='49.152' height='49.152' viewBox='0 0 36.864 36.864' fill='%230079fb'><path d='M18.487 32.306c-4.599.067-8.487-3.315-9.181-7.846-.278-1.81.068-3.077.628-4.791 1.403-4.291 3.971-8.695 6.427-12.51l.949-1.478c.309-.484.487-1.03 1.115-1.125.512.052.64.423.897.807 2.484 3.706 8.36 13.272 8.334 17.704-.029 5.044-4.068 9.27-9.169 9.238zm-.063-25.712c-2.557 3.771-4.933 7.827-6.631 12.055-.838 2.086-1.485 3.738-1.052 5.983.693 3.599 3.997 6.409 7.684 6.303 4.346.06 7.767-3.49 7.827-7.766.042-2.97-3.226-9.081-4.764-11.757-.373-.65-2.709-4.575-3.064-4.818zM13.18 24.15c-.768.067-.771-.701-.769-1.27.004-1.585.41-2.564.69-3.114.179-.512.807-1.39 1.38-1.807.334-.208.836-.51 1.137-.21.362.547.163.6-.06.906a6.14 6.14 0 0 0-1.754 4.195c-.003.577.098 1.181-.625 1.299zm7.543 5.012c-.598-.034-.626-.334-.735-.811.143-.444.303-.695.753-.698 1.166-.664 2.362-1.655 2.564-3.328.194-.569.104-1.219.864-1.332.852 0 .743 1.326.622 1.885-.923 2.883-2.483 3.648-4.068 4.284z'/></svg>","description":"A fast and secure wallet for everyday interactions with dapps","website":"https://intea.rs/","version":"1.0.0-takara.1","executor":"https://wallet.intear.tech/near-selector.js","type":"sandbox","features":{"signMessage":true,"signTransaction":false,"signAndSendTransaction":true,"signAndSendTransactions":true,"signInWithoutAddKey":true,"verifyOwner":false,"testnet":true,"signDelegateActions":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true},"platform":{"web":"https://wallet.intear.tech"},"permissions":{"storage":true,"location":true,"allowsOpen":["https://wallet.intear.tech","https://staging.wallet.intear.tech","http://intearwallet.local","https://intearwallet.local","http://intearwallet.localhost:3000","intear://","https://logout-bridge-service.intear.tech"]}},
   {"id":"near-cli","name":"NEAR CLI","icon":"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a1a2e'/%3E%3Cpolyline points='18 40 28 30 18 20' fill='none' stroke='%2300d4aa' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='32' y1='42' x2='46' y2='42' stroke='%2300d4aa' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E","description":"Sign transactions using near-cli-rs in your terminal","website":"https://near.cli.rs","version":"1.0.0-takara.1","executor":"https://cdn.jsdelivr.net/gh/near/near-cli-connect@dc5cb123e3a8e42ed095739f4ea058b767a80ad2/dist/near-cli.js","type":"sandbox","platform":{},"features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"signDelegateActions":true,"signInWithFunctionCallKey":true,"mainnet":true,"testnet":true},"permissions":{"storage":true,"clipboardWrite":true}},
 ] };
 

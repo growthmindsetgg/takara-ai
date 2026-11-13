@@ -832,11 +832,12 @@ $("#replay").addEventListener("click", runStory);
 /* ---------- vocabulary ---------- */
 const FLAGS = { 1: "New vendor, provisional", 2: "New vendor over the limit", 4: "Hidden instruction ignored", 8: "Payout address changed", 16: "Preempted by a Signer" };
 const flagWords = (f) => Object.entries(FLAGS).filter(([b]) => f & b).map(([, w]) => w);
-// One vocabulary on both pages: Received → Reserved → Paid → Closed. On-chain names appear only as secondary mono text.
-const STATE = { claimed: ["Received", "amber"], accepted: ["Reserved", "green"], settled: ["Paid, settling", "paid"], closed: ["Closed", "paid"], rejected: ["Rejected", "red"] };
+// One vocabulary on both pages: Received → Reserved → Settled → Closed. On-chain names appear only as secondary mono text.
+const STATE = { claimed: ["Received", "amber"], accepted: ["Reserved", "green"], settled: ["Settled", "paid"], closed: ["Closed", "paid"], rejected: ["Rejected", "red"] };
 const stateHtml = (s) => { const [w, c] = STATE[s] || [s, ""]; return `<span class="st ${c === "amber" ? "amber" : ""}"><span class="dot ${c}" aria-hidden="true"></span>${esc(w)} <span class="chain">${esc(s)}</span></span>`; };
 const PRIO = { critical: "Critical", normal: "Normal", discretionary: "Discretionary" };
-const vendorName = (v) => (String(v).startsWith("new:") ? "New vendor" : String(v).replace(/\s*\(fictional[^)]*\)\s*$/i, "").replace(/\s*\(team member\)\s*$/i, ", team member"));
+// Same naming as the app: a provisional vendor is named from its payout account (tinylogo.testnet → Tinylogo), never "new:6a77…".
+const vendorName = (v, dest) => (String(v).startsWith("new:") ? (String(dest || "").split(".")[0].split(/[-_]/).map((w) => w ? w[0].toUpperCase() + w.slice(1) : w).join(" ") || "New vendor") : String(v).replace(/\s*\(fictional[^)]*\)\s*$/i, "").replace(/\s*\(team member\)\s*$/i, ", team member"));
 const PLAIN = {
   1: "A 400 payment is refused because payroll and Railway money is reserved",
   2: "The same payment clears after a 500 top-up",
@@ -906,19 +907,21 @@ function miniStrip(envs, spendable) {
     <p class="mini-legend">${envs.map((e) => `<span><i aria-hidden="true"></i>${esc(e.name)} ${esc(n0(e.amount))}</span>`).join("")}<span><i class="s" aria-hidden="true"></i>Spendable ${esc(n0(spendable))}</span></p>
     <p class="sr">${esc(envs.map((e) => `${e.name} ${n0(e.amount)} USDC reserved`).join(", "))}; ${esc(n0(spendable))} USDC spendable.</p>`;
 }
-function renderGuarantees(rep, pub, pol) {
+function renderGuarantees(rep, pub, pol, changes) {
   const f = rep.figures;
-  const acc = rep.commitments.filter((c) => c.state === "accepted").map((c) => ({ name: vendorName(c.vendor), amount: Number(c.amount) })).sort((a, b) => b.amount - a.amount);
-  $("#v-reserve").innerHTML = miniStrip(acc, Number(f.spendable)) + `<p class="small" style="margin-top:12px">${usdc(f.treasury_balance)} in treasury − ${usdc(f.settled_outflow)} paid, settling − ${usdc(f.reserved)} reserved = ${usdc(f.spendable)} spendable. ${esc(f.runway_days)} days of runway.</p>`;
+  const acc = rep.commitments.filter((c) => c.state === "accepted").map((c) => ({ name: vendorName(c.vendor, c.destination), amount: Number(c.amount) })).sort((a, b) => b.amount - a.amount);
+  $("#v-reserve").innerHTML = miniStrip(acc, Number(f.spendable)) + `<p class="small" style="margin-top:12px">${usdc(f.treasury_balance)} in treasury − ${usdc(f.settled_outflow)} settled − ${usdc(f.reserved)} reserved = ${usdc(f.spendable)} spendable. ${esc(f.runway_days)} days of runway.</p>`;
 
   const ch = rep.commitments.find((c) => c.proposed_destination);
   const hours = pol?.cooling_off_hours ?? 24;
+  const vc = ch && (changes || []).find((x) => String(x.commitment_id) === String(ch.id));
+  const coolEnd = vc && vc.decided_at ? Number(BigInt(vc.decided_at) / 1000000n) + hours * 3600000 : null;
   $("#v-freeze").innerHTML = ch ? `<dl>
       <div class="addr"><dt>On file</dt><dd><code>${esc(ch.destination)}</code></dd></div>
       <div class="addr"><dt>Invoice asked for</dt><dd><code class="strike">${esc(ch.proposed_destination)}</code></dd></div>
     </dl>
-    <p class="after"><span class="st red"><span class="dot red" aria-hidden="true"></span>Frozen on arrival</span><span>${ch.vendor_change === "approved_cooling_off" ? `A Signer approved it, then a ${esc(hours)}-hour cooling-off` : ch.vendor_change ? esc(String(ch.vendor_change).replaceAll("_", " ")) : "Waiting for a Signer"}</span></p>
-    <p class="meta" style="margin-top:8px">${esc(vendorName(ch.vendor))}, <span class="num">${esc(n0(ch.amount))} USDC</span>, bill #${esc(ch.id)}</p>` : `<p class="wait">No payout change on this treasury right now.</p>`;
+    <p class="after"><span class="st red"><span class="dot red" aria-hidden="true"></span>Frozen on arrival</span><span>${ch.vendor_change === "approved_cooling_off" ? (coolEnd && coolEnd <= Date.now() ? `A Signer approved it; the ${esc(hours)}-hour cooling-off ended ${esc(new Date(coolEnd).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}` : `A Signer approved it; payment waits out a ${esc(hours)}-hour cooling-off`) : ch.vendor_change ? esc(String(ch.vendor_change).replaceAll("_", " ")) : "Waiting for a Signer"}</span></p>
+    <p class="meta" style="margin-top:8px">${esc(vendorName(ch.vendor, ch.destination))}, <span class="num">${esc(n0(ch.amount))} USDC</span>, bill #${esc(ch.id)}</p>` : `<p class="wait">No payout change on this treasury right now.</p>`;
 
   const sig = pub ? `Signed by <code>${esc(pub.signers.join(", "))}</code> · policy v${esc(pub.policy_version)} · <code title="${esc(pub.policy_hash)}">${esc(short(pub.policy_hash))}</code>` : "";
   const rows = pol ? `<dl><dt>Pays on its own up to</dt><dd>${esc(n0(pol.max_auto_pay))} USDC</dd><dt>Cooling-off after a payout change</dt><dd>${esc(pol.cooling_off_hours)} hours</dd><dt>Runway it must protect</dt><dd>${esc(pol.min_runway_days)} days</dd></dl>`
@@ -931,7 +934,7 @@ function renderSealed(pubList, rep) {
   if (!p || !o) { $("#v-sealed").innerHTML = `<p class="wait">Ledger unavailable right now.</p>`; return; }
   $("#v-sealed").innerHTML = `<dl class="views">
     <div><dt>Anyone sees</dt><dd>Bill #${esc(p.id)}, ${esc((STATE[p.state] || [p.state])[0].toLowerCase())}, ${esc((PRIO[p.priority] || p.priority).toLowerCase())}<br><code title="${esc(p.commitment_hash)}">${esc(short(p.commitment_hash))}</code></dd></div>
-    <div><dt>You see</dt><dd>${esc(vendorName(o.vendor))}, ${usdc(o.amount)}<br><code>${esc(o.destination)}</code> <span class="sealed">SEALED · TEE</span></dd></div>
+    <div><dt>You see</dt><dd>${esc(vendorName(o.vendor, o.destination))}, ${usdc(o.amount)}<br><code>${esc(o.destination)}</code> <span class="sealed">SEALED · TEE</span></dd></div>
   </dl>`;
 }
 
@@ -944,6 +947,7 @@ function renderSealed(pubList, rep) {
     const c = await view(T, "get_config");
     pub = { balance: Number(c.balance) / 1e6, agent: c.agent, paused: c.paused, policy_version: c.policy_version, policy_hash: c.policy_hash, owners: c.owners, signers: c.signers, engine: c.engine.wasm_hash };
     pubList = await view(T, "list_commitments", { from: "0", limit: 100 });
+    pub.changes = await view(T, "list_vendor_changes").catch(() => []);
   } catch (e) { console.warn("RPC", e.message); }
 
   // owner report: the hosted app serves it live over the fixture ledger; offline, use the committed snapshot
@@ -964,7 +968,7 @@ function renderSealed(pubList, rep) {
     const f = rep.figures;
     live.innerHTML = `<p class="meta">Treasury balance, public</p>
       <p class="bal">${esc(n0(pub.balance))}<span class="unit"> USDC</span></p>
-      <div class="ownerline" style="display:block"><p class="meta" style="color:var(--text2);margin-bottom:8px">The owner also sees, with the ledger key <span class="sealed">SEALED · TEE</span></p><p class="eq"><span><b>${esc(n0(f.treasury_balance))}</b> in treasury</span>${Number(f.settled_outflow) ? `<span class="op">−</span><span><b>${esc(n0(f.settled_outflow))}</b> paid, settling</span>` : ""}<span class="op">−</span><span><b>${esc(n0(f.reserved))}</b> reserved</span><span class="op">=</span><span class="res"><b>${esc(n0(f.spendable))}</b> spendable USDC</span></p><p class="meta" style="margin-top:8px">Paid, settling: sent, and the contract balance catches up at the next reconciliation. Runway <span class="num">${esc(f.runway_days)}</span> days.</p></div>
+      <div class="ownerline" style="display:block"><p class="meta" style="color:var(--text2);margin-bottom:8px">The owner also sees, with the ledger key <span class="sealed">SEALED · TEE</span></p><p class="eq"><span><b>${esc(n0(f.treasury_balance))}</b> in treasury</span>${Number(f.settled_outflow) ? `<span class="op">−</span><span><b>${esc(n0(f.settled_outflow))}</b> settled</span>` : ""}<span class="op">−</span><span><b>${esc(n0(f.reserved))}</b> reserved</span><span class="op">=</span><span class="res"><b>${esc(n0(f.spendable))}</b> spendable USDC</span></p><p class="meta" style="margin-top:8px">Settled: recorded as paid on the ledger, with the escrow released and a receipt on-chain. Testnet: no tokens move; payouts run through NEAR Intents on mainnet. Runway <span class="num">${esc(f.runway_days)}</span> days.</p></div>
       <dl class="facts">
         <dt>Banto, the agent</dt><dd><span class="st"><span class="dot ${pub.agent ? "green" : "red"}" aria-hidden="true"></span>${pub.agent ? "Active" : "Switched off"}</span> <code>${esc(pub.agent || "")}</code></dd>
         <dt>Treasury paused</dt><dd>${pub.paused ? "Yes" : "No"}</dd>
@@ -979,7 +983,7 @@ function renderSealed(pubList, rep) {
   }
   live.setAttribute("aria-busy", "false");
 
-  renderGuarantees(rep, pub, pol);
+  renderGuarantees(rep, pub, pol, pub && pub.changes);
   renderSealed(pubList, rep);
 
   // same books, two views
@@ -990,7 +994,7 @@ function renderSealed(pubList, rep) {
     const p = pubById[id], o = byId[id];
     const pf = p ? flagWords(p.flags) : [];
     const pubCell = p ? `<div class="pub"><span class="lbl">Public chain</span><div class="line1">${stateHtml(p.state)}<span>${esc(PRIO[p.priority] || p.priority)}</span></div>${pf.length ? `<p class="flags">${esc(pf.join(", "))}</p>` : ""}<p class="line2">commitment <span title="${esc(p.commitment_hash)}">${esc(short(p.commitment_hash))}</span> · evidence <span title="${esc(p.evidence_hash)}">${esc(short(p.evidence_hash))}</span><br><a href="https://testnet-api.outlayer.ai/attestations/by-request/${encodeURIComponent(p.attestation.request_no)}" target="_blank" rel="noopener">Engine attestation, request ${esc(p.attestation.request_no)}</a></p></div>` : `<div class="pub"><span class="lbl">Public chain</span><p class="wait">Unavailable while the RPC is unreachable</p></div>`;
-    const ownCell = o ? `<div class="own"><span class="lbl">Owner, with the ledger key</span><div class="line1"><span class="vendor">${esc(vendorName(o.vendor))}</span><span class="amt">${esc(n0(o.amount))} USDC</span></div><p class="line2">${esc(o.destination)}${o.proposed_destination ? `<br><span style="color:var(--red)">asked to change to ${esc(o.proposed_destination)}</span>` : ""}</p></div>` : `<div class="own"><span class="lbl">Owner</span><p class="wait">Not in the owner report</p></div>`;
+    const ownCell = o ? `<div class="own"><span class="lbl">Owner, with the ledger key</span><div class="line1"><span class="vendor">${esc(vendorName(o.vendor, o.destination))}</span><span class="amt">${esc(n0(o.amount))} USDC</span></div><p class="line2">${esc(o.destination)}${o.proposed_destination ? `<br><span style="color:var(--red)">asked to change to ${esc(o.proposed_destination)}</span>` : ""}</p></div>` : `<div class="own"><span class="lbl">Owner</span><p class="wait">Not in the owner report</p></div>`;
     return `<div class="row" role="listitem"><span class="id">${esc(id)}</span>${pubCell}${ownCell}</div>`;
   }).join("");
   $("#bookrows").innerHTML = `<div class="row hdr" aria-hidden="true"><span>#</span><span>Public chain</span><span>Owner, with the ledger key <span class="sealed">SEALED · TEE</span></span></div>${rows}`;

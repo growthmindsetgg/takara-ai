@@ -6,7 +6,10 @@
 // engine report; no model writes a number. Times are emitted as ISO strings so the app renders
 // them in the reader's own time zone.
 //
-//   spendable = treasury balance − paid, settling (settled_outflow) − reserved
+//   spendable = treasury balance − settled (settled_outflow) − reserved
+//
+// "Settled" is honest testnet language: settlement releases the escrow, burns the nonce and emits a
+// receipt on the ledger, but no tokens move on testnet. Real payouts are the mainnet 1Click run.
 
 const NF = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const n = (x) => { const v = Number(String(x).replace(/,/g, "")); return (v < 0 ? "−" : "") + NF.format(Math.abs(v)); };
@@ -38,12 +41,20 @@ function billPhrase(c, sym) {
   if (k === "subscription") return `${nm}’s ${amt} subscription bill`;
   return `${nm}’s ${amt} invoice`;
 }
-const STATE_WORD = { claimed: "not reserved yet", accepted: "reserved", settled: "paid, settling", closed: "closed" };
+const STATE_WORD = { claimed: "not reserved yet", accepted: "reserved", settled: "settled on the ledger", closed: "closed" };
+const TESTNET_NOTE = "On testnet no tokens move; payouts run through NEAR Intents on mainnet.";
+
+/** One entry per transaction, oldest first. The first copy keeps its original time (a backfill re-records later). */
+export function dedupeDecisions(list) {
+  const seen = new Set(), out = [];
+  for (const d of list || []) { const k = d && d.tx ? d.tx : JSON.stringify(d); if (seen.has(k)) continue; seen.add(k); out.push(d); }
+  return out;
+}
 
 /** The reconciled equation, the same one the app and the product page show. */
 export function equation(f, sym = "USDC") {
   const bal = Number(f.treasury_balance), paid = Number(f.settled_outflow) || 0, res = Number(f.reserved) || 0, sp = Number(f.spendable);
-  return `${n(bal)} in treasury${paid ? ` − ${n(paid)} paid, settling` : ""} − ${n(res)} reserved = ${n(sp)} ${sym} spendable`;
+  return `${n(bal)} in treasury${paid ? ` − ${n(paid)} settled` : ""} − ${n(res)} reserved = ${n(sp)} ${sym} spendable`;
 }
 
 const REFUSAL_PLAIN = {
@@ -52,6 +63,8 @@ const REFUSAL_PLAIN = {
   authorization_mismatch: "the payment details didn’t match what was authorized, so the contract refused it",
   below_min_runway: "paying it would have left less than your minimum runway",
   commitment_not_accepted: "it hadn’t been accepted yet, so it couldn’t be paid",
+  unknown_requester: "it came from someone who isn’t on the team roster, so no bill was created",
+  member_not_in_roster: "it came from someone who isn’t on the team roster, so no bill was created",
 };
 
 /**
@@ -79,12 +92,42 @@ export async function answer(q, deps) {
   let pol = null; try { pol = await deps.policy(); } catch { pol = null; }
   const dueTxt = (c) => (c.due_day > 0 ? `due ${day(c.due_day)}` : "no due date");
   const engine = [{ query: "engine report (deterministic)" }];
+  const nowMs = deps.now ?? Date.now();
+  let decsAll = null; const decs = () => (decsAll ??= dedupeDecisions(deps.decisions()));
+
+  // ---------- has X been paid / was X reimbursed / what did we pay X
+  const payees = [...new Set(rep.commitments.map((c) => payeeName(c).toLowerCase()))].filter((p) => p.length > 2);
+  const hit = (p) => new RegExp(`\\b${p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(text);
+  const who = payees.filter((p) => hit(p) || (p.split(" ")[0].length > 3 && hit(p.split(" ")[0]))).sort((a, b) => b.length - a.length)[0] || null;
+  if (who && /paid|reimburs|\bpay\b|receiv|\bgot\b|\bowe|settled|status|been/.test(text) && !/\bwhy\b|afford|blocked/.test(text)) {
+    const bills = rep.commitments.filter((c) => payeeName(c).toLowerCase() === who).sort((a, b) => Number(a.id) - Number(b.id));
+    const nm = payeeName(bills[0]);
+    const settledAt = {};
+    for (const d of decs()) for (const e of d.events || []) if (e.event === "settlement_receipt" && e.data && e.data[0]) settledAt[String(e.data[0].commitment_id)] = { at: d.at, tx: d.tx };
+    const paid = bills.filter((c) => c.state === "settled"), open = bills.filter((c) => c.state === "claimed" || c.state === "accepted");
+    const verb = kindOf(bills[0]) === "reimbursement" ? "reimbursed" : "paid";
+    const total = paid.reduce((a, c) => a + Number(c.amount), 0);
+    const line = (c) => { const s0 = settledAt[String(c.id)]; return `${n(c.amount)} ${sym}${c.due_day > 0 ? ` for the ${day(c.due_day)} cycle` : ""}${s0 ? ` (settled ${new Date(s0.at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })})` : ""}`; };
+    const parts = [];
+    const yes = /^(was|were|has|have|did|is|are)\b/.test(text.trim()) ? "Yes. " : "";
+    if (paid.length) parts.push(`${yes}${nm} was ${verb} ${paid.length === 1 ? "once" : paid.length === 2 ? "twice" : `${paid.length} times`}, ${n(total)} ${sym} in total: ${list(paid.map(line))}. ${paid.length === 1 ? "It is" : "Each is"} settled on the ledger, with the escrow released and a receipt on-chain. ${TESTNET_NOTE}`);
+    else parts.push(`Not yet. Nothing to ${nm} has settled.`);
+    const groups = new Map(); for (const c of open) { const k = `${c.amount}|${c.due_day}|${c.state}|${c.injection_flagged}|${c.new_vendor_over_limit}`; groups.set(k, [...(groups.get(k) || []), c]); }
+    if (open.length) parts.push(`Still open: ${[...groups.values()].map((g) => { const c = g[0];
+      let st = STATE_WORD[c.state];
+      if (c.state === "claimed" && c.new_vendor_over_limit) st = "waiting for a Signer";
+      else if (c.state === "claimed") st = `waiting for ${AG}’s policy check${c.injection_flagged ? " (hidden instructions in it were ignored)" : ""}`;
+      return `${g.length > 1 ? `${g.length} copies of ` : ""}${n(c.amount)} ${sym}, ${dueTxt(c)}, ${st}`;
+    }).join("; ")}.`);
+    else if (paid.length) parts.push(`Nothing else is open for ${nm}.`);
+    const src = paid.map((c) => settledAt[String(c.id)]).filter(Boolean).slice(-3).map((x) => ({ tx: x.tx, url: deps.explorer(x.tx) }));
+    return { answer: parts.join(" "), sources: src.length ? src : engine };
+  }
 
   // ---------- why was X blocked / why is X waiting
   if (/\bwhy\b|blocked|refused|rejected|denied|\bheld\b|waiting|stuck/.test(text)) {
     const amount = text.match(/(\d[\d,]*(?:\.\d+)?)/)?.[1]?.replace(/,/g, "");
-    const decs = deps.decisions();
-    const refusals = decs.filter((d) => d.value && typeof d.value === "object" && d.value.ok === false && d.value.reason).reverse();
+    const refusals = decs().filter((d) => d.value && typeof d.value === "object" && d.value.ok === false && d.value.reason && d.value.reason !== "engine_error").reverse();
     const all = amount ? open.filter((c) => Number(c.amount) === Number(amount)) : [];
     const unpaid = all.filter((c) => c.state !== "settled");
     const cands = unpaid.length ? unpaid : all; // a bill still in flight explains "why" better than a paid one
@@ -92,7 +135,7 @@ export async function answer(q, deps) {
     if (amount) {
       ref = refusals.find((d) => cands.some((c) => String(c.id) === String(d.value.commitment_id))) || null;
       bill = ref ? byId[String(ref.value.commitment_id)] : cands.find((c) => c.state === "claimed") || cands[0] || null;
-    } else { ref = refusals[0] || null; bill = ref ? byId[String(ref.value.commitment_id)] : null; }
+    } else { ref = refusals.find((d) => d.value.commitment_id != null && byId[String(d.value.commitment_id)]) || refusals[0] || null; bill = ref ? byId[String(ref.value.commitment_id)] : null; }
     if (!bill && !ref) return { answer: amount ? `No open bill for ${n(amount)} ${sym}. ${AG} has nothing blocked or waiting at that amount.` : "Nothing has been blocked yet.", sources: [] };
     const v = ref ? ref.value : null;
     const src = ref && ref.tx ? [{ tx: ref.tx, url: deps.explorer(ref.tx) }] : engine;
@@ -102,7 +145,7 @@ export async function answer(q, deps) {
       const blockers = (v.blocking || []).map((id) => byId[String(id)]).filter(Boolean).map((c) => `${payeeName(c)} (${n(c.amount)} ${sym}, ${dueTxt(c)})`);
       const lines = [`${cap(billPhrase(bill, sym))} was blocked at ${iso(at)} because paying it would have broken money reserved for ${list(blockers) || "other bills"}.`];
       if (detail && detail.shortfall) lines.push(`Only ${n(detail.spendable)} ${sym} was spendable then, ${n(detail.shortfall)} ${sym} short.`);
-      if (bill.state === "settled") lines.push(`It went through later, after the treasury was topped up, and is now paid, settling.`);
+      if (bill.state === "settled") lines.push(`It went through later, after the treasury was topped up, and is now settled on the ledger.`);
       else if (bill.state === "accepted") lines.push(`It has since been accepted and its money is reserved.`);
       return { answer: lines.join(" "), reason: v.reason, sources: src };
     }
@@ -117,14 +160,18 @@ export async function answer(q, deps) {
       const ch = changes.find((x) => String(x.commitment_id) === String(bill.id));
       const decided = ch && ch.decided_at ? nsMs(ch.decided_at) : null;
       const ends = decided != null && pol ? decided + pol.cooling_off_hours * 3600000 : null;
-      const nowMs = deps.now ?? Date.now();
       const tail = ch && (ch.settlement_status || ch.status) === "suspended_destination_mismatch" ? "Payment stays frozen until a Signer approves or rejects the new address." : decided != null ? (ends && ends <= nowMs ? `A Signer approved the new address at ${iso(decided)} and the ${pol.cooling_off_hours}-hour cooling-off ended at ${iso(ends)}, so it can now be paid when due.` : `A Signer approved the new address at ${iso(decided)}. Payment stays frozen until the ${pol ? `${pol.cooling_off_hours}-hour ` : ""}cooling-off ends${ends ? ` at ${iso(ends)}` : ""}, so a hijacked approval can still be caught.`) : "Payment stays frozen until the cooling-off period ends.";
       return { answer: `${cap(billPhrase(bill, sym))}, ${dueTxt(bill)}, is held. Its invoice asked to pay ${bill.proposed_destination || "a new account"} instead of ${bill.destination}, the address on file. ${tail}`, sources: src };
     }
+    if (v && v.reason === "below_min_runway" && bill) {
+      const later = bill.state === "settled" ? " A Signer then accepted it, and it is now settled on the ledger." : bill.state === "accepted" ? " A Signer then accepted it, so its money is reserved." : " It waits for a Signer.";
+      return { answer: `${cap(billPhrase(bill, sym))} wasn’t accepted automatically at ${iso(at)}: ${REFUSAL_PLAIN.below_min_runway}${pol ? ` of ${pol.min_runway_days} days` : ""}.${later}`, reason: v.reason, sources: src };
+    }
     if (v && REFUSAL_PLAIN[v.reason]) {
       const target = byId[String(v.commitment_id ?? v.original)];
-      return { answer: `${target ? cap(billPhrase(target, sym)) : "A bill"}: ${REFUSAL_PLAIN[v.reason]}${at ? ` (${iso(at)})` : ""}.`, sources: src };
+      return { answer: `${target ? cap(billPhrase(target, sym)) : "A document"}: ${REFUSAL_PLAIN[v.reason]}${at ? ` (${iso(at)})` : ""}.`, sources: src };
     }
+    if (!bill) return { answer: `A document was refused${at ? ` at ${iso(at)}` : ""}: ${String((v && v.reason) || "refused").replace(/_/g, " ")}. No bill was created.`, sources: src };
     if (bill && bill.state === "claimed") {
       return { answer: `${cap(billPhrase(bill, sym))}, ${dueTxt(bill)}, is waiting for ${AG}’s policy check, which accepts it within policy or refuses it with a reason. Nobody needs to act.${bill.injection_flagged ? " Its text contained instructions for the agent; they were ignored." : ""} Nothing is reserved yet.`, sources: engine };
     }
@@ -158,20 +205,27 @@ export async function answer(q, deps) {
     const lead = floor == null ? "" : next < floor ? "Not safely. " : next < floor * 2 ? "Only just. " : "Yes. ";
     const vs = floor == null ? "" : next < floor ? `, below your ${floor}-day minimum, so ${AG} would refuse discretionary payments` : next < floor * 2 ? `, close to your ${floor}-day minimum` : `, well above your ${floor}-day minimum`;
     const first = per === "month" && amt > sp ? ` The first month alone (${n(amt)} ${sym}) is more than the ${n(sp)} ${sym} you can spend today, so you’d need to add funds first.` : "";
-    return { answer: `${lead}Runway would fall from ${f.runway_days ?? "n/a"} days to ${next} days${vs}. A contractor at ${n(amt)} ${sym} a ${per} adds about ${n(daily)} ${sym} a day to the ${n(burn)} ${sym} a day your recurring bills already cost.${first} Today: ${equation(f, sym)}.`, figures: f, sources: [{ query: "runway = (treasury balance − paid, settling) / (daily recurring bills + new daily cost)" }] };
+    return { answer: `${lead}Runway would fall from ${f.runway_days ?? "n/a"} days to ${next} days${vs}. A contractor at ${n(amt)} ${sym} a ${per} adds about ${n(daily)} ${sym} a day to the ${n(burn)} ${sym} a day your recurring bills already cost.${first} Today: ${equation(f, sym)}.`, figures: f, sources: [{ query: "runway = (treasury balance − settled) / (daily recurring bills + new daily cost)" }] };
   }
 
   // ---------- what is reserved
   if (/reserv|envelope|set aside/.test(text)) {
     const acc = open.filter((c) => c.state === "accepted").sort((a, b) => (a.priority === "critical" ? -1 : 0) - (b.priority === "critical" ? -1 : 0) || a.due_day - b.due_day);
     if (!acc.length) return { answer: `Nothing is reserved. Spendable: ${equation(f, sym)}.`, figures: f, sources: engine };
-    return { answer: `${n(f.reserved)} ${sym} is reserved in ${acc.length} envelope${acc.length === 1 ? "" : "s"}: ${acc.map((c) => `${payeeName(c)} ${n(c.amount)} ${sym} (${dueTxt(c)}${c.vendor_change === "approved_cooling_off" ? ", frozen until its cooling-off ends" : ""})`).join("; ")}. Reserved money can’t be spent on anything else. ${equation(f, sym)}.`, figures: f, sources: engine };
+    const chg = acc.some((c) => c.vendor_change === "approved_cooling_off") ? await deps.vendorChanges().catch(() => []) : [];
+    const coolTxt = (c) => {
+      if (c.vendor_change !== "approved_cooling_off") return "";
+      const ch = chg.find((x) => String(x.commitment_id) === String(c.id)), dec = ch && ch.decided_at ? nsMs(ch.decided_at) : null;
+      const e = dec != null && pol ? dec + pol.cooling_off_hours * 3600000 : null;
+      return e != null && e <= nowMs ? ", new payout address approved and its cooling-off is over" : `, frozen until its cooling-off ends${e ? ` at ${iso(e)}` : ""}`;
+    };
+    return { answer: `${n(f.reserved)} ${sym} is reserved in ${acc.length} envelope${acc.length === 1 ? "" : "s"}: ${acc.map((c) => `${payeeName(c)} ${n(c.amount)} ${sym} (${dueTxt(c)}${coolTxt(c)})`).join("; ")}. Reserved money can’t be spent on anything else. ${equation(f, sym)}.`, figures: f, sources: engine };
   }
 
   // ---------- what is spendable
   if (/spend|balance|runway|how much|available|cash/.test(text)) {
     const floor = pol ? Number(pol.min_runway_days) : null;
-    return { answer: `${n(sp)} ${sym} is spendable: ${equation(f, sym)}. “Paid, settling” is money already sent that the balance hasn’t caught up with yet. Runway is ${f.runway_days ?? "n/a"} days${floor != null ? ` against your ${floor}-day minimum` : ""}.`, figures: f, queries: rep.queries, sources: engine };
+    return { answer: `${n(sp)} ${sym} is spendable: ${equation(f, sym)}. “Settled” means recorded as paid on the ledger: escrow released and a receipt on-chain. It counts against the balance until payouts are reconciled. ${TESTNET_NOTE} Runway is ${f.runway_days ?? "n/a"} days${floor != null ? ` against your ${floor}-day minimum` : ""}.`, figures: f, queries: rep.queries, sources: engine };
   }
 
   // ---------- payout changes
@@ -182,7 +236,7 @@ export async function answer(q, deps) {
       const c = byId[String(ch.commitment_id)]; if (!c) return null;
       const s = ch.settlement_status || ch.status, decided = ch.decided_at ? nsMs(ch.decided_at) : null;
       const ends = decided != null && pol ? decided + pol.cooling_off_hours * 3600000 : null;
-      const past = ends != null && ends <= (deps.now ?? Date.now());
+      const past = ends != null && ends <= nowMs;
       const state = s === "suspended_destination_mismatch" ? "Payment is frozen until a Signer approves or rejects it." : s === "approved_cooling_off" ? (past ? `A Signer approved it at ${iso(decided)} and the cooling-off ended at ${iso(ends)}, so it can be paid when due.` : `A Signer approved it at ${iso(decided)}; payment stays frozen until the cooling-off ends${ends ? ` at ${iso(ends)}` : ""}.`) : s === "rejected" ? "A Signer rejected it, so nothing will be paid to the new address." : "";
       return `${payeeName(c)}’s invoice for ${n(c.amount)} ${sym} (${dueTxt(c)}) asked to be paid at ${c.proposed_destination || "a new address"} instead of ${c.destination}. ${state}`;
     }).filter(Boolean);
@@ -191,7 +245,7 @@ export async function answer(q, deps) {
 
   // ---------- list bills
   if (/commitment|bills?\b|invoice|list|pending|claimed|accepted|what.*due/.test(text)) {
-    const groups = [["Waiting", (c) => c.state === "claimed"], ["Reserved", (c) => c.state === "accepted"], ["Paid, settling", (c) => c.state === "settled"]];
+    const groups = [["Waiting", (c) => c.state === "claimed"], ["Reserved", (c) => c.state === "accepted"], ["Settled on the ledger", (c) => c.state === "settled"]];
     const lines = groups.map(([label, fn]) => {
       const g = new Map();
       for (const c of open.filter(fn).sort((a, b) => (a.due_day || 1e9) - (b.due_day || 1e9) || a.id - b.id)) { const k = `${payeeName(c)}|${c.amount}|${c.due_day}`; g.set(k, { c, x: (g.get(k)?.x || 0) + 1 }); }
@@ -201,5 +255,5 @@ export async function answer(q, deps) {
     return { answer: `${open.length} bills.\n${lines.join("\n")}`, sources: engine };
   }
 
-  return { answer: 'Try: "Why was the 400 payment blocked?", "What renews next month?", "Can we afford a contractor at 2,000 a month?", "What is spendable?" or "Any payout changes?". I answer questions; approving happens in Approvals.', sources: [] };
+  return { answer: 'Try: "Why was the 400 payment blocked?", "Was Ana reimbursed?", "Has Railway been paid?", "What renews next month?", "What is spendable?" or "Any payout changes?". I answer questions; approving happens in Approvals.', sources: [] };
 }
