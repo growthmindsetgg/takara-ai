@@ -112,6 +112,7 @@ An independent audit ran after the first full testnet run. No Critical issues; e
 | Per-member spending limits, budget envelopes | Roadmap | data model has the roster; limits not enforced in this build |
 | Netting, incoming cash flow, compliance clearance, scenario simulation | Roadmap | |
 | Mainnet deployment with contract-enforced payout | Roadmap | feasibility, design, costs (≈ $8/month for a small business) and the must-fix list: [docs/mainnet-plan.md](docs/mainnet-plan.md) |
+| Product after the hackathon (roles, approval queue, payroll cycles, alerts, setup interview, scoped receipts, shared vendor registry, milestone escrow; setup-first pricing) | Roadmap | [Takara AI product structure v1.md](Takara%20AI%20product%20structure%20v1.md) |
 
 ## Statements
 
