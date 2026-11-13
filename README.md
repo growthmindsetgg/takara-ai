@@ -113,6 +113,7 @@ An independent audit ran after the first full testnet run. No Critical issues; e
 | Netting, incoming cash flow, compliance clearance, scenario simulation | Roadmap | |
 | Mainnet deployment with contract-enforced payout | Roadmap | feasibility, design, costs (≈ $8/month for a small business) and the must-fix list: [docs/mainnet-plan.md](docs/mainnet-plan.md) |
 | Product after the hackathon (roles, approval queue, payroll cycles, alerts, setup interview, scoped receipts, shared vendor registry, milestone escrow; setup-first pricing) | Roadmap | [Takara AI product structure v1.md](Takara%20AI%20product%20structure%20v1.md) |
+| Proposed business model | Roadmap | setup free, pay at first payout; $59 / $149 / $468 per year (~$39/month), no percentage fees; measured running cost ≈ $8/month. Review and security-first roadmap: [docs/product-review.md](docs/product-review.md) |
 
 ## Statements
 
