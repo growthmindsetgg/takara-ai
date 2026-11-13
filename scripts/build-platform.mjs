@@ -20,10 +20,7 @@ const PLATFORM_BAR = `<div style="background:#0f6b5c;color:#fff;text-align:cente
 if (!site.includes('href="/app"')) site = site.replace(/<body([^>]*)>/, `<body$1>
 ${PLATFORM_BAR}`);
 writeFileSync(join(P, "index.html"), site);
-// owner dashboard, hosted mode
-let app = readFileSync(join(ROOT, "web", "index.html"), "utf8");
-const DEMO_BAR = `<div role="note" style="background:#fbf0dc;color:#5c3a12;text-align:center;padding:10px 16px;font:500 14px/1.45 system-ui,sans-serif;border-bottom:1px solid #ecd9b4">Hosted demo of the <b>fictional</b> fixture treasury on NEAR testnet. Figures are live from chain. Signing is disabled here: a public site never holds a signer's key. <a href="/" style="color:#5c3a12">Product page</a> · <a href="https://github.com/growthmindsetgg/takara-ai" style="color:#5c3a12">GitHub</a></div>`;
-app = app.replace(/<body([^>]*)>/, `<body$1>
-${DEMO_BAR}`);
-writeFileSync(join(P, "app", "index.html"), app);
+// owner dashboard: a byte-identical copy of web/index.html. The app detects hosted mode itself
+// (the token placeholder is left unreplaced) and renders its own demo banner.
+copyFileSync(join(ROOT, "web", "index.html"), join(P, "app", "index.html"));
 console.log("platform assembled:", readdirSync(P).join(", "));

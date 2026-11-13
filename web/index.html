@@ -2,430 +2,1904 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Takara AI Treasury</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Overview · Takara AI</title>
 <meta name="takara-token" content="__TAKARA_TOKEN__">
+<meta name="description" content="Takara AI owner app: what you can spend, what is waiting and on whom, what is due, and what Takara caught. Fictional fixture treasury on NEAR testnet.">
 <meta name="theme-color" content="#FAFAF8">
+<meta name="color-scheme" content="light">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230B5D52'/%3E%3Crect x='8' y='8' width='16' height='16' rx='3' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3Crect x='13' y='13' width='6' height='6' rx='1' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    color-scheme: light;
-    --paper: #FAFAF8; --surface: #FFFFFF; --sunken: #F4F4F0;
-    --ink: #182026; --ink-2: #364048; --muted: #5A636B;
-    --line: #E6E5DF; --line-2: #D5D4CC;
-    --accent: #0B5D52; --accent-2: #4A8F84; --accent-soft: #E6F0ED; --accent-ink: #08473F;
-    --warn: #8A5300; --warn-soft: #FAF0DC;
-    --bad: #9E2A2E; --bad-soft: #FAEAEA;
-    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --r-lg: 14px; --r-md: 10px; --r-sm: 6px;
-    --ease: cubic-bezier(.2,.7,.2,1);
-  }
-  *, *::before, *::after { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-  a { color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 1px; }
-  a:hover { color: var(--accent-ink); }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-  h1, h2, h3 { margin: 0; font-weight: 600; text-wrap: balance; }
-  code, pre, .mono { font-family: var(--mono); }
-  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:root {
+  color-scheme: light;
+  --paper: #FAFAF8; --surface: #FFFFFF; --sunken: #F4F4F0;
+  --ink: #182026; --ink-2: #364048; --muted: #5A636B;
+  --line: #E6E5DF; --line-2: #D5D4CC; --line-strong: #8C918C;
+  --accent: #0B5D52; --accent-2: #4A8F84; --accent-soft: #E6F0ED; --accent-ink: #08473F;
+  --warn: #8A5300; --warn-soft: #FAF0DC;
+  --bad: #9E2A2E; --bad-soft: #FAEAEA;
+  --seg-paid: #8C918C; --seg-reserved: #4A8F84; --seg-spendable: #0B5D52;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px;
+  --lift: 0 1px 0 rgba(24,32,38,.03), 0 18px 40px -24px rgba(24,32,38,.28);
+  --shadow-pop: 0 2px 6px rgba(24,32,38,.06), 0 24px 48px -16px rgba(24,32,38,.28);
+  --ease: cubic-bezier(.2,.7,.2,1); --ease-out: cubic-bezier(.4,0,1,1);
+  --side: 240px; --pad: 32px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 24px; }
+body { margin: 0; min-height: 100dvh; background: var(--paper); color: var(--ink); font: 400 15px/22px var(--sans); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+a { color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 1px; transition: color .16s var(--ease); }
+a:hover { color: var(--accent-ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+p { margin: 0; text-wrap: pretty; }
+ul, ol, dl, dd { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+button, input { font: inherit; color: inherit; }
+button, a, summary, input { touch-action: manipulation; }
+.vh { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.mono { font-family: var(--mono); }
+.num, .money, .tnum { font-variant-numeric: tabular-nums; }
+.money .sym { font-size: .8em; font-weight: 500; color: var(--muted); }
+code { font-family: var(--mono); font-size: .92em; }
+svg { flex: none; }
+.skip { position: fixed; left: 12px; top: 12px; z-index: 100; padding: 10px 14px; background: var(--ink); color: #fff; border-radius: var(--r-md); transform: translateY(-200%); }
+.skip:focus { transform: none; color: #fff; }
 
-  /* top bar */
-  .top { border-bottom: 1px solid var(--line); background: var(--surface); }
-  .top-in { max-width: 1160px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
-  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-  .brand svg { flex: none; }
-  h1 { font-size: 17px; letter-spacing: -.01em; line-height: 1.2; }
-  h1 small { display: block; font-size: 13px; font-weight: 400; color: var(--muted); letter-spacing: 0; margin-top: 2px; }
-  .acct { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
-  #treasury { font: 13px/1.4 var(--mono); color: var(--ink-2); overflow-wrap: anywhere; }
-  .tabs { margin-left: auto; display: flex; gap: 2px; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-md); padding: 3px; }
-  .tabs button { border: 0; background: transparent; color: var(--muted); min-height: 36px; padding: 6px 14px; border-radius: 7px; font: 500 14px/1 var(--sans); cursor: pointer; transition: background-color .15s, color .15s; touch-action: manipulation; }
-  .tabs button:hover { color: var(--ink); }
-  .tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(24,32,38,.08), 0 0 0 1px var(--line); }
-  @media (max-width: 600px) { .top-in { padding: 12px 16px; } .tabs { margin-left: 0; width: 100%; } .tabs button { flex: 1; } }
+/* ---------- shell ---------- */
+.side { position: fixed; inset: 0 auto 0 0; width: var(--side); background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; z-index: 20; }
+.brand { height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 20px; font-weight: 600; font-size: 16px; letter-spacing: -.01em; color: var(--ink); text-decoration: none; }
+.acctrow { display: flex; align-items: center; gap: 2px; padding: 0 8px 12px 20px; margin-bottom: 8px; border-bottom: 1px solid var(--line); min-height: 44px; }
+.acctrow .mono { font-size: 12px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.navlist { display: grid; gap: 2px; padding: 4px 10px; }
+.nv { position: relative; display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 8px; color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 14px; transition: background-color .16s var(--ease), color .16s var(--ease); }
+.nv:hover { background: var(--sunken); color: var(--ink); }
+.nv[aria-current="page"] { background: var(--accent-soft); color: var(--accent-ink); }
+.nv[aria-current="page"]::before { content: ""; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+.nv-l { flex: 1; min-width: 0; }
+.nv-b { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); font: 600 12px/20px var(--sans); text-align: center; font-variant-numeric: tabular-nums; }
+.nv-b[hidden] { display: none; }
+.side-foot { margin-top: auto; padding: 16px 20px 20px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
+.envtags { display: flex; flex-wrap: wrap; gap: 6px; }
+.etag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 4px; font: 500 12px/1 var(--sans); background: var(--warn-soft); color: var(--warn); white-space: nowrap; }
+.etag.fx { background: var(--sunken); color: var(--ink-2); }
+.etag.short { display: none; }
+.footlinks { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; }
+.content { margin-left: var(--side); min-width: 0; }
+main { display: block; max-width: calc(1120px + 2 * var(--pad)); margin: 0 auto; padding: 28px var(--pad) 64px; }
+.topbar, .tabbar { display: none; }
 
-  /* layout */
-  main { max-width: 1160px; margin: 0 auto; padding: 24px 24px 64px; display: grid; gap: 16px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
-  @media (max-width: 600px) { main { padding: 16px 16px 48px; } .kpis .kpi { padding: 14px 16px; } .kpis .kpi .v { font-size: 24px; } .kpis .kpi.spend .v { font-size: 28px; } main .head { padding: 16px 16px 0; } main .pad { padding: 14px 16px 16px; } main .chatlog { padding: 14px 16px; } main .suggest { padding: 12px 16px 0; } main #chat { padding: 12px 16px 16px; } }
-  section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); grid-column: span 12; min-width: 0; }
-  section[hidden] { display: none; }
-  .half { grid-column: span 6; } @media (max-width: 900px) { .half { grid-column: span 12; } }
-  .head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; padding: 18px 20px 0; }
-  h2 { font-size: 16.5px; letter-spacing: -.01em; }
-  .hint { font-size: 13.5px; color: var(--muted); margin: 4px 0 0; }
-  .pad { padding: 16px 20px 20px; }
+/* banners */
+.demo { background: var(--warn-soft); border-bottom: 1px solid rgba(138,83,0,.3); color: var(--ink); font-size: 14px; line-height: 20px; }
+.demo-in { max-width: calc(1120px + 2 * var(--pad)); margin: 0 auto; padding: 10px var(--pad); display: flex; align-items: flex-start; gap: 12px; }
+.demo-in p { max-width: 80ch; flex: 1; padding-top: 2px; }
+.demo-in p a { color: var(--warn); font-weight: 500; margin-left: 4px; white-space: nowrap; }
+.statebar { max-width: calc(1120px + 2 * var(--pad)); margin: 0 auto; padding: 16px var(--pad) 0; }
+.statebar p { padding: 12px 16px; border-radius: var(--r-md); font-weight: 500; }
+.statebar .t-bad { background: var(--bad-soft); color: var(--bad); border: 1px solid #F1D2D3; }
+.statebar .t-warn { background: var(--warn-soft); color: var(--warn); border: 1px solid #F0DDB8; }
 
-  .banner { grid-column: span 12; padding: 12px 16px; border-radius: var(--r-md); background: var(--bad-soft); color: var(--bad); border: 1px solid #F1D2D3; display: none; font-size: 14px; }
+/* ---------- buttons ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: var(--r-md); border: 1px solid transparent; font: 500 14.5px/1.2 var(--sans); cursor: pointer; text-decoration: none; transition: background-color .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease), transform .12s var(--ease); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn-primary { background: var(--ink); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #26323A; color: #fff; }
+.btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
+.btn-secondary:hover:not(:disabled) { border-color: var(--ink-2); background: var(--sunken); color: var(--ink); }
+.btn-ghost { background: transparent; color: var(--ink-2); padding: 8px 12px; }
+.btn-ghost:hover:not(:disabled) { background: var(--sunken); color: var(--ink); }
+.btn:disabled { cursor: not-allowed; opacity: .55; }
+.iconbtn { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--ink-2); cursor: pointer; transition: background-color .16s var(--ease), color .16s var(--ease); }
+.iconbtn:hover { background: var(--sunken); color: var(--ink); }
+.copy { display: inline-grid; place-items: center; width: 44px; height: 44px; margin: -12px -10px -12px -8px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 8px; vertical-align: middle; transition: color .16s var(--ease), background-color .16s var(--ease); }
+.copy:hover { color: var(--ink); background: var(--sunken); }
+.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; }
+@media (prefers-reduced-motion: no-preference) { .spin { animation: rot .8s linear infinite; } }
+@keyframes rot { to { transform: rotate(360deg); } }
 
-  /* pills */
-  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 99px; font-size: 12.5px; font-weight: 500; line-height: 1.5; white-space: nowrap; background: var(--sunken); color: var(--ink-2); border: 1px solid var(--line); }
-  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .75; }
-  .pill.accepted, .pill.ok { background: var(--accent-soft); color: var(--accent-ink); border-color: #CFE2DC; }
-  .pill.claimed, .pill.warn, .pill.suspended { background: var(--warn-soft); color: var(--warn); border-color: #F0DDB8; }
-  .pill.settled { background: var(--surface); color: var(--muted); border-color: var(--line-2); }
-  .pill.flag, .pill.bad, .pill.rejected, .pill.revoked { background: var(--bad-soft); color: var(--bad); border-color: #F1D2D3; }
-  .pill.flag::before { border-radius: 1px; transform: rotate(45deg); width: 5px; height: 5px; }
-  .pill.plain::before, .pill.ro::before { display: none; }
-  .pill.ro { background: var(--sunken); color: var(--ink-2); gap: 5px; }
-  .flags { display: flex; flex-wrap: wrap; gap: 4px; }
-  .none { color: var(--muted); }
+/* ---------- page header ---------- */
+.ph { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 24px; margin-bottom: 24px; }
+.ph-t { min-width: 0; flex: 1 1 320px; }
+[tabindex="-1"]:focus-visible { outline-offset: 4px; border-radius: 4px; }
+.ph h1 { width: fit-content; max-width: 100%; font-size: 24px; line-height: 30px; font-weight: 600; letter-spacing: -.015em; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.ph-d { margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--muted); max-width: 75ch; }
+.ph-r { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; }
+.ph-r .btn-ghost { min-height: 36px; font-size: 13.5px; padding: 6px 10px; }
 
-  /* tiles */
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-top: 16px; border-top: 1px solid var(--line); }
-  .kpi { padding: 18px 20px; min-width: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: -1px; }
-  .kpi .l { margin: 0; color: var(--muted); font-size: 13.5px; }
-  .kpi .v { margin: 6px 0 0; font-size: 28px; line-height: 1.15; font-weight: 600; letter-spacing: -.022em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-  .kpi .v .u { font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: 3px; }
-  .kpi code { display: block; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); font: 12px/1.5 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
-  .kpi.spend { background: linear-gradient(180deg, var(--accent-soft), rgba(230,240,237,.35)); }
-  .kpi.spend .v { color: var(--accent-ink); font-size: 34px; }
-  .kpi.spend .l { color: var(--accent-ink); font-weight: 500; }
-  .kpis.small .v { font-size: 19px; letter-spacing: -.01em; }
-  .kpis.small .v.mono { font: 500 15px/1.4 var(--mono); }
-  section > .kpis:last-child { border-bottom-left-radius: var(--r-lg); border-bottom-right-radius: var(--r-lg); overflow: hidden; }
-  .skel { display: block; height: 12px; border-radius: 4px; background: var(--sunken); width: 50%; }
-  .skel.big { height: 26px; margin-top: 10px; width: 70%; }
-  @media (prefers-reduced-motion: no-preference) { .skel { background: linear-gradient(90deg, var(--sunken), #ECECE6, var(--sunken)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; } }
-  @keyframes shimmer { to { background-position: -200% 0; } }
+/* ---------- layout ---------- */
+.g12 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; }
+.s7 { grid-column: span 7; } .s5 { grid-column: span 5; } .s12 { grid-column: 1 / -1; }
+.stack { display: grid; gap: 24px; }
+.stack > *, .g12 > * { min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); min-width: 0; }
+.panel-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; padding: 20px 24px 0; }
+.panel-h h2, .h2 { font-size: 17px; line-height: 24px; font-weight: 600; letter-spacing: -.01em; }
+.panel-b { padding: 16px 24px 20px; }
+.more { font-size: 14px; font-weight: 500; text-decoration: none; white-space: nowrap; }
+.more:hover { text-decoration: underline; }
+.chev { display: inline-block; margin-left: 4px; }
+.muted { color: var(--muted); }
+.sm { font-size: 13px; line-height: 18px; }
+.empty { padding: 20px 24px 24px; color: var(--ink-2); max-width: 65ch; }
+.empty h2, .empty h3 { font-size: 17px; line-height: 24px; color: var(--ink); margin-bottom: 4px; }
+.empty a { display: inline-block; margin-top: 10px; font-weight: 500; }
 
-  /* tables */
-  .scroll { overflow-x: auto; margin-top: 14px; border-top: 1px solid var(--line); -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 820px; }
-  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--muted); font-weight: 500; font-size: 13px; background: #FCFCFA; white-space: nowrap; }
-  tbody tr:last-child td { border-bottom: 0; }
-  tbody tr:hover td { background: #FCFCFA; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  td.id { color: var(--muted); width: 44px; font-variant-numeric: tabular-nums; }
-  td.amt { font-weight: 600; }
-  .vendor { font-weight: 500; white-space: nowrap; }
-  .hash { font: 12.5px/1.5 var(--mono); color: var(--ink-2); white-space: nowrap; }
-  .hash-s { display: block; font: 12px/1.5 var(--mono); color: var(--muted); white-space: nowrap; }
-  .dest { font: 12.5px/1.5 var(--mono); color: var(--ink-2); white-space: nowrap; }
-  .dest .proposed { display: block; margin-top: 4px; color: var(--warn); }
-  .dest .proposed b { font-weight: 500; }
-  .prio { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-  .prio::before { content: ""; width: 3px; height: 14px; border-radius: 2px; background: var(--line-2); }
-  .prio.critical { font-weight: 600; } .prio.critical::before { background: var(--ink); }
-  .prio.normal::before { background: var(--accent-2); }
-  .prio.discretionary::before { background: #C9C8BF; }
+/* ---------- pills, badges, tags ---------- */
+.pill, .badge { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid; font: 500 12.5px/1 var(--sans); white-space: nowrap; flex: none; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill.t-quiet::before { display: none; }
+.t-bad { background: var(--bad-soft); color: var(--bad); border-color: #F1D2D3; }
+.t-warn { background: var(--warn-soft); color: var(--warn); border-color: #F0DDB8; }
+.t-neutral { background: var(--sunken); color: var(--ink-2); border-color: var(--line); }
+.t-accent { background: var(--accent-soft); color: var(--accent-ink); border-color: #CFE2DC; }
+.t-quiet { background: var(--surface); color: var(--muted); border-color: var(--line-2); }
+.badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { display: inline-block; flex: none; font: 500 11.5px/16px var(--sans); background: var(--sunken); color: var(--muted); border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+.tag.warn { background: var(--warn-soft); color: var(--warn); }
+.tag.acc { background: var(--accent-soft); color: var(--accent-ink); }
+.tag.bad { background: var(--bad-soft); color: var(--bad); }
+.tag.ink { background: var(--sunken); color: var(--ink-2); }
+.rotag { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; border-radius: 4px; background: var(--sunken); color: var(--ink-2); font: 500 12.5px/1 var(--sans); letter-spacing: 0; }
 
-  /* policy form */
-  .callout { display: grid; grid-template-columns: 20px 1fr; gap: 10px; padding: 12px 14px; border-radius: var(--r-md); background: var(--sunken); border: 1px solid var(--line); font-size: 14px; color: var(--ink-2); margin: 0 0 6px; }
-  .callout b { color: var(--ink); font-weight: 600; display: block; }
-  .callout svg { margin-top: 2px; }
-  .field { margin-top: 16px; }
-  label { display: block; }
-  label .k { display: block; font: 500 13px/1.4 var(--mono); color: var(--ink); }
-  label .d { display: block; font-size: 13.5px; color: var(--muted); margin-top: 2px; }
-  .input { display: flex; align-items: stretch; margin-top: 8px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--surface); transition: border-color .15s, box-shadow .15s; }
-  .input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-  .input input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 10px 12px; font: 500 16px/1.3 var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; outline: none; }
-  .input .u { display: flex; align-items: center; padding: 0 12px; color: var(--muted); font-size: 13.5px; border-left: 1px solid var(--line); background: #FCFCFA; border-radius: 0 var(--r-md) var(--r-md) 0; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 9px 16px; border-radius: var(--r-md); font: 500 14.5px/1.2 var(--sans); cursor: pointer; border: 1px solid transparent; transition: background-color .15s, border-color .15s, transform .12s var(--ease), opacity .15s; touch-action: manipulation; }
-  .btn:active:not(:disabled) { transform: translateY(1px); }
-  button.primary { background: var(--ink); color: #fff; }
-  button.primary:hover:not(:disabled) { background: #26323A; }
-  button.primary:disabled { opacity: .45; cursor: not-allowed; }
-  button.secondary { background: var(--surface); color: var(--ink); border-color: var(--line-2); }
-  button.secondary:hover { border-color: var(--ink-2); }
-  .form-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
-  .form-foot .note { margin: 0; }
-  .note { color: var(--muted); font-size: 13.5px; margin: 10px 0 0; }
+/* ---------- hero ---------- */
+.hero { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); box-shadow: var(--lift); }
+.hero-l { grid-column: span 7; padding: 28px; min-width: 0; min-height: 300px; }
+.hero-r { grid-column: span 5; border-left: 1px solid var(--line); min-width: 0; display: grid; grid-template-rows: repeat(3, auto); }
+.hl-label { font-size: 14px; line-height: 20px; font-weight: 500; color: var(--ink-2); }
+.hl-val { margin-top: 6px; font-size: 48px; line-height: 52px; font-weight: 600; letter-spacing: -.025em; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
+.hl-val.neg { color: var(--bad); }
+.hl-val .u { font-size: 20px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
+.hl-sub { margin-top: 4px; font-size: 15px; color: var(--muted); }
+.bar { display: flex; gap: 2px; height: 14px; margin-top: 20px; }
+.bar.over { outline: 2px solid var(--bad); outline-offset: 2px; border-radius: var(--r-sm); }
+.seg { min-width: 4px; height: 100%; transform-origin: left center; }
+.seg:first-child { border-radius: var(--r-sm) 0 0 var(--r-sm); }
+.seg:last-child { border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+.seg:only-child { border-radius: var(--r-sm); }
+.seg.paid { background: var(--seg-paid); } .seg.res { background: var(--seg-reserved); } .seg.spend { background: var(--seg-spendable); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 12px; font-size: 13px; line-height: 18px; }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.legend .sw { width: 10px; height: 10px; border-radius: 2px; }
+.legend .lv { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.legend .ll { color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .bar.grow .seg { animation: grow .6s var(--ease) both; }
+  .bar.grow .seg:nth-child(2) { animation-delay: 60ms; }
+  .bar.grow .seg:nth-child(3) { animation-delay: 120ms; }
+  .legend.grow .lv { animation: fade .3s var(--ease) .2s both; }
+}
+@keyframes grow { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+details > summary { cursor: pointer; list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+.disc > summary { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13px; font-weight: 500; color: var(--accent); border-radius: 4px; }
+.disc > summary:hover { color: var(--accent-ink); }
+.disc > summary svg { transition: transform 90ms var(--ease); }
+.disc[open] > summary svg { transform: rotate(90deg); }
+.calc { margin-top: 16px; }
+.calc dl { margin-top: 8px; display: grid; gap: 10px; }
+.calc dl > div { display: grid; gap: 2px; padding-top: 10px; border-top: 1px solid var(--line); }
+.calc dt { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; gap: 12px; }
+.calc dd { font-size: 13px; line-height: 18px; color: var(--ink-2); }
+.calc .f { font: 12px/17px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.calc .close { margin-top: 12px; font-size: 13px; color: var(--muted); }
 
-  /* chat */
-  .chat-box { display: flex; flex-direction: column; height: 100%; }
-  .chatlog { flex: 1; display: flex; flex-direction: column; gap: 10px; max-height: 360px; min-height: 200px; overflow-y: auto; padding: 16px 20px; background: #FCFCFA; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 14px; overscroll-behavior: contain; }
-  .msg { max-width: 88%; padding: 9px 12px; border-radius: 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .msg.q { align-self: flex-end; background: var(--ink); color: #fff; border-bottom-right-radius: 4px; }
-  .msg.a { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); color: var(--ink); border-bottom-left-radius: 4px; }
-  .msg.a.pending { color: var(--muted); }
-  .msg a { color: var(--accent); font-weight: 500; }
-  .suggest { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 20px 0; }
-  .suggest button { border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); border-radius: 99px; padding: 5px 12px; min-height: 32px; font: 13px/1.3 var(--sans); cursor: pointer; transition: border-color .15s, color .15s; }
-  .suggest button:hover { border-color: var(--accent); color: var(--accent-ink); }
-  .row { display: flex; gap: 8px; }
-  .row input { flex: 1; min-width: 0; }
-  #chat { padding: 12px 20px 20px; }
-  #chat input { border: 1px solid var(--line-2); border-radius: var(--r-md); padding: 10px 12px; font: 400 16px/1.3 var(--sans); color: var(--ink); background: var(--surface); transition: border-color .15s, box-shadow .15s; }
-  #chat input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+/* metric rows */
+.metric { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: start; column-gap: 12px; padding: 20px 24px; color: inherit; text-decoration: none; border-top: 1px solid var(--line); min-width: 0; }
+.metric:first-child { border-top: 0; }
+.metric > * { grid-column: 1; min-width: 0; }
+.metric .m-l { font-size: 13px; line-height: 18px; font-weight: 500; color: var(--ink-2); }
+.metric .m-v { margin-top: 2px; font-size: 32px; line-height: 38px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.metric .m-v.smv { font-size: 20px; line-height: 28px; letter-spacing: -.01em; }
+.metric .m-v .u { font-size: 15px; font-weight: 500; letter-spacing: 0; color: var(--muted); }
+.metric .m-c { font-size: 13px; line-height: 18px; color: var(--muted); margin-top: 2px; }
+.metric .m-c.warn { color: var(--warn); } .metric .m-c.bad { color: var(--bad); }
+.metric .m-go { grid-column: 2; grid-row: 1 / span 4; align-self: center; color: var(--muted); display: inline-flex; align-items: center; font-size: 14px; font-weight: 500; }
+.metric .m-go a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
+a.metric { transition: background-color .16s var(--ease); }
+a.metric:hover { background: var(--sunken); color: inherit; }
+a.metric:last-child { border-radius: 0 0 var(--r-lg) 0; }
+a.metric:focus-visible { outline-offset: -2px; }
 
-  .pubnote { padding: 14px 20px 18px; margin: 0; font-size: 13.5px; color: var(--muted); border-top: 1px solid var(--line); }
+/* ---------- approval card ---------- */
+.queue { display: grid; gap: 12px; max-width: 760px; }
+.acard { position: relative; container-type: inline-size; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--line-2); border-radius: var(--r-md); padding: 20px; min-width: 0; }
+.acard.tone-bad { border-left-color: var(--bad); } .acard.tone-warn { border-left-color: var(--warn); }
+.ac-1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ac-name { font-size: 17px; line-height: 24px; font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ac-amt { margin-left: auto; padding-left: 12px; font-size: 17px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ac-head { margin-top: 6px; color: var(--ink-2); }
+.cmp { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 14px; }
+.box { background: var(--sunken); border: 1px solid transparent; border-radius: var(--r-sm); padding: 12px 14px; min-width: 0; align-self: stretch; }
+.box.prop { border-color: #E3B7B9; }
+.box-t { font-size: 12.5px; line-height: 18px; font-weight: 500; color: var(--ink-2); }
+.box.prop .box-t { color: var(--bad); }
+.box-v { margin-top: 4px; font: 14px/20px var(--mono); overflow-wrap: anywhere; color: var(--ink); }
+.box-c { font-size: 12.5px; color: var(--muted); }
+.neq { font-size: 16px; color: var(--muted); }
+@container (max-width: 560px) { .cmp { grid-template-columns: minmax(0, 1fr); } .neq { display: none; } }
+@media (max-width: 559px) { .cmp { grid-template-columns: minmax(0, 1fr); } .neq { display: none; } }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin-top: 14px; }
+.facts dt { font-size: 13px; line-height: 20px; color: var(--muted); }
+.facts dd { font-size: 14px; line-height: 20px; min-width: 0; overflow-wrap: anywhere; }
+.facts .mono { font-size: 13px; }
+.ac-act { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 24px; margin-top: 12px; }
+.ac-act > a { display: inline-flex; align-items: center; min-height: 32px; font-weight: 500; font-size: 14px; }
+.ac-act details { flex: 1 1 260px; }
+.ac-act details p { margin-top: 4px; font-size: 13.5px; line-height: 20px; color: var(--ink-2); max-width: 65ch; }
+.acard.compact { padding: 14px 16px; display: block; color: inherit; text-decoration: none; transition: background-color .16s var(--ease); }
+.acard.compact:hover { background: #FCFCFA; color: inherit; }
+.acard.compact .ac-name { font-size: 15px; line-height: 22px; }
+.acard.compact .ac-amt { font-size: 15px; }
+.acard.compact .ac-head { font-size: 14px; line-height: 20px; margin-top: 4px; }
+.acard.compact .ac-meta { margin-top: 4px; font-size: 13px; line-height: 18px; color: var(--muted); }
+.attlist { display: grid; gap: 10px; padding: 16px 24px 24px; }
+.qsec { margin-top: 32px; }
+.qsec:first-child { margin-top: 0; }
+.qsec h2 { font-size: 17px; line-height: 24px; margin-bottom: 4px; }
+.qsec .qd { font-size: 14px; color: var(--muted); margin-bottom: 4px; }
+.qsec .queue { margin-top: 12px; }
 
-  /* dialog */
-  dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); max-width: 560px; width: calc(100% - 32px); padding: 0; box-shadow: 0 30px 60px -20px rgba(24,32,38,.35); overscroll-behavior: contain; }
-  dialog::backdrop { background: rgba(24,32,38,.38); backdrop-filter: blur(2px); }
-  @media (prefers-reduced-motion: no-preference) { dialog[open] { animation: rise .22s var(--ease); } }
-  @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
-  .dlg-head { padding: 20px 22px 0; }
-  .dlg-head h2 { font-size: 18px; }
-  .steps { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; counter-reset: s; }
-  .steps li { counter-increment: s; display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }
-  .steps li::before { content: counter(s); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; background: var(--sunken); color: var(--ink-2); }
-  .steps li b { display: block; color: var(--ink); font-weight: 600; }
-  .steps li.now { border-color: #CFE2DC; background: var(--accent-soft); color: var(--accent-ink); }
-  .steps li.now::before { background: var(--accent); color: #fff; }
-  @media (max-width: 480px) { .steps { grid-template-columns: 1fr; } }
-  .dlg-body { padding: 16px 22px 0; }
-  .dlg-body .lbl { font-size: 13px; color: var(--muted); margin: 0 0 6px; }
-  pre { margin: 0; background: #F6F6F2; border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; font: 12.5px/1.65 var(--mono); color: var(--ink); overflow: auto; max-height: 40vh; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .dlg-foot { padding: 16px 22px 20px; }
-  .dlg-foot .row { justify-content: flex-end; flex-wrap: wrap; }
-  #signnote { margin: 12px 0 0; }
-  #signresult:empty { display: none; }
-  #signresult { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--r-sm); background: var(--sunken); color: var(--ink-2); }
+/* ---------- coming up ---------- */
+.up-sum { padding: 8px 24px 4px; font-size: 15px; }
+.up-sum .od { color: var(--bad); font-weight: 600; }
+.uplist { padding: 8px 12px 4px; }
+.uprow { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-areas: "d n a" "d n p"; column-gap: 12px; row-gap: 4px; align-items: center; padding: 10px 12px; border-radius: var(--r-md); color: inherit; text-decoration: none; transition: background-color .16s var(--ease); }
+.uprow:hover { background: var(--sunken); color: inherit; }
+.uprow:focus-visible { outline-offset: -2px; }
+.dblk { grid-area: d; text-align: center; line-height: 1.1; }
+.dblk .m { display: block; font-size: 12px; color: var(--muted); }
+.dblk .d { display: block; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dblk .y { display: block; font-size: 11px; color: var(--muted); }
+.up-n { grid-area: n; min-width: 0; }
+.up-n .nm { display: block; font-weight: 500; overflow-wrap: break-word; }
+.up-n .nm .mono { font-size: 13.5px; }
+.up-n .rc { display: block; font-size: 13px; color: var(--muted); line-height: 18px; }
+.up-a { grid-area: a; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.up-p { grid-area: p; justify-self: end; }
+.panel-f { padding: 4px 24px 20px; }
+
+/* ---------- activity ---------- */
+.actday { padding: 0 24px; }
+.actday h3, .actday h2 { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink-2); padding: 16px 0 4px; }
+.acts { display: grid; }
+.act { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.actday .act:first-child { border-top: 0; }
+.act-ic { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; }
+.k-caught .act-ic { background: var(--bad-soft); color: var(--bad); }
+.k-held .act-ic { background: var(--warn-soft); color: var(--warn); }
+.k-money .act-ic { background: var(--accent-soft); color: var(--accent-ink); }
+.k-admin .act-ic { background: var(--sunken); color: var(--ink-2); }
+.act-s { font-size: 15px; line-height: 22px; overflow-wrap: anywhere; }
+.act-s b { font-weight: 600; }
+.act-s .mono { font-size: 13.5px; }
+.act-m { margin-top: 2px; font-size: 13px; line-height: 18px; color: var(--muted); }
+.act-m a { white-space: nowrap; }
+.actwrap { padding-bottom: 12px; }
+.filters { display: flex; gap: 2px; padding: 3px; margin-bottom: 20px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); width: max-content; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.filters::-webkit-scrollbar { display: none; }
+.filters a { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 7px; color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 14px; white-space: nowrap; transition: background-color .16s var(--ease), color .16s var(--ease); }
+.filters a:hover { background: var(--sunken); color: var(--ink); }
+.filters a[aria-current="true"] { background: var(--ink); color: #fff; }
+.filters a .c { font-variant-numeric: tabular-nums; color: inherit; opacity: .8; }
+.fwrap { position: relative; max-width: 100%; }
+.breakdown { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 24px; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+.breakdown > div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+.breakdown dt { color: var(--ink-2); font-size: 14px; }
+.breakdown dd { font-weight: 600; font-variant-numeric: tabular-nums; }
+.bnote { padding: 12px 24px 0; font-size: 13px; color: var(--muted); }
+
+/* ---------- tables ---------- */
+.tbl { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.tbl th { text-align: left; font-size: 13px; line-height: 18px; font-weight: 500; color: var(--muted); padding: 12px; border-bottom: 1px solid var(--line); background: #FCFCFA; }
+.tbl th:first-child, .tbl td:first-child { padding-left: 20px; }
+.tbl td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; min-width: 0; }
+.tbl tbody tr:last-child td { border-bottom: 0; }
+.tbl .num { text-align: right; }
+.tbl thead th:first-child { border-top-left-radius: var(--r-lg); }
+.tbl thead th:last-child { border-top-right-radius: var(--r-lg); }
+tr.row { position: relative; height: 60px; transition: background-color .16s var(--ease); }
+tr.row:hover { background: #FCFCFA; }
+tr.row:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
+.stretch { color: var(--ink); text-decoration: none; }
+.stretch:hover { color: var(--ink); text-decoration: underline; }
+.stretch::after { content: ""; position: absolute; inset: 0; }
+.stretch:focus-visible { outline: none; }
+.b-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.b-name .stretch { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.b-sub { margin-top: 2px; display: flex; gap: 6px; font-size: 13px; line-height: 18px; color: var(--muted); min-width: 0; white-space: nowrap; }
+.b-sub .mono { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.b-iss-in { display: none; margin-top: 6px; }
+.td-due .d1 { font-size: 14px; } .td-due .d2 { font-size: 12.5px; line-height: 16px; color: var(--muted); } .td-due .d2.od { color: var(--bad); }
+.td-amt { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.td-amt .sym { font-size: 12.5px; }
+.td-wait { font-size: 13.5px; color: var(--ink-2); line-height: 18px; }
+.c-bill { width: auto; } .c-due { width: 112px; } .c-amt { width: 112px; } .c-st { width: 140px; } .c-iss { width: 176px; } .c-wait { width: 136px; }
+.cards { display: none; }
+.crd { position: relative; padding: 14px 16px; border-top: 1px solid var(--line); }
+.crd:first-child { border-top: 0; }
+.crd:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--r-md); }
+.crd-1, .crd-2 { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.crd-1 .nm { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.crd-1 .stretch { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.crd-1 .money { font-weight: 600; white-space: nowrap; }
+.crd-2 { margin-top: 4px; font-size: 13px; color: var(--muted); }
+.crd-2 > span:first-child { min-width: 0; }
+.crd-3 { margin-top: 8px; }
+.sumstrip { font-size: 15px; margin-bottom: 16px; color: var(--ink-2); }
+.sumstrip b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* vendors */
+.c-vn { width: auto; } .c-pay { width: 24%; } .c-cnt { width: 56px; } .c-open { width: 104px; } .c-paid { width: 104px; } .c-vst { width: 176px; }
+.v-pay-in { display: none; }
+.dest { font: 13px/18px var(--mono); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chain { font-size: 12px; color: var(--muted); }
+.secgap { margin-top: 32px; }
+.sech { font-size: 17px; line-height: 24px; font-weight: 600; margin-bottom: 12px; }
+
+/* ledger */
+.c-lb { width: 15%; } .c-ls { width: 120px; } .c-lp { width: 120px; } .c-li { width: auto; } .c-lh { width: 190px; } .c-la { width: 130px; }
+.sumdl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sumdl > div { padding: 14px 24px; border-top: 1px solid var(--line); min-width: 0; }
+.sumdl > div:nth-child(-n+2) { border-top: 0; }
+.sumdl > div:nth-child(odd) { border-right: 1px solid var(--line); }
+.sumdl dt { font-size: 13px; color: var(--muted); }
+.sumdl dd { margin-top: 2px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; overflow-wrap: anywhere; }
+.sumdl .mono { font-size: 13.5px; }
+.vis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.vis > div { padding: 16px 20px; border-radius: var(--r-md); }
+.vis .see { background: var(--surface); border: 1px solid var(--line); }
+.vis .seal { background: var(--sunken); border: 1px solid var(--line); }
+.vis h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.vis p { color: var(--ink-2); font-size: 14px; }
+.changes li { padding: 12px 24px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.changes li:first-child { border-top: 0; }
+.footnote { margin-top: 24px; font-size: 13.5px; color: var(--muted); max-width: 80ch; }
+.hashc { display: inline-flex; align-items: center; gap: 2px; font: 12.5px/18px var(--mono); color: var(--ink-2); white-space: nowrap; }
+.sm-link { font-size: 13px; display: inline-block; margin-top: 2px; position: relative; z-index: 1; }
+
+/* ---------- policy ---------- */
+.field + .field { margin-top: 24px; }
+.field label { display: block; font-size: 15px; font-weight: 500; }
+.f-desc { margin-top: 2px; font-size: 13.5px; line-height: 20px; color: var(--muted); }
+.inp { display: flex; align-items: stretch; margin-top: 8px; max-width: 320px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); transition: border-color .16s var(--ease), box-shadow .16s var(--ease); }
+.inp:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.inp.invalid { border-color: var(--bad); }
+.inp input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 10px 12px; font-size: 16px; font-weight: 500; font-variant-numeric: tabular-nums; outline: none; border-radius: var(--r-md) 0 0 var(--r-md); }
+.inp .u { display: flex; align-items: center; padding: 0 12px; color: var(--muted); font-size: 14px; border-left: 1px solid var(--line); background: #FCFCFA; border-radius: 0 var(--r-md) var(--r-md) 0; }
+.f-cur { margin-top: 6px; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.f-err { margin-top: 6px; font-size: 13.5px; color: var(--bad); font-weight: 500; }
+.f-err[hidden], .tag[hidden] { display: none; }
+.callout { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 10px; padding: 12px 14px; border-radius: var(--r-md); background: var(--sunken); font-size: 14px; color: var(--ink-2); margin-top: 28px; }
+.callout b { color: var(--ink); font-weight: 600; }
+.formfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
+.formnote { margin-top: 10px; font-size: 13px; color: var(--muted); }
+.who dl { display: grid; gap: 0; }
+.who dl > div { padding: 12px 0; border-top: 1px solid var(--line); min-width: 0; }
+.who dl > div:first-child { border-top: 0; padding-top: 0; }
+.who dt { font-size: 13px; color: var(--muted); }
+.who dd { margin-top: 2px; overflow-wrap: anywhere; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; }
+.who .mono { font-size: 13.5px; }
+.who p { margin-top: 12px; font-size: 14px; color: var(--ink-2); }
+
+/* ---------- ask ---------- */
+.ask { max-width: 760px; }
+.chatlog { min-height: 50vh; max-height: 64vh; overflow-y: auto; overscroll-behavior: contain; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: #FCFCFA; border: 1px solid var(--line); border-radius: var(--r-lg) var(--r-lg) 0 0; }
+.msg { max-width: 88%; padding: 10px 14px; border-radius: 12px; font-size: 15px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.q { align-self: flex-end; background: var(--ink); color: #fff; border-bottom-right-radius: 4px; }
+.msg.a { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.msg.pending { color: var(--muted); }
+.msg.err { border-color: #F1D2D3; background: var(--bad-soft); color: var(--bad); }
+.msg abbr { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.msg .src { display: block; margin-top: 6px; font-weight: 500; }
+.msg code { background: var(--sunken); padding: 0 4px; border-radius: 4px; }
+.chat-hello { color: var(--ink-2); font-size: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.chip { height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink-2); font-size: 13.5px; cursor: pointer; transition: border-color .16s var(--ease), color .16s var(--ease), background-color .16s var(--ease); }
+.chip:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
+.chatform { position: sticky; bottom: 0; display: flex; gap: 8px; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 var(--r-lg) var(--r-lg); }
+.chatform input { flex: 1; min-width: 0; border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 9px 12px; font-size: 16px; background: var(--surface); outline: none; transition: border-color .16s var(--ease), box-shadow .16s var(--ease); }
+.chatform input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ---------- states ---------- */
+.sk { display: block; background: var(--sunken); border-radius: 4px; }
+@media (prefers-reduced-motion: no-preference) { .sk { background: linear-gradient(90deg, var(--sunken) 0%, #ECECE6 50%, var(--sunken) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; } }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.skrows { padding: 8px 24px 16px; }
+.skrow { display: grid; align-content: center; gap: 8px; border-top: 1px solid var(--line); overflow: hidden; }
+.skrow:first-child { border-top: 0; }
+.errblk { margin: 16px 24px; padding: 16px; border-radius: var(--r-md); background: var(--bad-soft); }
+.errblk.flush { margin: 0; }
+.errblk h3, .errblk .et { font-size: 15px; font-weight: 600; color: var(--bad); }
+.errblk p { margin-top: 4px; font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.errblk .btn { margin-top: 12px; }
+
+/* ---------- dialogs & drawers ---------- */
+dialog { border: 0; padding: 0; color: var(--ink); background: var(--surface); overscroll-behavior: contain; }
+dialog::backdrop { background: rgba(24,32,38,.38); }
+.drawer { margin: 0 0 0 auto; width: min(520px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; border-left: 1px solid var(--line); box-shadow: var(--shadow-pop); }
+.dr-in { position: relative; height: 100%; display: flex; flex-direction: column; }
+.dr-top { position: absolute; top: 10px; right: 10px; z-index: 2; background: var(--surface); border-radius: var(--r-md); }
+.dr-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 22px 28px 32px; }
+.dr-h { padding-right: 8px; }
+.dr-h h2 { font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -.01em; padding-right: 48px; overflow-wrap: anywhere; }
+.dr-h .dr-tags { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.dr-amt { margin-top: 10px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.dr-amt .money { font-size: 24px; line-height: 30px; font-weight: 600; letter-spacing: -.015em; }
+.dr-sec { margin-top: 28px; }
+.dr-sec > h3 { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 10px; }
+.tl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; }
+.tl li { position: relative; padding-top: 22px; font-size: 13.5px; font-weight: 500; color: var(--muted); }
+.tl li::before { content: ""; position: absolute; top: 0; left: 0; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-2); background: var(--surface); z-index: 1; }
+.tl li::after { content: ""; position: absolute; top: 6px; left: 14px; right: 0; height: 2px; background: var(--line-2); }
+.tl li:last-child::after { display: none; }
+.tl li.done { color: var(--ink); } .tl li.done::before { background: var(--accent); border-color: var(--accent); } .tl li.done::after { background: var(--accent); }
+.tl li.now { color: var(--ink); } .tl li.now::before { border-color: var(--accent); }
+.tl-note { margin-top: 10px; font-size: 14px; color: var(--ink-2); }
+.callo { padding: 12px 14px; border-radius: var(--r-md); font-size: 14px; line-height: 20px; display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; overflow-wrap: anywhere; }
+.callo + .callo { margin-top: 8px; }
+.callo.t-bad { background: var(--bad-soft); color: var(--ink); border: 1px solid #F1D2D3; }
+.callo.t-warn { background: var(--warn-soft); color: var(--ink); border: 1px solid #F0DDB8; }
+.callo.t-bad svg { color: var(--bad); margin-top: 2px; } .callo.t-warn svg { color: var(--warn); margin-top: 2px; }
+.callo b { font-weight: 600; }
+.ddl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 20px; font-size: 14px; }
+.ddl dt { color: var(--muted); font-size: 13.5px; }
+.ddl dd { min-width: 0; overflow-wrap: anywhere; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; }
+.ddl .mono { font-size: 13px; }
+.drawer .acts .act:first-child { border-top: 0; }
+.proof { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 12px; }
+.proof .ddl { margin-top: 10px; }
+.note-box { margin-top: 24px; padding: 12px 14px; border-radius: var(--r-md); background: var(--sunken); font-size: 13.5px; color: var(--ink-2); }
+.vbills li { padding: 10px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.vbills li:first-child { border-top: 0; }
+.vbills a { font-weight: 500; }
+.vbills .r { display: flex; gap: 10px; align-items: center; white-space: nowrap; }
+.modal { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); border-radius: var(--r-lg); box-shadow: var(--shadow-pop); }
+.modal-in { padding: 24px; }
+.modal h2 { font-size: 20px; line-height: 28px; font-weight: 600; }
+.steps { display: flex; flex-wrap: wrap; gap: 6px 4px; margin-top: 14px; font-size: 13px; color: var(--muted); align-items: center; }
+.steps li { display: inline-flex; align-items: center; gap: 6px; }
+.steps li .n { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 12px; font-weight: 600; background: var(--sunken); color: var(--ink-2); }
+.steps li.now { color: var(--ink); font-weight: 500; } .steps li.now .n { background: var(--accent); color: #fff; }
+.steps .sep { color: var(--line-strong); margin: 0 4px; }
+.difft { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 14px; table-layout: fixed; }
+.difft th { text-align: left; font-size: 13px; font-weight: 500; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.difft td { padding: 10px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; vertical-align: top; }
+.difft td.pv { font-weight: 600; }
+.difft th:first-child, .difft td:first-child { padding-left: 0; width: 44%; }
+.dmeta { margin-top: 14px; display: grid; gap: 4px; font-size: 13.5px; color: var(--ink-2); }
+.dmeta .mono { font-size: 12.5px; }
+.raw { margin-top: 14px; }
+.raw pre { margin: 8px 0 0; background: var(--sunken); border-radius: var(--r-md); padding: 12px 14px; font: 12.5px/1.6 var(--mono); overflow: auto; max-height: 30vh; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dfoot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.dfoot-note { margin-top: 10px; font-size: 13px; color: var(--muted); text-align: right; }
+.dalert { margin-top: 14px; padding: 10px 12px; border-radius: var(--r-md); background: var(--bad-soft); color: var(--bad); font-weight: 500; font-size: 14px; }
+.nothing { margin-top: 18px; padding: 14px; border-radius: var(--r-md); background: var(--sunken); color: var(--ink-2); }
+.sheet { margin: auto 0 0; width: 100vw; max-width: 100vw; border-radius: var(--r-lg) var(--r-lg) 0 0; padding-bottom: env(safe-area-inset-bottom); box-shadow: var(--shadow-pop); }
+.sheet-in { padding: 8px 8px 12px; }
+.sheet-h { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 12px; }
+.sheet-h h2 { font-size: 15px; font-weight: 600; }
+.sheet a.si { display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 12px; border-radius: var(--r-md); color: var(--ink); text-decoration: none; font-weight: 500; }
+.sheet a.si:hover { background: var(--sunken); }
+.sheet a.si[aria-current="page"] { background: var(--accent-soft); color: var(--accent-ink); }
+.sheet hr { border: 0; border-top: 1px solid var(--line); margin: 8px 4px; }
+.sheet .acctrow { border: 0; padding: 4px 4px 0 12px; margin: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .drawer[open] { animation: drIn .24s var(--ease); }
+  .modal[open] { animation: mdIn .24s var(--ease); }
+  .sheet[open] { animation: shIn .24s var(--ease); }
+}
+@keyframes drIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes mdIn { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes shIn { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+
+/* toasts */
+.toasts { position: fixed; right: 24px; bottom: 24px; z-index: 60; display: grid; gap: 8px; justify-items: end; pointer-events: none; }
+.toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: 400px; padding: 12px 8px 12px 16px; background: var(--ink); color: #fff; font-size: 14px; border-radius: var(--r-md); box-shadow: var(--shadow-pop); }
+.toast a { color: #BFE3DA; text-decoration: underline; }
+.toast a:hover { color: #fff; }
+.toast button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: transparent; color: #fff; border-radius: 6px; cursor: pointer; flex: none; }
+.toast button:hover { background: rgba(255,255,255,.12); }
+@media (prefers-reduced-motion: no-preference) { .toast { animation: mdIn .24s var(--ease); } }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1279px) {
+  :root { --side: 224px; }
+  .c-wait { display: none; }
+}
+@media (max-width: 1023px) {
+  :root { --side: 72px; --pad: 24px; }
+  .brand { justify-content: center; padding: 0; }
+  .side .brand .wm, .side .acctrow { display: none; }
+  .navlist { padding: 8px 0; gap: 0; }
+  .nv { flex-direction: column; justify-content: center; gap: 4px; height: 64px; padding: 0 2px; border-radius: 0; font-size: 11px; line-height: 13px; text-align: center; }
+  .nv-l { flex: none; }
+  .nv[aria-current="page"]::before { left: 0; top: 10px; bottom: 10px; }
+  .nv-b { position: absolute; top: 6px; left: calc(50% + 4px); min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 5px; }
+  .side-foot { padding: 12px 8px 16px; justify-items: center; }
+  .etag { display: none; } .etag.short { display: inline-flex; }
+  .footlinks { display: none; }
+  .s7, .s5 { grid-column: 1 / -1; }
+  .c-iss { display: none; }
+  .b-iss-in { display: flex; }
+  .c-pay, .c-cnt, .c-lp { display: none; }
+  .v-pay-in { display: block; margin-top: 2px; }
+  .c-lh { width: 25%; } .c-la { width: 17%; } .c-lb { width: 16%; } .c-ls { width: 17%; }
+}
+@media (max-width: 879px) {
+  .hero-l, .hero-r { grid-column: 1 / -1; }
+  .hero-r { border-left: 0; border-top: 1px solid var(--line); }
+  a.metric:last-child { border-radius: 0 0 var(--r-lg) var(--r-lg); }
+}
+@media (max-width: 767px) {
+  :root { --pad: 16px; }
+  html { scroll-padding-top: 72px; scroll-padding-bottom: 88px; }
+  .side { display: none; }
+  .content { margin-left: 0; }
+  main { padding: 20px var(--pad) calc(64px + env(safe-area-inset-bottom) + 16px); }
+  .topbar { display: flex; position: sticky; top: 0; z-index: 10; height: calc(56px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); align-items: center; gap: 8px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .topbar .brand { height: auto; padding: 0; gap: 8px; font-size: 15px; flex: none; }
+  .topbar .envtags { margin-left: auto; flex-wrap: nowrap; }
+  .topbar .etag { display: inline-flex; }
+  .tabbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; height: calc(64px + env(safe-area-inset-bottom)); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: var(--surface); border-top: 1px solid var(--line); }
+  .tb { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 64px; border: 0; background: transparent; color: var(--ink-2); font: 500 11px/13px var(--sans); text-decoration: none; cursor: pointer; }
+  .tb:active { background: var(--sunken); }
+  .tb[aria-current="page"], .tb.on { color: var(--accent-ink); }
+  .tb[aria-current="page"]::before, .tb.on::before { content: ""; position: absolute; top: 0; left: 25%; right: 25%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
+  .tb .nv-b { position: absolute; top: 6px; left: calc(50% + 4px); min-width: 18px; height: 18px; line-height: 18px; font-size: 11px; padding: 0 5px; }
+  .demo-in { padding: 10px var(--pad); }
+  .ph { margin-bottom: 16px; }
+  .ph-r { width: 100%; justify-content: space-between; }
+  .stack, .g12 { gap: 16px; }
+  .hero-l { padding: 20px; min-height: 0; }
+  .hl-val { font-size: 38px; line-height: 42px; }
+  .metric { padding: 16px 20px; }
+  .metric .m-v { font-size: 28px; line-height: 34px; }
+  .panel-h { padding: 16px 16px 0; }
+  .attlist { padding: 12px 12px 16px; }
+  .up-sum { padding: 8px 16px 4px; }
+  .uplist { padding: 8px 4px 4px; }
+  .panel-f { padding: 4px 16px 16px; }
+  .actday { padding: 0 16px; }
+  .acard { padding: 16px; }
+  .ac-1 { flex-wrap: wrap; row-gap: 4px; }
+  .acard:not(.compact) .ac-amt { margin-left: auto; }
+  .facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .facts dd { margin-bottom: 8px; }
+  .tblwrap { display: none; }
+  .cards { display: block; }
+  .sumdl { grid-template-columns: minmax(0, 1fr); }
+  .sumdl > div { border-right: 0 !important; padding: 12px 16px; }
+  .sumdl > div:nth-child(2) { border-top: 1px solid var(--line); }
+  .vis { grid-template-columns: minmax(0, 1fr); }
+  .changes li { padding: 12px 16px; }
+  .breakdown { padding: 12px 16px; }
+  .bnote { padding: 12px 16px 0; }
+  .empty { padding: 16px; }
+  .errblk { margin: 12px 16px; }
+  .drawer { width: 100vw; border-left: 0; }
+  .dr-body { padding: 18px 16px 32px; }
+  .modal { width: 100vw; max-width: 100vw; max-height: 100dvh; height: 100dvh; border-radius: 0; margin: 0; }
+  .modal-in { padding: 20px 16px; }
+  .toasts { left: 16px; right: 16px; bottom: calc(64px + env(safe-area-inset-bottom) + 12px); justify-items: center; }
+  .chatlog { max-height: none; padding: 14px; }
+  .chatform { bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .msg { max-width: 94%; }
+  .filters { width: auto; margin-right: calc(-1 * var(--pad)); border-right: 0; border-radius: var(--r-md) 0 0 var(--r-md); -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); padding-right: 32px; }
+  .dfoot { justify-content: stretch; } .dfoot .btn { flex: 1; }
+  .dfoot-note { text-align: left; }
+}
+@media (max-width: 767px) and (prefers-reduced-motion: no-preference) { .drawer[open] { animation-name: shIn; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+  .btn:active:not(:disabled) { transform: none; }
+}
 </style>
 </head>
 <body>
-<header class="top">
-  <div class="top-in">
-    <div class="brand">
-      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0B5D52"/><rect x="8" y="8" width="16" height="16" rx="3" fill="none" stroke="#fff" stroke-width="2.5"/><rect x="13" y="13" width="6" height="6" rx="1" fill="#fff"/></svg>
-      <div>
-        <h1>Takara AI <small>Owner console, local</small></h1>
-      </div>
-    </div>
-    <div class="acct">
-      <span id="treasury">treasury</span>
-      <span class="pill" id="netstate" hidden></span>
-    </div>
-    <div class="tabs" role="tablist" aria-label="View">
-      <button role="tab" aria-selected="true" data-view="owner">Owner view</button>
-      <button role="tab" aria-selected="false" data-view="public">Public ledger</button>
-    </div>
-  </div>
+<a class="skip" href="#main" data-act="skip">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="#/overview"><svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0B5D52"/><rect x="8" y="8" width="16" height="16" rx="3" fill="none" stroke="#fff" stroke-width="2.5"/><rect x="13" y="13" width="6" height="6" rx="1" fill="#fff"/></svg><span>Takara AI</span></a>
+  <span class="envtags" data-slot="envtags-top"></span>
 </header>
-<main>
-  <div class="banner" id="banner" role="alert"></div>
 
-  <!-- OWNER VIEW -->
-  <section data-v="owner" aria-labelledby="h-figures">
-    <div class="head">
-      <div>
-        <h2 id="h-figures">Treasury figures</h2>
-        <p class="hint">Deterministic, from the engine report. Each figure shows the query that produced it.</p>
-      </div>
-    </div>
-    <div class="kpis" id="kpis" aria-live="polite">
-      <div class="kpi"><span class="skel"></span><span class="skel big"></span></div>
-      <div class="kpi"><span class="skel"></span><span class="skel big"></span></div>
-      <div class="kpi"><span class="skel"></span><span class="skel big"></span></div>
-      <div class="kpi"><span class="skel"></span><span class="skel big"></span></div>
-    </div>
-  </section>
+<div class="side">
+  <a class="brand" href="#/overview"><svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0B5D52"/><rect x="8" y="8" width="16" height="16" rx="3" fill="none" stroke="#fff" stroke-width="2.5"/><rect x="13" y="13" width="6" height="6" rx="1" fill="#fff"/></svg><span class="wm">Takara AI</span></a>
+  <div class="acctrow" data-slot="acct"><span class="sk" style="width:150px;height:10px"></span></div>
+  <nav aria-label="Main"><ul class="navlist" data-slot="sidenav"></ul></nav>
+  <footer class="side-foot">
+    <div class="envtags" data-slot="envtags-side"></div>
+    <div class="footlinks" data-slot="footlinks"></div>
+  </footer>
+</div>
 
-  <section data-v="owner" aria-labelledby="h-commit">
-    <div class="head">
-      <div>
-        <h2 id="h-commit">Commitments</h2>
-        <p class="hint">Vendors, amounts and destinations, visible to the owner only.</p>
-      </div>
-    </div>
-    <div class="scroll" role="region" aria-labelledby="h-commit" tabindex="0"><table id="commitments"><thead><tr><th scope="col">#</th><th scope="col">Vendor / payee</th><th scope="col" class="num">Amount</th><th scope="col">Priority</th><th scope="col">State</th><th scope="col">Flags</th><th scope="col">Destination</th></tr></thead><tbody><tr><td colspan="7" class="none">Loading commitments…</td></tr></tbody></table></div>
-  </section>
+<div class="content">
+  <div data-slot="demo"></div>
+  <div data-slot="statebar"></div>
+  <main id="main" tabindex="-1"></main>
+</div>
 
-  <section class="half" data-v="owner" aria-labelledby="h-policy">
-    <div class="head">
-      <div>
-        <h2 id="h-policy">Policy controls</h2>
-        <p class="hint">Limits the agent must stay inside.</p>
-      </div>
-    </div>
-    <div class="pad">
-      <div class="callout">
-        <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="8.5" width="13" height="9" rx="2" fill="none" stroke="#364048" stroke-width="1.6"/><path d="M6.5 8.5V6a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="#364048" stroke-width="1.6"/></svg>
-        <span><b>Controls propose. A signature applies.</b>Editing these values only previews a JSON diff. Nothing changes until a policy signer signs the new version on-chain.</span>
-      </div>
-      <form id="policy">
-        <div class="field">
-          <label for="max_auto_pay"><span class="k">max_auto_pay</span><span class="d">Above this amount, a policy signer must accept</span></label>
-          <div class="input"><input id="max_auto_pay" name="max_auto_pay" type="number" inputmode="numeric" min="1" step="1" autocomplete="off"><span class="u">USDC</span></div>
-        </div>
-        <div class="field">
-          <label for="cooling_off_hours"><span class="k">cooling_off_hours</span><span class="d">Wait after a vendor destination change is approved</span></label>
-          <div class="input"><input id="cooling_off_hours" name="cooling_off_hours" type="number" inputmode="numeric" min="0" max="720" step="1" autocomplete="off"><span class="u">hours</span></div>
-        </div>
-        <div class="field">
-          <label for="min_runway_days"><span class="k">min_runway_days</span><span class="d">Discretionary spend must leave this much runway</span></label>
-          <div class="input"><input id="min_runway_days" name="min_runway_days" type="number" inputmode="numeric" min="0" max="720" step="1" autocomplete="off"><span class="u">days</span></div>
-        </div>
-        <div class="form-foot">
-          <button class="btn primary" type="submit">Preview JSON diff</button>
-          <p class="note">Opens a review. Nothing is signed yet.</p>
-        </div>
-      </form>
-    </div>
-  </section>
+<nav class="tabbar" aria-label="Main" data-slot="tabbar"></nav>
 
-  <section class="half chat-box" data-v="owner" aria-labelledby="h-chat">
-    <div class="head">
-      <div>
-        <h2 id="h-chat">Ask about the ledger</h2>
-        <p class="hint">Explains decisions and figures from the owner report.</p>
-      </div>
-      <span class="pill ro"><svg width="12" height="12" viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="8.5" width="13" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6.5 8.5V6a3.5 3.5 0 0 1 7 0v2.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>Read-only</span>
-    </div>
-    <div class="chatlog" id="chatlog" aria-live="polite"><div class="msg a">Try “why was the 400 payment blocked?” or “what is spendable?”. This chat cannot pay, approve or change anything.</div></div>
-    <div class="suggest" aria-label="Suggested questions">
-      <button type="button" data-q="why was the 400 payment blocked?">Why was the 400 payment blocked?</button>
-      <button type="button" data-q="what is spendable?">What is spendable?</button>
-      <button type="button" data-q="any vendor changes?">Any vendor changes?</button>
-    </div>
-    <form class="row" id="chat">
-      <label for="q" class="vh">Question about the ledger</label>
-      <input id="q" name="q" placeholder="Ask about a payment or figure…" autocomplete="off" spellcheck="false">
-      <button class="btn primary" type="submit">Ask</button>
-    </form>
-  </section>
-
-  <!-- PUBLIC VIEW -->
-  <section data-v="public" hidden aria-labelledby="h-pub">
-    <div class="head">
-      <div>
-        <h2 id="h-pub">What anyone can see on-chain</h2>
-        <p class="hint">The same treasury, as a stranger reads it from NEAR testnet.</p>
-      </div>
-    </div>
-    <div class="kpis small" id="pubkpis"></div>
-    <p class="pubnote" id="pubnote"></p>
-  </section>
-  <section data-v="public" hidden aria-labelledby="h-pubc">
-    <div class="head">
-      <div>
-        <h2 id="h-pubc">Commitments</h2>
-        <p class="hint">Hashes and states only. Amounts, vendors and payees stay sealed.</p>
-      </div>
-    </div>
-    <div class="scroll" role="region" aria-labelledby="h-pubc" tabindex="0"><table id="pubcommitments"><thead><tr><th scope="col">#</th><th scope="col">State</th><th scope="col">Priority</th><th scope="col">Flags</th><th scope="col">Evidence hash</th><th scope="col">Commitment hash</th><th scope="col">Attestation</th></tr></thead><tbody></tbody></table></div>
-  </section>
-</main>
-
-<dialog id="sign" aria-labelledby="sign-title">
-  <div class="dlg-head">
-    <h2 id="sign-title">Review policy change</h2>
-    <ol class="steps">
-      <li class="now"><span><b>Proposed</b>The controls produced this diff.</span></li>
-      <li><span><b>Applied by signature</b>Only a policy signer’s signature makes it live.</span></li>
-    </ol>
-  </div>
-  <div class="dlg-body">
-    <p class="lbl">JSON diff against the current policy</p>
-    <pre id="diff"></pre>
-    <p class="note" id="signnote"></p>
-  </div>
-  <div class="dlg-foot">
-    <div class="row"><button class="btn secondary" id="cancel" type="button">Cancel</button><button class="btn primary" id="signbtn" type="button">Sign as policy signer</button></div>
-    <p class="note" id="signresult" aria-live="polite"></p>
+<dialog class="drawer" id="drawer" aria-labelledby="dr-title">
+  <div class="dr-in">
+    <div class="dr-top"><button class="iconbtn" type="button" data-act="close-drawer" aria-label="Close bill details"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg></button></div>
+    <div class="dr-body" id="drawer-body"></div>
   </div>
 </dialog>
 
+<dialog class="modal" id="pdlg" aria-labelledby="pd-title"><div class="modal-in" id="pdlg-body"></div></dialog>
+
+<dialog class="modal" id="confirm" aria-labelledby="cf-title" style="width:min(420px, calc(100vw - 32px)); height:fit-content; max-height:calc(100dvh - 32px); margin:auto; border-radius:14px">
+  <div class="modal-in">
+    <h2 id="cf-title">Discard your edits?</h2>
+    <p class="muted" style="margin-top:6px">Your policy edits aren’t signed. Leaving this page discards them.</p>
+    <div class="dfoot"><button class="btn btn-secondary" type="button" data-act="cf-keep">Keep editing</button><button class="btn btn-primary" type="button" data-act="cf-discard">Discard</button></div>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="moresheet" aria-labelledby="more-title"><div class="sheet-in" data-slot="sheet"></div></dialog>
+
+<div class="toasts" role="status" aria-live="polite" id="toasts"></div>
+<div class="vh" aria-live="polite" id="announce"></div>
+
 <script>
-const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const short = (h) => (h ? `${h.slice(0, 8)}…${h.slice(-4)}` : "");
-const FLAGS = { 1: "provisional vendor", 2: "new vendor > limit", 4: "instruction ignored", 8: "destination changed" };
-const flagPills = (f) => {
-  const p = Object.entries(FLAGS).filter(([b]) => f & b).map(([, n]) => `<span class="pill flag">${esc(n)}</span>`).join("");
-  return p ? `<span class="flags">${p}</span>` : `<span class="none">None</span>`;
-};
-const statePill = (s) => `<span class="pill ${esc(s)}">${esc(s)}</span>`;
-const prio = (p) => `<span class="prio ${esc(p)}">${esc(p)}</span>`;
-const hash = (h) => (h ? `<span class="hash" title="${esc(h)}">${esc(short(h))}</span>` : `<span class="none">None</span>`);
+"use strict";
+/* ================================================================== setup */
 const TOKEN = document.querySelector('meta[name="takara-token"]').content;
+const DEMO = TOKEN === "__TAKARA" + "_TOKEN__"; // concatenated: the local server replaces only the first literal occurrence
+const DAY = 86400000;
+const todayDay = () => Math.floor(Date.now() / DAY);
+const nsToMs = (ns) => { try { return Number(BigInt(ns) / 1000000n); } catch { return null; } };
+const GITHUB = "https://github.com/growthmindsetgg/takara-ai";
+const PRODUCT = DEMO ? "/" : "https://takara-ai.vercel.app/";
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+/* ---------- safe HTML: every interpolation is escaped unless wrapped in raw() ---------- */
+class Raw { constructor(s) { this.s = s; } toString() { return this.s; } }
+const raw = (s) => new Raw(String(s));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const part = (v) => v instanceof Raw ? v.s : Array.isArray(v) ? v.map(part).join("") : v == null || v === false ? "" : esc(v);
+const h = (strs, ...vals) => raw(strs.reduce((o, s, i) => o + s + (i < vals.length ? part(vals[i]) : ""), ""));
+const join = (arr, sep) => raw(arr.filter((x) => x != null && x !== false && x !== "").map(part).join(part(sep)));
+
+/* ---------- icons ---------- */
+const SV = (d, size = 20, extra = "") => raw(`<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra}>${d}</svg>`);
+const IC = {
+  overview: () => SV('<rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/><rect x="3" y="11" width="6" height="6" rx="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5"/>'),
+  approvals: () => SV('<path d="M3 11.5v4A1.5 1.5 0 0 0 4.5 17h11a1.5 1.5 0 0 0 1.5-1.5v-4"/><path d="M3 11.5h4l1 2h4l1-2h4"/><path d="M7 6l2.2 2.2L13.5 4"/>'),
+  bills: () => SV('<path d="M5 2.5h6.5L15 6v11.5H5z"/><path d="M11.5 2.5V6H15"/><path d="M7.5 9.5h5M7.5 12h5M7.5 14.5h3"/>'),
+  vendors: () => SV('<rect x="2.5" y="4.5" width="10" height="10" rx="4"/><rect x="7.5" y="5.5" width="10" height="10" rx="4"/>'),
+  policy: () => SV('<path d="M3 5h3.5M10.5 5H17M3 10h8.5M15.5 10H17M3 15h1.5M8.5 15H17"/><circle cx="8.5" cy="5" r="2"/><circle cx="13.5" cy="10" r="2"/><circle cx="6.5" cy="15" r="2"/>'),
+  ask: () => SV('<path d="M5 3.5h10A1.5 1.5 0 0 1 16.5 5v7a1.5 1.5 0 0 1-1.5 1.5H8.5l-4 3v-3H5A1.5 1.5 0 0 1 3.5 12V5A1.5 1.5 0 0 1 5 3.5z"/>'),
+  ledger: () => SV('<path d="M10 5.5C8.5 4.3 6 3.8 3 4v11c3-.2 5.5.3 7 1.5 1.5-1.2 4-1.7 7-1.5V4c-3-.2-5.5.3-7 1.5z"/><path d="M10 5.5v11"/>'),
+  more: () => SV('<circle cx="4.5" cy="10" r=".9"/><circle cx="10" cy="10" r=".9"/><circle cx="15.5" cy="10" r=".9"/>'),
+  chev: (s = 16) => SV('<path d="M8 5l5 5-5 5"/>', s),
+  close: (s = 20) => SV('<path d="M5 5l10 10M15 5L5 15"/>', s),
+  copy: () => SV('<rect x="7" y="7" width="9" height="9" rx="2"/><path d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7"/>', 16),
+  refresh: () => SV('<path d="M16 10a6 6 0 1 1-1.8-4.3"/><path d="M16 3.5v3.2h-3.2"/>', 16),
+  lock: (s = 14) => SV('<rect x="4" y="9" width="12" height="8.5" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/>', s),
+  check: (s = 16) => SV('<path d="M5 10.5l3.2 3L15 6.5"/>', s),
+  clock: (s = 16) => SV('<circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.8"/>', s),
+  slash: (s = 16) => SV('<circle cx="10" cy="10" r="6.5"/><path d="M5.5 5.5l9 9"/>', s),
+  dot: (s = 16) => SV('<circle cx="10" cy="10" r="2.2" fill="currentColor"/>', s),
+  diamond: (s = 12) => SV('<path d="M10 3l7 7-7 7-7-7z" fill="currentColor" stroke="none"/>', s),
+  tri: (s = 12) => SV('<path d="M10 3.2l7.5 13H2.5z" fill="currentColor" stroke="none"/>', s),
+  eye: (s = 16) => SV('<path d="M2.5 10s2.8-5 7.5-5 7.5 5 7.5 5-2.8 5-7.5 5-7.5-5-7.5-5z"/><circle cx="10" cy="10" r="2.2"/>', s),
+};
+
+/* ================================================================== formatting */
+const NF = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
+const num = (n) => { const x = Number(n); if (!Number.isFinite(x)) return ""; return (x < 0 ? "−" : "") + NF.format(Math.abs(x)); };
+const symbol = () => (S.report.data && S.report.data.symbol) || "USDC";
+const money = (n, sym = symbol()) => h`<span class="money">${num(n)}<span class="sym"> ${sym}</span></span>`;
+const moneyT = (n, sym = symbol()) => `${num(n)} ${sym}`;
+const fmtBase = (s) => money(Number(s) / 1e6);
+const short = (x) => { x = String(x || ""); return x.length > 14 ? `${x.slice(0, 8)}…${x.slice(-4)}` : x; };
+const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
+const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+function fmtDate(day) {
+  const d = new Date(day * DAY);
+  const o = { month: "short", day: "numeric", timeZone: "UTC" };
+  if (d.getUTCFullYear() !== new Date().getUTCFullYear()) o.year = "numeric";
+  return new Intl.DateTimeFormat(undefined, o).format(d);
+}
+function relDays(day) {
+  const d = day - todayDay();
+  if (d === 0) return "today";
+  if (d === 1) return "tomorrow";
+  if (d > 1) return `in ${d} days`;
+  return d === -1 ? "1 day overdue" : `${-d} days overdue`;
+}
+const DTF = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const DTFULL = new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short" });
+const fmtDateTime = (ms) => (ms == null || !Number.isFinite(ms) ? "" : DTF.format(new Date(ms)));
+const RTF = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+function relTime(ms) {
+  const diff = ms - Date.now(), a = Math.abs(diff);
+  if (a < 60000) return "just now";
+  if (a < 3600000) return RTF.format(Math.round(diff / 60000), "minute");
+  if (a < DAY) return RTF.format(Math.round(diff / 3600000), "hour");
+  return RTF.format(Math.round(diff / DAY), "day");
+}
+function ageText(ms) {
+  const a = Math.max(0, Date.now() - ms);
+  if (a < 3600000) return plural(Math.max(1, Math.round(a / 60000)), "minute");
+  if (a < DAY) return plural(Math.round(a / 3600000), "hour");
+  return plural(Math.round(a / DAY), "day");
+}
+const timeEl = (ms, text) => h`<time datetime="${new Date(ms).toISOString()}" title="${DTFULL.format(new Date(ms))}">${text}</time>`;
+const acct = (a) => h`<span class="mono" translate="no">${a}</span>`;
+const copyBtn = (value, what) => h`<button class="copy" type="button" data-act="copy" data-v="${value}" aria-label="Copy ${what}">${IC.copy()}</button>`;
+const hashC = (x, what) => (x ? h`<span class="hashc"><span title="${x}" translate="no">${short(x)}</span>${copyBtn(x, what)}</span>` : "");
+const ext = (href, text, cls = "") => h`<a href="${href}" target="_blank" rel="noopener"${cls ? raw(` class="${esc(cls)}"`) : ""}>${text}<span class="vh"> (opens in a new tab)</span></a>`;
+const txLink = (tx) => ext(`https://testnet.nearblocks.io/txns/${encodeURIComponent(tx)}`, "View transaction");
+const attLink = (n) => ext(`https://testnet-api.outlayer.ai/attestations/by-request/${encodeURIComponent(n)}`, `Request ${n}`);
+const chevA = () => h`<span class="chev" aria-hidden="true">›</span>`;
+
+/* ================================================================== data */
+const EP = { report: "/api/owner/report", public: "/api/public", decisions: "/api/decisions", policy: "/api/policy/current" };
+const ERR_TITLE = { report: "Couldn't load the owner report.", public: "Couldn't read the treasury from NEAR testnet.", decisions: "Couldn't load recorded decisions.", policy: "Couldn't load the current policy." };
+const S = {}; for (const k in EP) S[k] = { status: "idle", data: null, error: null };
+let M = null; // derived model cache
+let lastUpdated = null;
+
 async function api(path, body) {
   const headers = { "x-takara-token": TOKEN };
-  if (body) headers["content-type"] = "application/json";
-  const r = await fetch(path, body ? { method: "POST", headers, body: JSON.stringify(body) } : { headers });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j.error || r.status);
+  const init = { headers, cache: "no-store" };
+  if (body !== undefined) { headers["content-type"] = "application/json"; init.method = "POST"; init.body = JSON.stringify(body); }
+  // signing waits for finality, so it gets longer than reads
+  if (typeof AbortSignal !== "undefined" && AbortSignal.timeout) init.signal = AbortSignal.timeout(path === "/api/policy/sign" ? 180000 : 60000);
+  let r;
+  try { r = await fetch(path, init); }
+  catch (err) {
+    const timedOut = err && (err.name === "TimeoutError" || err.name === "AbortError");
+    const e = new Error(timedOut ? "The server didn't answer within a minute. NEAR testnet may be slow; try again." : "The request didn't reach the server. Check your connection and try again.");
+    e.status = 0; throw e;
+  }
+  let j = null; try { j = await r.json(); } catch { /* not JSON */ }
+  if (!r.ok) { const e = new Error((j && j.error) || `The server answered with status ${r.status}.`); e.status = r.status; throw e; }
   return j;
 }
-function banner(msg) { const b = $("#banner"); b.textContent = msg; b.style.display = msg ? "block" : "none"; }
 
-async function loadOwner() {
+async function load(k, { quiet = false } = {}) {
+  const had = S[k].data != null;
+  S[k].status = had ? "refreshing" : "loading"; S[k].error = null;
+  if (!had) refreshSections(k);
   try {
-    const rep = await api("/api/owner/report");
-    const f = rep.figures, q = rep.queries, sym = rep.symbol;
-    const tiles = [["Treasury balance", f.treasury_balance, q.treasury_balance], ["Reserved", f.reserved, q.reserved], ["Spendable", f.spendable, q.spendable, "spend"], ["Runway", f.runway_days == null ? "n/a" : `${f.runway_days} days`, q.runway_days]];
-    $("#kpis").innerHTML = tiles.map(([l, v, qq, cls]) => {
-      const days = /days$/.test(v);
-      const val = days ? `${esc(String(v).replace(/ days$/, ""))}<span class="u">days</span>` : `${esc(v)}${/n\/a/.test(v) ? "" : `<span class="u">${esc(sym)}</span>`}`;
-      return `<div class="kpi ${cls || ""}"><p class="l">${esc(l)}</p><p class="v">${val}</p><code title="Query">${esc(qq)}</code></div>`;
-    }).join("");
-    $("#commitments tbody").innerHTML = rep.commitments.map((c) => `<tr><td class="id">${esc(c.id)}</td><td class="vendor">${esc(c.vendor)}</td><td class="num amt">${esc(c.amount)}</td><td>${prio(c.priority)}</td><td><span class="flags">${statePill(c.state)}${c.vendor_change ? `<span class="pill warn plain">${esc(c.vendor_change.replaceAll("_", " "))}</span>` : ""}</span></td><td>${flagPills(c.flags)}</td><td class="dest">${esc(c.destination)}${c.proposed_destination ? `<span class="proposed">proposed: <b>${esc(c.proposed_destination)}</b></span>` : ""}</td></tr>`).join("") || `<tr><td colspan="7" class="none">No open commitments.</td></tr>`;
-    const pol = await api("/api/policy/current").catch(() => null);
-    if (pol) for (const k of ["max_auto_pay", "cooling_off_hours", "min_runway_days"]) $("#" + k).value = pol[k];
-  } catch (e) { banner(`Owner view unavailable: ${e.message}`); $("#kpis").innerHTML = ""; }
+    try { S[k].data = await api(EP[k]); }
+    catch (first) {
+      // parallel loads can trip the public RPC's rate limit: retry a server or network failure once
+      if (!(first.status === 0 || first.status >= 500) || /within a minute/.test(first.message)) throw first;
+      await new Promise((ok) => setTimeout(ok, 900 + Math.random() * 900));
+      S[k].data = await api(EP[k]);
+    }
+    S[k].status = "ok";
+  } catch (e) {
+    if (had) { S[k].status = "ok"; if (!quiet) toast(`Refresh failed: ${e.message}`); }
+    else { S[k].status = "error"; S[k].error = e; }
+  }
+  M = null;
+  onData(k);
+}
+async function loadAll(manual = false) {
+  const btns = $$('[data-act="refresh"]'); btns.forEach((b) => (b.disabled = true));
+  await Promise.allSettled(Object.keys(EP).map((k) => load(k)));
+  lastUpdated = Date.now();
+  $$('[data-act="refresh"]').forEach((b) => (b.disabled = false));
+  paintStamp();
+  if (manual) announce("Updated just now");
 }
 
-async function loadPublic() {
-  const p = await api("/api/public");
-  $("#treasury").textContent = p.treasury;
-  const ns = $("#netstate");
-  ns.hidden = false; ns.className = `pill ${p.paused ? "warn" : "ok"}`; ns.textContent = p.paused ? "testnet, PAUSED" : "testnet";
-  $("#pubkpis").innerHTML = [["Balance (public)", `${esc(p.balance)}<span class="u">tUSDC</span>`], ["Policy version", `v${esc(p.policy.version)}`], ["Agent", p.agent ? esc(p.agent) : `<span class="pill revoked">revoked</span>`, !!p.agent], ["Engine (pinned)", esc(short(p.engine.wasm_hash)), true]].map(([l, v, mono]) => `<div class="kpi"><p class="l">${esc(l)}</p><p class="v${mono ? " mono" : ""}">${v}</p></div>`).join("");
-  $("#pubnote").textContent = `${p.note} Policy hash ${short(p.policy.hash)}, ledger state ${short(p.ledger_state_hash)}.`;
-  $("#pubcommitments tbody").innerHTML = p.commitments.map((c) => `<tr><td class="id">${esc(c.id)}</td><td>${statePill(c.state)}</td><td>${prio(c.priority)}</td><td>${flagPills(c.flags)}</td><td>${hash(c.evidence_hash)}</td><td>${hash(c.commitment_hash)}</td><td><a href="https://testnet-api.outlayer.ai/attestations/by-request/${encodeURIComponent(c.request_no)}" target="_blank" rel="noopener">Request ${esc(c.request_no)}</a><span class="hash-s" title="${esc(c.output_hash)}">out ${esc(short(c.output_hash))}</span></td></tr>`).join("");
+/* ---------- derived model ---------- */
+function decisionsList() {
+  const d = Array.isArray(S.decisions.data) ? S.decisions.data : [];
+  const seen = new Set(), out = [];
+  for (const x of d) { const k = x.tx || JSON.stringify(x); if (seen.has(k)) continue; seen.add(k); out.push(x); }
+  return out;
+}
+function cleanName(c) {
+  const vid = String(c.vendor_id || "");
+  let v = String(c.vendor || "");
+  if (vid.startsWith("new:")) return { name: "New vendor", sub: c.destination || "", isNew: true, tag: null };
+  let tag = null, tagTitle = null, sub = null;
+  const m = v.match(/\s*\((fictional[^)]*)\)\s*$/i);
+  if (m) { v = v.slice(0, m.index); tag = "Fictional"; tagTitle = cap(m[1]) + ", fixture data"; }
+  v = v.replace(/\s*\(team member\)\s*$/i, "");
+  if (vid.startsWith("member:")) sub = "Team member";
+  if (vid === "payroll") sub = "Payroll";
+  return { name: v.trim() || `Bill #${c.id}`, tag, tagTitle, sub, isNew: false };
+}
+const nameText = (b) => (b.isNew ? `New vendor · ${b.sub}` : b.name);
+const nameHTML = (b) => (b.isNew ? h`New vendor · <span class="mono" translate="no">${b.sub}</span>` : h`${b.name}`);
+const fictTag = (b) => (b.tag ? h`<span class="tag" title="${b.tagTitle}">${b.tag}</span>` : "");
+
+function signerLabel(pub) {
+  const s = (pub && pub.signers) || [];
+  if (s.length === 1) return { text: `Policy signer (${s[0]})`, html: h`Policy signer (${acct(s[0])})` };
+  if (s.length > 1) return { text: `Policy signer (any of ${s.length})`, html: h`<span title="${s.join(", ")}">Policy signer (any of ${s.length})</span>` };
+  return { text: "Policy signer", html: h`Policy signer` };
+}
+function roleOf(a) {
+  const p = S.public.data;
+  if (!a) return "";
+  if (p) {
+    if ((p.owners || []).includes(a)) return "Owner";
+    if ((p.signers || []).includes(a)) return "Policy signer";
+    if (p.agent && a === p.agent) return "Takara agent";
+    const parent = String(p.treasury || "").replace(/^[^.]+\./, "");
+    if (parent && a === "agent." + parent) return "Takara agent";
+  } else if (/^agent\./.test(a)) return "Takara agent";
+  return a;
+}
+function actorP(a) {
+  const r = roleOf(a);
+  const word = { Owner: "the owner", "Policy signer": "the policy signer", "Takara agent": "the Takara agent" }[r];
+  return word ? h`<span title="${a}">${word}</span>` : acct(a);
+}
+const roleSpan = (a) => { const r = roleOf(a); return r === a ? acct(a) : h`<span title="${a}">${r}</span>`; };
+
+function model() {
+  if (M) return M;
+  const r = S.report.data; if (!r || !Array.isArray(r.commitments)) return null;
+  const pol = S.policy.data, pub = S.public.data, decs = decisionsList();
+  const now = Date.now();
+  const sig = signerLabel(pub);
+  const claimedAt = {};
+  for (const d of decs) for (const e of d.events || []) {
+    if (e.event === "commitment_claimed" && e.data && e.data[0]) {
+      const id = String(e.data[0].commitment_id); const t = Date.parse(d.at);
+      if (!(id in claimedAt) || t > claimedAt[id]) claimedAt[id] = t;
+    }
+  }
+  const untilFromDec = {};
+  for (const d of decs) { const v = d.value; if (v && typeof v === "object" && v.reason === "vendor_change_cooling_off" && v.until) untilFromDec[String(v.commitment_id)] = nsToMs(v.until); }
+  const bills = r.commitments.map((c) => {
+    const n = cleanName(c), vid = String(c.vendor_id || ""), f = Number(c.flags) || 0;
+    const b = Object.assign({}, n);
+    b.c = c; b.id = Number(c.id); b.sid = String(c.id); b.vid = vid;
+    b.kind = vid === "payroll" ? "payroll" : vid.startsWith("member:") ? "team" : vid.startsWith("new:") ? "new" : "vendor";
+    b.amount = Number(c.amount); b.state = c.state; b.due = c.due_day > 0 ? c.due_day : null;
+    b.flags = {
+      dest: c.destination_mismatch != null ? !!c.destination_mismatch : !!(f & 8),
+      inject: c.injection_flagged != null ? !!c.injection_flagged : !!(f & 4),
+      newOver: c.new_vendor_over_limit != null ? !!c.new_vendor_over_limit : !!(f & 2),
+      prov: c.provisional_vendor != null ? !!c.provisional_vendor : !!(f & 1),
+    };
+    b.anyFlag = b.flags.dest || b.flags.inject || b.flags.newOver || b.flags.prov;
+    b.change = ((pub && pub.vendor_changes) || []).find((x) => String(x.commitment_id) === b.sid) || null;
+    b.coolingUntil = null;
+    if (c.vendor_change === "approved_cooling_off") {
+      if (b.change && b.change.decided_at && pol) b.coolingUntil = nsToMs(b.change.decided_at) + pol.cooling_off_hours * 3600000;
+      else if (untilFromDec[b.sid]) b.coolingUntil = untilFromDec[b.sid];
+    }
+    b.claimedAt = claimedAt[b.sid] || null;
+    b.recur = c.recurrence === "m" ? "Monthly" : c.recurrence === "w" ? "Weekly" : null;
+    b.destination = c.destination; b.proposed = c.proposed_destination || null; b.chain = c.chain;
+    // waits on
+    let w = null;
+    if (c.state === "settled") w = null;
+    else if (c.vendor_change === "suspended_destination_mismatch") w = { who: "signer", label: "Policy signer", task: "approve or reject the new payout destination", since: b.change && b.change.requested_at ? nsToMs(b.change.requested_at) : null };
+    else if (c.vendor_change === "approved_cooling_off") w = { who: "timer", label: "Cooling-off period", task: b.coolingUntil == null ? "payment unlocks when the cooling-off period ends" : b.coolingUntil > now ? raw(`payment unlocks ${esc(fmtDateTime(b.coolingUntil))} (${part(timeEl(b.coolingUntil, relTime(b.coolingUntil)))})`) : "cooling-off has ended; payment can be authorized", taskText: b.coolingUntil && b.coolingUntil > now ? `payment unlocks ${fmtDateTime(b.coolingUntil)}` : "", since: b.change && b.change.decided_at ? nsToMs(b.change.decided_at) : null };
+    else if (c.state === "claimed" && (b.flags.newOver || (pol && b.amount > pol.max_auto_pay))) w = { who: "signer", label: "Policy signer", task: "accept this bill so money is reserved" };
+    else if (c.state === "claimed") w = { who: "policy", label: "Takara policy check", task: "accept within policy or refuse" };
+    if (w && w.since == null) w.since = b.claimedAt;
+    if (w && w.who === "signer") { w.labelHTML = sig.html; w.labelText = sig.text; }
+    else if (w) { w.labelHTML = h`${w.label}`; w.labelText = w.label; }
+    b.waitsOn = w;
+    // status
+    const vc = c.vendor_change;
+    if (vc === "suspended_destination_mismatch") b.status = ["Frozen", "bad"];
+    else if (vc === "approved_cooling_off" && c.state !== "settled") b.status = ["Cooling off", "warn"];
+    else if (vc === "rejected" && c.state !== "settled") b.status = ["Change rejected", "bad"];
+    else if (c.state === "claimed" && w && w.who === "signer") b.status = ["Awaiting signer", "warn"];
+    else if (c.state === "claimed") b.status = ["Received", "neutral"];
+    else if (c.state === "accepted") b.status = ["Reserved", "accent"];
+    else if (c.state === "settled") b.status = ["Paid", "quiet"];
+    else b.status = ["Recorded", "neutral"];
+    return b;
+  });
+  const byId = {}; bills.forEach((b) => (byId[b.sid] = b));
+  M = { r, pol, pub, decs, bills, byId, fig: r.figures || {}, queries: r.queries || {} };
+  M.waiting = bills.filter((b) => b.waitsOn);
+  M.signerItems = bills.filter((b) => b.waitsOn && b.waitsOn.who === "signer");
+  M.timerItems = bills.filter((b) => b.waitsOn && b.waitsOn.who === "timer");
+  M.policyItems = bills.filter((b) => b.waitsOn && b.waitsOn.who === "policy");
+  M.caught = computeCaught(M);
+  return M;
+}
+const dueSort = (a, b) => (a.due == null) - (b.due == null) || (a.due || 0) - (b.due || 0) || b.amount - a.amount;
+const queueOrder = (m) => [...m.signerItems.sort(dueSort), ...m.timerItems.sort(dueSort), ...m.policyItems.sort(dueSort)];
+
+/* ---------- prevention counter ---------- */
+const CATS = [
+  ["dest", "Payout changes frozen", "frozen"],
+  ["inject", "Hidden instructions ignored", "ignored"],
+  ["dup", "Duplicate invoices rejected", "duplicate"],
+  ["reserve", "Reserve breaches blocked", "blocked"],
+  ["replay", "Replayed or altered payments refused", "refused"],
+  ["scope", "Out-of-scope agent actions refused", "out of scope"],
+];
+const SCOPE_CODES = ["E_NOT_POLICY_SIGNER", "E_NOT_OWNER", "E_AGENT_REVOKED", "E_NOT_AGENT"];
+function failCode(f) {
+  if (f == null) return null;
+  const s = typeof f === "string" ? f : JSON.stringify(f);
+  if (/Method new is private/.test(s)) return "PRIVATE_NEW";
+  const m = s.match(/E_[A-Z_]+/); return m ? m[0] : null;
+}
+function computeCaught(m) {
+  const keys = new Map(); // key -> cat
+  const decKeys = new Set();
+  const add = (k, cat, fromDec) => { keys.set(k, cat); if (fromDec) decKeys.add(k); };
+  for (const d of m.decs) {
+    const v = d.value;
+    if (d.ok === false) {
+      const code = failCode(d.failure);
+      if (code && (SCOPE_CODES.includes(code) || code === "PRIVATE_NEW")) add(`scope:${d.method}:${code}`, "scope", true);
+    } else if (v && typeof v === "object" && v.reason) {
+      const cid = v.commitment_id;
+      if (v.reason === "vendor_destination_mismatch") add(`dest:${cid}`, "dest", true);
+      else if (v.reason === "duplicate_evidence") add(`dup:${v.original}`, "dup", true);
+      else if (v.reason === "would_break_commitments" || v.reason === "below_min_runway") add(`reserve:${cid}`, "reserve", true);
+      else if (v.reason === "nonce_used" || v.reason === "authorization_mismatch") add(`${v.reason}:${cid}`, "replay", true);
+    }
+    for (const e of d.events || []) if (e.event === "commitment_claimed" && e.data && e.data[0] && (Number(e.data[0].flags) & 4)) add(`inject:${e.data[0].commitment_id}`, "inject", true);
+  }
+  const flagOnly = [];
+  for (const b of m.bills) {
+    if (b.flags.dest) { const k = `dest:${b.sid}`; if (!keys.has(k)) flagOnly.push({ key: k, b, cat: "dest" }); add(k, "dest"); }
+    if (b.flags.inject) { const k = `inject:${b.sid}`; if (!keys.has(k)) flagOnly.push({ key: k, b, cat: "inject" }); add(k, "inject"); }
+  }
+  const counts = {}; CATS.forEach(([c]) => (counts[c] = 0));
+  for (const cat of keys.values()) counts[cat]++;
+  return { total: keys.size, counts, flagOnly };
 }
 
-document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
-  document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", x === b));
-  document.querySelectorAll("[data-v]").forEach((s) => (s.hidden = s.dataset.v !== b.dataset.view));
-}));
+/* ================================================================== activity sentences */
+const REASONS = {
+  would_break_commitments: { kind: "caught", label: "Would break reserved money", s: (v, x) => ["Blocked:", h`paying ${x.bill(v.commitment_id)} would break money reserved for ${x.list(v.blocking)}.`] },
+  below_min_runway: { kind: "caught", label: "Below runway floor", s: (v, x) => ["Blocked:", h`paying ${x.bill(v.commitment_id)} would leave less than your ${x.minRunway ? `${x.minRunway}-day runway` : "runway floor"}.`] },
+  duplicate_evidence: { kind: "caught", label: "Duplicate invoice", s: (v, x) => ["Rejected a duplicate:", h`this invoice was already recorded as ${x.bill(v.original)}.`] },
+  vendor_destination_mismatch: { kind: "caught", label: "Payout destination changed", s: (v, x) => { const b = x.b(v.commitment_id); return ["Frozen:", b && b.proposed ? h`an invoice for ${x.vendor(v.commitment_id)} asks to pay ${acct(b.proposed)} instead of ${acct(b.destination)}.` : h`an invoice asks to pay a different destination than the registered one.`]; } },
+  vendor_change_cooling_off: { kind: "held", label: "In cooling-off", s: (v, x) => ["Held:", h`payment to ${x.vendor(v.commitment_id)} waits out the cooling-off period until ${fmtDateTime(nsToMs(v.until))}.`] },
+  vendor_change_rejected: { kind: "caught", label: "Destination change rejected", s: (v, x) => ["Refused:", h`the new destination for ${x.vendor(v.commitment_id)} was rejected, so it won’t be paid there.`] },
+  needs_signer_acceptance: { kind: "held", label: "Needs a signer", s: (v, x) => { const b = x.b(v.commitment_id); return ["Held for a signer:", h`${x.bill(v.commitment_id)} needs a policy signer’s acceptance.${b && b.flags.newOver ? " It is a new vendor above the auto limit." : ""}`]; } },
+  nonce_used: { kind: "caught", label: "Replayed authorization", s: (v, x) => ["Refused a replay:", h`a used payment authorization for ${x.bill(v.commitment_id)} was submitted again.`] },
+  authorization_mismatch: { kind: "caught", label: "Altered payment", s: (v, x) => ["Refused an altered payment", h`for ${x.bill(v.commitment_id)}: the ${({ amount_commit: "amount", destination_commit: "destination", destination_chain: "chain" })[v.field] || "details"} didn’t match what was authorized.`] },
+  commitment_not_accepted: { kind: "caught", label: "Not accepted yet", s: (v, x) => ["Refused:", h`${x.bill(v.commitment_id)} isn’t accepted yet, so it can’t be paid.`] },
+  sender_unverified: { kind: "held", label: "Sender unverified", s: (v, x) => ["Held:", h`the sender of the invoice for ${x.vendor(v.commitment_id)} couldn’t be verified.`] },
+  vendor_destination_unknown: { kind: "held", label: "No destination on file", s: (v, x) => ["Held:", h`${x.bill(v.commitment_id)} has no registered payout destination.`] },
+  member_not_in_roster: { kind: "caught", label: "Unknown requester", s: () => ["Refused:", h`a claim came from someone who isn’t on the team.`] },
+  policy_hash_mismatch: { kind: "caught", label: "Outdated policy", s: () => ["Refused:", h`the request used an out-of-date policy.`] },
+};
+REASONS.missing_destination = REASONS.vendor_destination_unknown;
+REASONS.unknown_requester = REASONS.member_not_in_roster;
+const humanCode = (c) => String(c).replace(/_/g, " ");
+const METHOD = { approve_vendor_change: "approve a payout destination change", propose_policy: "change the policy", recover: "recover the treasury’s funds", register_claim: "record a bill", accept_commitment: "accept a bill", pause: "pause the treasury", revoke_agent: "revoke the agent", settle: "pay a bill" };
+const methodL = (m) => METHOD[m] || m;
+const FAILS = {
+  E_NOT_POLICY_SIGNER: ["caught", (d) => ["Blocked:", h`${actorP(d.signer)} tried to ${methodL(d.method)} without being a policy signer.`]],
+  E_NOT_OWNER: ["caught", (d) => ["Blocked:", h`${actorP(d.signer)} tried to ${methodL(d.method)} without being an owner.`]],
+  E_AGENT_REVOKED: ["caught", (d) => ["Blocked:", h`the agent tried to ${methodL(d.method)} after its access was revoked.`]],
+  E_NOT_AGENT: ["caught", (d) => ["Blocked:", h`${actorP(d.signer)} tried to ${methodL(d.method)} but isn’t the treasury’s agent.`]],
+  E_TREASURY_PAUSED: ["held", (d) => ["Held:", h`couldn’t ${methodL(d.method)} while the treasury was paused.`]],
+  E_INSUFFICIENT_BALANCE: ["held", (d) => ["Refused:", h`not enough balance to ${methodL(d.method)}.`]],
+  E_INVALID_TRANSITION: ["admin", () => ["Refused:", h`that bill can’t move to the requested state.`]],
+  E_ALREADY_APPROVED: ["admin", () => ["Already approved;", h`nothing changed.`]],
+  E_POLICY_EXPIRED: ["held", () => ["Refused:", h`the signed policy has expired.`]],
+  E_WRONG_ASSET: ["caught", () => ["Refused:", h`a token other than the treasury’s was sent.`]],
+  E_TOO_MANY_OPEN_COMMITMENTS: ["held", () => ["Refused:", h`too many open bills. Close some first.`]],
+  PRIVATE_NEW: ["caught", (d) => ["Blocked:", h`${actorP(d.signer)} tried to re-initialise the treasury contract.`]],
+};
+const EVENT_ORDER = ["settlement_receipt", "commitment_accepted", "vendor_change_approved", "commitment_claimed", "recovery_completed", "recovery_started", "treasury_funded", "agent_revoked", "agent_set", "treasury_paused", "treasury_unpaused", "commitment_closed", "outflow_reconciled", "authorization_issued"];
 
-let pending = null;
-$("#policy").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const body = Object.fromEntries(new FormData(e.target));
+function sentenceCtx(m) {
+  const b = (id) => (id == null ? null : m && m.byId[String(id)]);
+  return {
+    b,
+    bill: (id) => { const x = b(id); if (x) return h`${nameHTML(x)} ${money(x.amount)}`; return id == null ? "a bill" : `bill #${id}`; },
+    vendor: (id) => { const x = b(id); return x ? nameHTML(x) : "this vendor"; },
+    list: (ids) => {
+      const names = (ids || []).map((id) => { const x = b(id); return x ? nameHTML(x) : h`bill #${id}`; });
+      if (!names.length) return "other bills";
+      if (names.length === 1) return names[0];
+      return h`${join(names.slice(0, -1), ", ")} and ${names[names.length - 1]}`;
+    },
+    minRunway: m && m.pol ? m.pol.min_runway_days : null,
+  };
+}
+function decisionItem(d, m) {
+  const x = sentenceCtx(m);
+  const v = d.value;
+  const base = { at: Date.parse(d.at), tx: d.tx, actor: d.signer, cid: null };
+  if (d.ok === false) {
+    const code = failCode(d.failure);
+    const f = FAILS[code];
+    const cid = v && typeof v === "object" ? v.commitment_id : null;
+    if (f) { const [lead, rest] = f[1](d); return Object.assign(base, { kind: f[0], lead, rest, cid }); }
+    return Object.assign(base, { kind: "admin", lead: "Failed:", rest: h`${methodL(d.method)} (${code || "transaction error"}).`, cid });
+  }
+  if (v && typeof v === "object" && v.reason) {
+    const R = REASONS[v.reason];
+    if (R) { const [lead, rest] = R.s(v, x); return Object.assign(base, { kind: R.kind, lead, rest, cid: v.commitment_id }); }
+    return Object.assign(base, { kind: "caught", lead: "Refused:", rest: h`${x.bill(v.commitment_id)}: ${humanCode(v.reason)}.`, cid: v.commitment_id });
+  }
+  const evs = (d.events || []).filter((e) => e.event !== "engine_requested");
+  for (const name of EVENT_ORDER) {
+    const e = evs.find((q) => q.event === name); if (!e) continue;
+    const dd = (e.data && e.data[0]) || {};
+    const cid = dd.commitment_id != null ? String(dd.commitment_id) : null;
+    const bb = x.b(cid);
+    const out = (kind, lead, rest) => Object.assign(base, { kind, lead, rest, cid });
+    switch (name) {
+      case "commitment_claimed": {
+        const fl = Number(dd.flags) || 0;
+        const tail = [fl & 4 ? " Hidden instructions in it were ignored." : "", fl & 8 ? " Its payout destination differs from the registered one." : ""].join("");
+        const rest = bb ? h`a bill from ${nameHTML(bb)} for ${money(bb.amount)}${bb.due ? `, due ${fmtDate(bb.due)}` : ""}. Not reserved yet.${tail}` : h`bill #${cid}. Not reserved yet.${tail}`;
+        return out(fl & 4 ? "caught" : "admin", "Recorded", rest);
+      }
+      case "commitment_accepted":
+        return dd.by === "signer" ? out("money", "Accepted:", h`${actorP(dd.signer)} accepted ${x.bill(cid)}. The money is now reserved.`) : out("money", "Accepted", h`${x.bill(cid)} automatically, within policy. The money is now reserved.`);
+      case "settlement_receipt": return out("money", "Paid", h`${x.bill(cid)} on testnet. The receipt is on-chain.`);
+      case "authorization_issued": return out("admin", "Authorized", h`payment of ${x.bill(cid)}, valid until ${fmtDateTime(nsToMs(dd.expiry))}.`);
+      case "vendor_change_approved": return out("held", "Approved, cooling off:", h`${actorP(dd.by)} approved the new destination for ${x.vendor(cid)}. Payment stays frozen${bb && bb.coolingUntil ? ` until ${fmtDateTime(bb.coolingUntil)}` : " until the cooling-off period ends"}.`);
+      case "recovery_started": return out("money", "Recovery started:", h`${actorP(dd.by)} began moving ${fmtBase(dd.amount)} to ${acct(dd.to)}.`);
+      case "recovery_completed": return out("money", "Recovered:", h`${fmtBase(dd.amount)} moved to ${acct(dd.to)} by the owner, with no agent involved.`);
+      case "treasury_funded": return out("money", "Funded:", h`${actorP(dd.from)} added ${fmtBase(dd.amount)}. Balance ${fmtBase(dd.balance)}.`);
+      case "agent_revoked": return out("admin", "Agent revoked", h`by ${actorP(dd.by)}. It can no longer record or pay bills.`);
+      case "agent_set": return out("admin", "Agent access granted", h`to ${acct(dd.agent)} by ${actorP(dd.by)}.`);
+      case "treasury_paused": return out("admin", "Paused", h`by ${actorP(dd.by)}. No payment can settle.`);
+      case "treasury_unpaused": return out("admin", "Resumed", h`by ${actorP(dd.by)}.`);
+      case "commitment_closed": return out("admin", "Closed", h`${x.bill(cid)}.`);
+      case "outflow_reconciled": return out("admin", "Reconciled", h`paid-out amounts with the balance (${roleOf(dd.by)}).`);
+    }
+  }
+  return Object.assign(base, { kind: "admin", lead: "", rest: h`${cap(roleOf(d.signer))} called ${acct(d.method)}.` });
+}
+function flagItem(f) {
+  const b = f.b;
+  if (f.cat === "dest") return { kind: "caught", lead: "Frozen:", rest: h`an invoice for ${nameHTML(b)} asks to pay ${acct(b.proposed || "a different account")} instead of ${acct(b.destination)}.`, cid: b.sid, at: null, fromFlags: true };
+  return { kind: "caught", lead: "Ignored:", rest: h`an invoice from ${nameHTML(b)} contained instructions for the agent. They were treated as data and the policy did not change.`, cid: b.sid, at: null, fromFlags: true };
+}
+function activityItems(m, { withFlags = false } = {}) {
+  const items = (m ? m.decs : decisionsList()).map((d) => decisionItem(d, m)).filter(Boolean);
+  if (withFlags && m) for (const f of m.caught.flagOnly) items.push(flagItem(f));
+  return items;
+}
+const KIND_IC = { caught: () => IC.slash(), held: () => IC.clock(), money: () => IC.check(), admin: () => IC.dot() };
+function actItem(it, m) {
+  const meta = [];
+  if (it.at) meta.push(timeEl(it.at, relTime(it.at)));
+  if (it.actor) meta.push(roleSpan(it.actor));
+  if (it.fromFlags) meta.push("From bill flags");
+  if (it.tx) meta.push(txLink(it.tx));
+  if (it.cid != null && m && m.byId[String(it.cid)]) meta.push(h`<a href="#/bills/${it.cid}" data-open="bill-${it.cid}">Bill</a>`);
+  return h`<li class="act k-${it.kind}"><span class="act-ic">${KIND_IC[it.kind]()}</span><div><p class="act-s">${it.lead ? h`<b>${it.lead}</b> ` : ""}${it.rest}</p><p class="act-m">${join(meta, " · ")}</p></div></li>`;
+}
+function dayLabel(ms) {
+  const d = new Date(ms), t = new Date(); const sod = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((sod(t) - sod(d)) / DAY);
+  if (diff === 0) return "Today"; if (diff === 1) return "Yesterday";
+  const o = { month: "short", day: "numeric" }; if (d.getFullYear() !== t.getFullYear()) o.year = "numeric";
+  return new Intl.DateTimeFormat(undefined, o).format(d);
+}
+function actGroups(items, m, hl = "h3") {
+  const groups = []; let cur = null;
+  for (const it of items) {
+    const label = it.at ? dayLabel(it.at) : "From bill flags";
+    if (!cur || cur.label !== label) { cur = { label, items: [] }; groups.push(cur); }
+    cur.items.push(it);
+  }
+  return join(groups.map((g) => h`<div class="actday">${raw(`<${hl}>`)}${g.label}${raw(`</${hl}>`)}<ul class="acts">${g.items.map((i) => actItem(i, m))}</ul></div>`), "");
+}
+
+/* ================================================================== components */
+const pill = (b) => h`<span class="pill t-${b.status[1]}">${b.status[1] === "quiet" ? IC.check(12) : ""}${b.status[0]}</span>`;
+const pillOf = (text, tone) => h`<span class="pill t-${tone}">${tone === "quiet" ? IC.check(12) : ""}${text}</span>`;
+const ISSUES = [
+  ["dest", "Payout changed", "bad"],
+  ["inject", "Instructions ignored", "bad"],
+  ["newOver", "New vendor over limit", "warn"],
+  ["prov", "Provisional vendor", "warn"],
+];
+const badge = (text, tone) => h`<span class="badge t-${tone}">${tone === "bad" ? IC.diamond() : IC.tri()}${text}</span>`;
+const badges = (flags) => { const l = ISSUES.filter(([k]) => flags[k]); return l.length ? h`<span class="badges">${l.map(([, t, tone]) => badge(t, tone))}</span>` : ""; };
+const flagsFromBits = (f) => ({ dest: !!(f & 8), inject: !!(f & 4), newOver: !!(f & 2), prov: !!(f & 1) });
+function issueSentence(k, b, m) {
+  const hrs = m.pol ? m.pol.cooling_off_hours : null;
+  switch (k) {
+    case "dest": return h`This invoice asks to pay ${acct(b.proposed || "a different account")} instead of the registered ${acct(b.destination)}. Payment stays frozen until a policy signer approves the change and the ${hrs != null ? `${hrs}-hour ` : ""}cooling-off passes.`;
+    case "inject": return h`The invoice text contained instructions for the agent. Takara treats document text as data and ignored them. The policy did not change.`;
+    case "newOver": return h`This is the first bill from this vendor and it is above the new-vendor auto limit, so a policy signer must accept it.`;
+    case "prov": return h`First bill from this vendor, small enough to pay without a signature. Takara flagged it so you can check the vendor.`;
+  }
+}
+function headline(b, m) {
+  const vc = b.c.vendor_change;
+  if (vc === "suspended_destination_mismatch" || vc === "approved_cooling_off") return "Payout change: the invoice asks to pay a different account.";
+  if (b.flags.newOver) return "New vendor above the auto limit. A signer must accept it before money is reserved.";
+  if (m.pol && b.amount > m.pol.max_auto_pay && b.state === "claimed") return h`${moneyT(b.amount)} is above your ${num(m.pol.max_auto_pay)} USDC auto-pay limit.`;
+  if (b.flags.inject) return "Invoice text tried to instruct the agent. Ignored. Not reserved yet.";
+  return "Received. Not reserved until accepted.";
+}
+const toneOf = (b) => (b.status[0] === "Frozen" ? "bad" : b.waitsOn && (b.waitsOn.who === "timer" || b.waitsOn.who === "signer") ? "warn" : "line");
+const compareBoxes = (b) => h`<div class="cmp"><div class="box"><p class="box-t">Registered destination (in use)</p><p class="box-v" translate="no">${b.destination}</p><p class="box-c">${(b.chain || "").toUpperCase()}</p></div><span class="neq" aria-hidden="true">≠</span><span class="vh">differs from</span><div class="box prop"><p class="box-t">Proposed by invoice</p><p class="box-v" translate="no">${b.proposed}</p><p class="box-c">${(b.chain || "").toUpperCase()}</p></div></div>`;
+function howApproved(b, m) {
+  const w = b.waitsOn;
+  if (w.who === "signer") return "A policy signer approves this from their own wallet, outside this app. The contract rejects anyone else with E_NOT_POLICY_SIGNER. This app shows the queue. It can’t approve.";
+  if (w.who === "timer") return `A policy signer already approved the new destination. Takara still won’t pay it until the ${m.pol ? m.pol.cooling_off_hours + "-hour " : ""}cooling-off ends, so a hijacked approval can be caught in time.`;
+  return "Takara’s policy engine accepts this automatically if it fits the policy, or refuses it with a named reason. Nobody needs to act.";
+}
+function approvalCard(b, m) {
+  const w = b.waitsOn;
+  const facts = [h`<div><dt>Waits on</dt><dd>${w.labelHTML} · ${w.task}</dd></div>`];
+  if (w.since) facts.push(h`<div><dt>Waiting</dt><dd>${timeEl(w.since, ageText(w.since))}</dd></div>`);
+  if (b.due) facts.push(h`<div><dt>Deadline</dt><dd>${fmtDate(b.due)} (${relDays(b.due)})</dd></div>`);
+  return h`<article class="acard tone-${toneOf(b)}" aria-labelledby="ac-${b.sid}">
+    <div class="ac-1">${pill(b)}<h3 class="ac-name" id="ac-${b.sid}" title="${nameText(b)}">${nameHTML(b)}</h3>${fictTag(b)}<span class="ac-amt">${money(b.amount)}</span></div>
+    <p class="ac-head">${headline(b, m)}</p>
+    ${b.proposed ? compareBoxes(b) : ""}
+    <dl class="facts">${raw(facts.map((f) => f.s.replace(/^<div>|<\/div>$/g, "")).join(""))}</dl>
+    <div class="ac-act"><a href="#/bills/${b.sid}" data-open="bill-${b.sid}">View bill<span class="vh">: ${nameText(b)}, ${moneyT(b.amount)}</span></a><details class="disc" data-k="how-${b.sid}"><summary>${IC.chev(14)}How is this approved?</summary><p>${howApproved(b, m)}</p></details></div>
+  </article>`;
+}
+function compactCard(b, m) {
+  const w = b.waitsOn;
+  const meta = [h`Waits on ${w.labelText}`]; if (b.due) meta.push(h`Deadline ${fmtDate(b.due)}`);
+  return h`<a class="acard compact tone-${toneOf(b)}" href="#/bills/${b.sid}" data-open="bill-${b.sid}">
+    <span class="ac-1">${pill(b)}<span class="ac-name" title="${nameText(b)}">${nameHTML(b)}</span>${fictTag(b)}${b.proposed ? badge("Payout changed", "bad") : ""}<span class="ac-amt">${money(b.amount)}</span></span>
+    <span class="ac-head" style="display:block">${headline(b, m)}</span>
+    <span class="ac-meta" style="display:block">${join(meta, " · ")}</span></a>`;
+}
+function dueCell(b) {
+  if (!b.due) return "";
+  const settled = b.state === "settled";
+  const rel = relDays(b.due), od = !settled && b.due < todayDay();
+  return h`<div class="d1">${fmtDate(b.due)}</div>${settled ? "" : h`<div class="d2${od ? " od" : ""}">${rel}</div>`}`;
+}
+function billSub(b) {
+  const parts = [];
+  if (b.sub && !b.isNew) parts.push(h`<span>${b.sub}</span>`);
+  parts.push(h`<span class="mono" translate="no" title="${b.destination}">${b.destination}</span>`);
+  if (b.recur) parts.push(h`<span>${b.recur}</span>`);
+  return join(parts, raw('<span aria-hidden="true">·</span>'));
+}
+const critTag = (b) => (b.c.priority === "critical" ? h`<span class="tag ink" title="Critical bills are paid first and are protected by reserves.">Critical</span>` : "");
+function billTable(list, caption) {
+  return h`<div class="panel tblwrap"><table class="tbl"><caption class="vh">${caption}</caption><thead><tr><th scope="col" class="c-bill">Bill</th><th scope="col" class="c-due">Due</th><th scope="col" class="c-amt num">Amount</th><th scope="col" class="c-st">Status</th><th scope="col" class="c-iss">Issues</th><th scope="col" class="c-wait">Waits on</th></tr></thead><tbody>${list.map((b) => h`<tr class="row"><td class="c-bill"><div class="b-name"><a class="stretch" href="#/bills/${b.sid}" data-open="bill-${b.sid}" title="${nameText(b)}">${nameHTML(b)}</a>${fictTag(b)}${critTag(b)}</div><div class="b-sub">${billSub(b)}</div><div class="b-iss-in">${badges(b.flags)}</div></td><td class="c-due td-due">${dueCell(b)}</td><td class="c-amt num td-amt">${money(b.amount)}</td><td class="c-st">${pill(b)}</td><td class="c-iss">${badges(b.flags)}</td><td class="c-wait td-wait">${b.waitsOn ? b.waitsOn.label : ""}</td></tr>`)}</tbody></table></div>`;
+}
+function billCards(list) {
+  return h`<ul class="panel cards">${list.map((b) => {
+    const meta = []; if (b.recur) meta.push(b.recur); else if (b.sub && !b.isNew) meta.push(b.sub);
+    if (b.due) meta.push(b.state === "settled" ? `Due ${fmtDate(b.due)}` : `Due ${fmtDate(b.due)} (${relDays(b.due)})`);
+    return h`<li class="crd"><div class="crd-1"><span class="nm"><a class="stretch" href="#/bills/${b.sid}" data-open="bill-${b.sid}">${nameHTML(b)}</a>${fictTag(b)}</span>${money(b.amount)}</div><div class="crd-2"><span>${meta.join(" · ")}</span>${pill(b)}</div>${b.anyFlag ? h`<div class="crd-3">${badges(b.flags)}</div>` : ""}</li>`;
+  })}</ul>`;
+}
+
+/* ---------- vendors ---------- */
+const VSTAT = [["Payout change frozen", "bad"], ["Cooling off", "warn"], ["Change rejected", "neutral"], ["New, awaiting signer", "warn"], ["Provisional", "warn"], ["Registered", "accent"]];
+function vendorGroups(m) {
+  const g = new Map();
+  for (const b of m.bills) { if (!g.has(b.vid)) g.set(b.vid, []); g.get(b.vid).push(b); }
+  return [...g.entries()].map(([vid, bills]) => {
+    const reg = [...bills].filter((b) => !b.c.destination_mismatch).sort((a, b) => b.id - a.id)[0] || bills[bills.length - 1];
+    const has = (fn) => bills.some(fn);
+    let st = 5;
+    if (has((b) => b.c.vendor_change === "suspended_destination_mismatch")) st = 0;
+    else if (has((b) => b.c.vendor_change === "approved_cooling_off")) st = 1;
+    else if (has((b) => b.c.vendor_change === "rejected")) st = 2;
+    else if (reg.kind === "new" && has((b) => b.state === "claimed")) st = 3;
+    else if (has((b) => b.flags.prov)) st = 4;
+    const sum = (fn) => bills.filter(fn).reduce((a, b) => a + b.amount, 0);
+    return { vid, bills, reg, kind: reg.kind, name: reg, st, status: VSTAT[st], open: sum((b) => b.state === "claimed" || b.state === "accepted"), paid: sum((b) => b.state === "settled"), changeBill: bills.find((b) => b.proposed) };
+  });
+}
+const vpill = (v) => h`<span class="pill t-${v.status[1]}"${v.st === 5 ? raw(' title="The payout destination is on file in the sealed vendor registry. An invoice with a different destination is frozen."') : ""}>${v.status[0]}</span>`;
+const kindTag = (v) => ({ payroll: h`<span class="tag">Payroll</span>`, team: h`<span class="tag">Team member</span>`, new: h`<span class="tag">New vendor</span>`, vendor: "" })[v.kind];
+const vName = (v) => (v.reg.isNew ? h`New vendor · <span class="mono" translate="no">${v.reg.sub}</span>` : h`${v.reg.name}`);
+const vNameT = (v) => nameText(v.reg);
+function vendorTable(list, caption) {
+  return h`<div class="panel tblwrap"><table class="tbl"><caption class="vh">${caption}</caption><thead><tr><th scope="col" class="c-vn">Vendor</th><th scope="col" class="c-pay">Pays to</th><th scope="col" class="c-cnt num">Bills</th><th scope="col" class="c-open num">Open</th><th scope="col" class="c-paid num">Paid</th><th scope="col" class="c-vst">Status</th></tr></thead><tbody>${list.map((v) => h`<tr class="row"><td class="c-vn"><div class="b-name"><a class="stretch" href="#/vendors/${encodeURIComponent(v.vid)}" data-open="vendor-${v.vid}" title="${vNameT(v)}">${vName(v)}</a>${v.reg.isNew ? "" : kindTag(v)}${fictTag(v.reg)}</div><div class="v-pay-in dest" title="${v.reg.destination}">${v.reg.destination}</div></td><td class="c-pay"><div class="dest" title="${v.reg.destination}" translate="no">${v.reg.destination}</div><div class="chain">${(v.reg.chain || "").toUpperCase()}</div></td><td class="c-cnt num tnum">${v.bills.length}</td><td class="c-open num td-amt">${money(v.open)}</td><td class="c-paid num td-amt">${money(v.paid)}</td><td class="c-vst">${vpill(v)}</td></tr>`)}</tbody></table></div>`;
+}
+function vendorCards(list) {
+  return h`<ul class="panel cards">${list.map((v) => h`<li class="crd"><div class="crd-1"><span class="nm"><a class="stretch" href="#/vendors/${encodeURIComponent(v.vid)}" data-open="vendor-${v.vid}">${vName(v)}</a>${fictTag(v.reg)}</span>${vpill(v)}</div><div class="crd-2"><span class="dest" translate="no">${v.reg.destination}</span>${v.open ? h`<span>${money(v.open)} open</span>` : ""}</div></li>`)}</ul>`;
+}
+
+/* ---------- skeletons, errors, empties ---------- */
+const skBar = (w, hh, extra = "") => h`<span class="sk" style="width:${w};height:${hh}px;${extra}"></span>`;
+const skRows = (n = 5, hgt = 60) => h`<div class="skrows">${Array.from({ length: n }, () => h`<div class="skrow" style="height:${hgt}px">${skBar("55%", 12)}${skBar("35%", 10)}${hgt >= 68 ? skBar("20%", 10) : ""}</div>`)}</div>`;
+function errBlock(k) {
+  const e = S[k].error || {};
+  const hint = e.status === 403 && /token/i.test(e.message || "") ? " Open the dashboard from the link printed by the local server." : "";
+  return h`<div class="errblk" role="alert"><p class="et">${ERR_TITLE[k]}</p><p>${e.message || "Unknown error."}${hint}</p><button class="btn btn-secondary" type="button" data-act="retry" data-k="${k}">Try again</button></div>`;
+}
+
+/* ================================================================== views */
+let SECTIONS = [];
+function sec(id, deps, opt, render, skel, label) {
+  SECTIONS.push({ id, deps, opt: opt || [], render, skel, label: label || "Loading…" });
+  return h`<div data-sec="${id}"></div>`;
+}
+function fillSection(s) {
+  const el = $(`[data-sec="${s.id}"]`); if (!el) return;
+  const all = [...s.deps, ...s.opt];
+  const err = s.deps.find((k) => S[k].status === "error");
+  const loading = all.some((k) => S[k].status === "loading" || S[k].status === "idle");
+  if (err) { el.removeAttribute("aria-busy"); el.innerHTML = part(errBlock(err)); return; }
+  if (loading) { el.setAttribute("aria-busy", "true"); el.innerHTML = part(s.skel ? s.skel() : skRows()) + `<span class="vh">${esc(s.label)}</span>`; return; }
+  el.removeAttribute("aria-busy");
+  const open = new Set($$("details[open][data-k]", el).map((d) => d.dataset.k));
+  el.innerHTML = part(s.render());
+  open.forEach((k) => { const d = $(`details[data-k="${CSS.escape(k)}"]`, el); if (d) d.open = true; });
+  $$(".filters", el).forEach((f) => { // keep the active filter visible inside its own scroller
+    const a = $('[aria-current="true"]', f);
+    if (a && a.offsetLeft + a.offsetWidth > f.clientWidth - 24) f.scrollLeft = a.offsetLeft - 24;
+  });
+}
+function refreshSections(k) { SECTIONS.filter((s) => s.deps.includes(k) || s.opt.includes(k)).forEach(fillSection); }
+
+const VIEWS = {};
+const NAV = [
+  ["overview", "Overview", "overview", "Overview"],
+  ["approvals", "Approvals", "approvals", "Approvals"],
+  ["bills", "Bills", "bills", "Bills"],
+  ["vendors", "Vendors & team", "vendors", "Vendors"],
+  ["policy", "Policy", "policy", "Policy"],
+  ["ask", "Ask Takara", "ask", "Ask"],
+  ["ledger", "Public ledger", "ledger", "Ledger"],
+];
+
+/* ---------- Overview ---------- */
+let barAnimated = false;
+VIEWS.overview = {
+  title: "Overview", h1: "Overview",
+  desc: () => { const p = S.public.data; return p ? h`<span translate="no">${p.treasury}</span> on NEAR testnet` : "Treasury on NEAR testnet"; },
+  body: () => h`<div class="stack">
+    <section class="panel hero" aria-labelledby="hero-h"><h2 class="vh" id="hero-h">Money at a glance</h2>
+      <div class="hero-l">${sec("hero-l", ["report"], [], heroLeft, heroLeftSk, "Loading treasury figures…")}</div>
+      <div class="hero-r">${sec("hero-r", ["report"], ["policy", "public", "decisions"], heroRight, () => h`${[0, 1, 2].map(() => h`<div class="metric" style="height:128px">${skBar("90px", 12)}${skBar("110px", 30, "margin-top:10px")}${skBar("150px", 10, "margin-top:10px")}${skBar("120px", 10, "margin-top:8px")}</div>`)}`, "Loading key figures…")}</div>
+    </section>
+    <div class="g12">
+      <section class="panel s7" aria-labelledby="att-h"><div class="panel-h"><h2 id="att-h">Needs attention</h2>${sec("att-link", ["report"], ["policy", "public"], () => { const m = model(); const n = m.waiting.length; return n ? h`<a class="more" href="#/approvals">View all (${n})${chevA()}</a>` : ""; }, () => "")}</div>
+        ${sec("att", ["report"], ["policy", "public", "decisions"], attention, () => h`<div class="attlist">${[0, 1, 2].map(() => h`<div class="acard compact" style="height:104px">${skBar("55%", 14)}${skBar("80%", 10, "margin-top:14px")}${skBar("45%", 10, "margin-top:12px")}</div>`)}</div>`, "Loading items that need attention…")}</section>
+      <section class="panel s5" aria-labelledby="up-h"><div class="panel-h"><h2 id="up-h">Coming up</h2></div>
+        ${sec("up", ["report"], ["policy", "public"], comingUp, () => h`<div class="up-sum">${skBar("80%", 12, "margin:5px 0")}</div>${skRows(5, 66)}`, "Loading upcoming bills…")}
+        <p class="panel-f"><a class="more" href="#/bills">All bills${chevA()}</a></p></section>
+    </div>
+    <section class="panel" aria-labelledby="act-h"><div class="panel-h"><h2 id="act-h">Activity</h2><a class="more" href="#/activity">Show all activity${chevA()}</a></div>
+      ${sec("ov-act", ["decisions"], ["report", "public", "policy"], () => {
+        const m = model(); const items = activityItems(m).slice(0, 8);
+        if (!items.length) return h`<p class="empty">No decisions are recorded on this deployment yet. Flags on each bill are still shown in <a href="#/bills?status=flagged" style="display:inline;margin:0">Bills</a>.</p>`;
+        return h`<div class="actwrap">${actGroups(items, m)}</div>`;
+      }, () => h`<div style="height:38px"></div>${skRows(8, 66)}`, "Loading activity…")}
+    </section>
+  </div>`,
+};
+function heroLeftSk() {
+  return h`${skBar("120px", 12, "margin-top:4px")}${skBar("180px", 40, "margin-top:12px")}${skBar("220px", 12, "margin-top:12px")}${skBar("100%", 14, "margin-top:22px")}<div style="display:flex;gap:20px;margin-top:16px">${skBar("90px", 10)}${skBar("90px", 10)}${skBar("90px", 10)}</div>${skBar("150px", 10, "margin-top:28px")}`;
+}
+function heroLeft() {
+  const m = model(); const f = m.fig;
+  const bal = Number(f.treasury_balance) || 0, paid = Number(f.settled_outflow) || 0, res = Number(f.reserved) || 0, sp = Number(f.spendable) || 0;
+  const neg = sp < 0;
+  const segs = [["paid", paid, "Already paid"], ["res", res, "Reserved for bills"], ["spend", Math.max(sp, 0), "Spendable"]].filter((s) => s[1] > 0);
+  const over = paid + res > bal;
+  const animate = !barAnimated; barAnimated = true;
+  const aria = `Of ${moneyT(bal)}: ${num(paid)} already paid, ${num(res)} reserved for bills, ${num(Math.max(sp, 0))} spendable.`;
+  const rows = [["treasury_balance", "Treasury balance", "The treasury contract’s balance, read from NEAR."], ["settled_outflow", "Already paid", "Bills already paid that still count against the balance until the next reconciliation."], ["reserved", "Reserved for bills", "Accepted bills that aren’t paid yet. This money is spoken for."], ["spendable", "Spendable", "Balance minus already paid minus reserved."], ["daily_recurring_burn", "Daily recurring burn", "Recurring bills converted to a monthly amount, divided by 30."], ["runway_days", "Runway", "How many days the balance left after payouts covers your recurring burn."]];
+  return h`<p class="hl-label">${neg ? "Short by" : "Spendable now"}</p>
+    <p class="hl-val${neg ? " neg" : ""}">${num(neg ? -Math.abs(sp) : sp)}<span class="u"> ${symbol()}</span></p>
+    <p class="hl-sub">of ${moneyT(bal)} in the treasury</p>
+    <div class="bar${over ? " over" : ""}${animate ? " grow" : ""}" role="img" aria-label="${aria}">${segs.map(([cls, v]) => h`<span class="seg ${cls}" style="flex:${v} 1 0"></span>`)}</div>
+    <ul class="legend${animate ? " grow" : ""}">
+      <li><span class="sw" style="background:var(--seg-paid)"></span><span class="ll">Already paid</span> <span class="lv">${moneyT(paid)}</span></li>
+      <li><span class="sw" style="background:var(--seg-reserved)"></span><span class="ll">Reserved for bills</span> <span class="lv">${moneyT(res)}</span></li>
+      <li><span class="sw" style="background:var(--seg-spendable)"></span><span class="ll">Spendable</span> <span class="lv">${moneyT(Math.max(sp, 0))}</span></li>
+    </ul>
+    <details class="disc calc" data-k="calc"><summary>${IC.chev(14)}How is this calculated?</summary>
+      <dl>${rows.map(([k, label, sent]) => h`<div><dt><span>${label}</span><span class="tnum">${f[k] == null ? "" : k === "runway_days" ? `${f[k]} days` : moneyT(f[k])}</span></dt><dd>${sent}</dd>${m.queries[k] ? h`<dd class="f" translate="no">${m.queries[k]}</dd>` : ""}</div>`)}</dl>
+      <p class="close">Figures come from deterministic queries over the ledger. No model writes a number.</p>
+    </details>`;
+}
+function heroRight() {
+  const m = model(); const f = m.fig;
+  // runway
+  let runway;
+  if (f.runway_days == null) runway = h`<div class="metric"><p class="m-l">Runway</p><p class="m-v smv">No recurring burn</p></div>`;
+  else {
+    const rd = Number(f.runway_days), fl = m.pol ? Number(m.pol.min_runway_days) : null;
+    let ctx = "";
+    if (fl != null) ctx = rd >= fl * 2 ? h`<p class="m-c">above your ${fl}-day floor</p>` : rd >= fl ? h`<p class="m-c warn">close to your ${fl}-day floor</p>` : h`<p class="m-c bad">below your ${fl}-day floor</p>`;
+    runway = h`<div class="metric"><p class="m-l">Runway</p><p class="m-v">${num(rd)}<span class="u"> days</span></p>${ctx}${f.daily_recurring_burn != null ? h`<p class="m-c">Recurring burn ${num(f.daily_recurring_burn)} ${symbol()} a day</p>` : ""}</div>`;
+  }
+  // waiting on a signer
+  const si = m.signerItems, sum = si.reduce((a, b) => a + b.amount, 0), ti = m.timerItems.length;
+  const waiting = h`<div class="metric"><p class="m-l">Waiting on a signer</p><p class="m-v">${si.length}</p><p class="m-c">${si.length ? `${plural(si.length, "bill")} · ${moneyT(sum)}` : "Nothing is waiting on a signer"}</p>${ti ? h`<p class="m-c">${ti} cooling off</p>` : ""}<span class="m-go"><a href="#/approvals">View<span class="vh"> approvals</span>${chevA()}</a></span></div>`;
+  // caught
+  const c = m.caught;
+  const nz = CATS.filter(([k]) => c.counts[k] > 0);
+  const ctx = nz.slice(0, 3).map(([k, , s]) => `${s} ${c.counts[k]}`).join(" · ") + (nz.length > 3 ? ` · +${nz.length - 3} more` : "");
+  const caught = h`<a class="metric" href="#/activity?filter=caught"><span class="m-l" style="display:block">Caught for you</span><span class="m-v" style="display:block">${c.total}</span><span class="m-c" style="display:block">${c.total ? ctx : "Nothing caught yet. Payout changes, duplicates and hidden instructions are counted here."}</span><span class="m-go">${IC.chev(16)}</span></a>`;
+  return h`${runway}${waiting}${caught}`;
+}
+function attention() {
+  const m = model(); const list = queueOrder(m).slice(0, 3);
+  if (!list.length) return h`<p class="empty">Nothing needs attention. Bills above ${m.pol ? `${num(m.pol.max_auto_pay)} USDC` : "the auto-pay limit"}, new vendors over the limit and payout changes appear here.</p>`;
+  return h`<div class="attlist">${list.map((b) => compactCard(b, m))}</div>`;
+}
+function comingUp() {
+  const m = model(); const t = todayDay();
+  const open = m.bills.filter((b) => b.state !== "settled");
+  const win = open.filter((b) => b.due != null && b.due >= t && b.due <= t + 30);
+  const overdue = open.filter((b) => b.due != null && b.due < t);
+  let sentence = "";
+  if (win.length) {
+    const sum = win.reduce((a, b) => a + b.amount, 0), unres = win.filter((b) => b.state !== "accepted").reduce((a, b) => a + b.amount, 0);
+    sentence = unres ? `${moneyT(sum)} due in the next 30 days, ${moneyT(unres)} not reserved yet.` : `${moneyT(sum)} due in the next 30 days, all reserved.`;
+  } else sentence = "Nothing due in the next 30 days.";
+  const list = open.filter((b) => b.due != null).sort((a, b) => a.due - b.due || a.id - b.id).slice(0, 5);
+  const MF = new Intl.DateTimeFormat(undefined, { month: "short", timeZone: "UTC" });
+  return h`<p class="up-sum">${overdue.length ? h`<span class="od">${overdue.length} overdue.</span> ` : ""}${sentence}</p>
+    ${list.length ? h`<ul class="uplist">${list.map((b) => { const d = new Date(b.due * DAY); const yr = d.getUTCFullYear() !== new Date().getUTCFullYear(); return h`<li><a class="uprow" href="#/bills/${b.sid}" data-open="bill-${b.sid}"><span class="dblk" aria-hidden="true"><span class="m">${MF.format(d)}</span><span class="d">${d.getUTCDate()}</span>${yr ? h`<span class="y">${d.getUTCFullYear()}</span>` : ""}</span><span class="vh">${fmtDate(b.due)}: </span><span class="up-n"><span class="nm" title="${nameText(b)}">${nameHTML(b)}</span>${b.recur ? h`<span class="rc">${b.recur}</span>` : ""}</span><span class="up-a">${money(b.amount)}</span><span class="up-p">${pill(b)}</span></a></li>`; })}</ul>` : ""}`;
+}
+
+/* ---------- Approvals ---------- */
+VIEWS.approvals = {
+  title: "Approvals", h1: "Needs attention",
+  desc: () => "Everything waiting, who it waits on, how long it has waited, and its deadline. Approvals happen in a signer’s wallet, not here.",
+  body: () => sec("appr", ["report"], ["public", "policy", "decisions"], () => {
+    const m = model();
+    const groups = [["Waiting on a signer", m.signerItems, ""], ["Waiting on time", m.timerItems, ""], ["Pending policy check", m.policyItems, "Takara decides these automatically. Shown so nothing is stuck out of sight."]].filter((g) => g[1].length);
+    if (!groups.length) return h`<div class="panel empty" style="max-width:760px"><h2>Nothing is waiting</h2><p>Bills above ${m.pol ? `${num(m.pol.max_auto_pay)} USDC` : "the auto-pay limit"}, first bills from new vendors over the limit, and payout destination changes land here. Takara pays everything else within policy.</p><a href="#/bills">See all bills</a></div>`;
+    return h`${groups.map(([t, list, d], i) => h`<section class="qsec" aria-labelledby="q-${i}"><h2 id="q-${i}">${t} (${list.length})</h2>${d ? h`<p class="qd">${d}</p>` : ""}<div class="queue">${[...list].sort(dueSort).map((b) => approvalCard(b, m))}</div></section>`)}`;
+  }, () => h`<div class="queue">${[0, 1, 2].map(() => h`<div class="acard" style="height:200px">${skBar("50%", 16)}${skBar("70%", 12, "margin-top:12px")}${skBar("100%", 60, "margin-top:16px")}</div>`)}</div>`, "Loading the approval queue…"),
+};
+
+/* ---------- Bills ---------- */
+const BILL_FILTERS = [["all", "All"], ["waiting", "Waiting"], ["reserved", "Reserved"], ["paid", "Paid"], ["flagged", "Flagged"]];
+const billFilter = (key) => ({ all: () => true, waiting: (b) => !!b.waitsOn, reserved: (b) => b.state === "accepted" && !b.c.vendor_change, paid: (b) => b.state === "settled", flagged: (b) => b.anyFlag })[key];
+const billSort = (a, b) => { const sa = a.state === "settled", sb = b.state === "settled"; if (sa !== sb) return sa ? 1 : -1; if (sa) return (b.due || 0) - (a.due || 0) || a.id - b.id; return (a.due == null) - (b.due == null) || (a.due || 0) - (b.due || 0) || a.id - b.id; };
+VIEWS.bills = {
+  title: "Bills", h1: "Bills",
+  desc: () => "Invoices, subscriptions, payroll and reimbursements. Money is reserved only when a bill is accepted.",
+  body: (r) => sec("bills", ["report"], ["public", "policy", "decisions"], () => {
+    const m = model();
+    const st = BILL_FILTERS.some(([k]) => k === r.params.get("status")) ? r.params.get("status") : "all";
+    const open = m.bills.filter((b) => b.state !== "settled");
+    const reserved = m.bills.filter((b) => b.state === "accepted").reduce((a, b) => a + b.amount, 0);
+    const unres = m.bills.filter((b) => b.state === "claimed").reduce((a, b) => a + b.amount, 0);
+    const paid = m.bills.filter((b) => b.state === "settled").reduce((a, b) => a + b.amount, 0);
+    const list = m.bills.filter(billFilter(st)).sort(billSort);
+    const EMPTY = { all: "No bills yet. Takara records a bill when an invoice arrives. Nothing is reserved until it’s accepted.", waiting: "Nothing is waiting.", reserved: "No reserved bills right now.", paid: "No bills paid yet.", flagged: "No flagged bills. Payout changes, hidden instructions and new vendors show up here." };
+    const label = BILL_FILTERS.find(([k]) => k === st)[1];
+    return h`<p class="sumstrip"><b>${open.length}</b> open bills · <b>${moneyT(reserved)}</b> reserved · <b>${moneyT(unres)}</b> not reserved yet · <b>${moneyT(paid)}</b> paid</p>
+      <div class="fwrap"><div class="filters" role="group" aria-label="Filter bills">${BILL_FILTERS.map(([k, l]) => h`<a href="${k === "all" ? "#/bills" : `#/bills?status=${k}`}"${k === st ? raw(' aria-current="true"') : ""} data-filter>${l} <span class="c">(${m.bills.filter(billFilter(k)).length})</span></a>`)}</div></div>
+      ${list.length ? h`${billTable(list, `Bills, ${label.toLowerCase()} (${list.length})`)}${billCards(list)}` : h`<div class="panel empty"><p>${EMPTY[st]}</p></div>`}`;
+  }, () => h`${skBar("60%", 14, "margin-bottom:20px")}${skBar("380px", 42, "max-width:100%;margin-bottom:20px;border-radius:10px")}<div class="panel">${skRows(7, 60)}</div>`, "Loading bills…"),
+};
+
+/* ---------- Vendors ---------- */
+VIEWS.vendors = {
+  title: "Vendors & team", h1: "Vendors & team",
+  desc: () => "Who Takara pays and where. A payout destination can’t change without a signer and a cooling-off period.",
+  body: () => sec("vendors", ["report"], ["public", "policy"], () => {
+    const m = model(); const all = vendorGroups(m);
+    if (!all.length) return h`<div class="panel empty"><p>No vendors yet. Vendors are added when their first bill is accepted.</p></div>`;
+    const vendors = all.filter((v) => v.kind === "vendor" || v.kind === "new").sort((a, b) => a.st - b.st || vNameT(a).localeCompare(vNameT(b)));
+    const team = all.filter((v) => v.kind === "team" || v.kind === "payroll").sort((a, b) => (a.kind !== "payroll") - (b.kind !== "payroll") || vNameT(a).localeCompare(vNameT(b)));
+    return h`${vendors.length ? h`<section aria-labelledby="vh-1"><h2 class="sech" id="vh-1">Vendors</h2>${vendorTable(vendors, "Vendors")}${vendorCards(vendors)}</section>` : ""}
+      ${team.length ? h`<section class="secgap" aria-labelledby="vh-2"><h2 class="sech" id="vh-2">Team and payroll</h2>${vendorTable(team, "Team and payroll")}${vendorCards(team)}</section>` : ""}`;
+  }, () => h`<div class="panel">${skRows(5, 60)}</div><div class="panel secgap">${skRows(3, 60)}</div>`, "Loading vendors…"),
+};
+
+/* ---------- Policy ---------- */
+const PFIELDS = [
+  { k: "max_auto_pay", label: "Auto-pay limit", desc: "Bills above this amount wait for a policy signer.", unit: "USDC", min: 1, max: null, err: "Enter a whole number of 1 or more." },
+  { k: "cooling_off_hours", label: "Cooling-off after a payout change", desc: "How long Takara waits after a signer approves a new vendor destination.", unit: "hours", min: 0, max: 720, err: "Enter 0 to 720 hours." },
+  { k: "min_runway_days", label: "Minimum runway", desc: "Discretionary payments must leave at least this much runway.", unit: "days", min: 0, max: 720, err: "Enter 0 to 720 days." },
+];
+const PLABEL = Object.fromEntries(PFIELDS.map((f) => [f.k, f.label]));
+const PF = { edits: null, version: null };
+const unitFmt = (k, v) => (k === "max_auto_pay" ? `${num(v)} USDC` : k === "cooling_off_hours" ? plural(Number(v), "hour") : plural(Number(v), "day"));
+function policyDirty() { const p = S.policy.data; if (!p || !PF.edits) return false; return PFIELDS.some((f) => String(PF.edits[f.k]).trim() !== String(p[f.k])); }
+function validField(f, v) { v = String(v).trim(); if (!/^\d+$/.test(v)) return false; const n = Number(v); return n >= f.min && (f.max == null || n <= f.max); }
+VIEWS.policy = {
+  title: "Policy", h1: "Policy",
+  desc: () => "The limits the agent must stay inside. Changing them needs a policy signer’s signature.",
+  body: () => h`<div class="g12">
+    <section class="panel s7" aria-labelledby="pl-h"><div class="panel-h"><h2 id="pl-h">Current limits</h2></div><div class="panel-b">${sec("pform", ["policy"], [], policyForm, () => h`${[0, 1, 2].map(() => h`<div style="margin-bottom:28px">${skBar("160px", 14)}${skBar("260px", 10, "margin-top:8px")}${skBar("320px", 42, "max-width:100%;margin-top:10px;border-radius:10px")}</div>`)}`, "Loading the current policy…")}</div></section>
+    <section class="panel s5 who" aria-labelledby="pw-h"><div class="panel-h"><h2 id="pw-h">Who can change this</h2></div><div class="panel-b">${sec("pwho", ["public"], ["policy"], () => {
+      const p = S.public.data, pol = S.policy.data;
+      const ver = pol ? pol.version : p.policy.version, hash = pol ? pol.hash : p.policy.hash;
+      return h`<dl><div><dt>Policy version</dt><dd>v${ver}</dd></div><div><dt>Policy hash</dt><dd>${hashC(hash, "policy hash")}</dd></div><div><dt>Owners</dt><dd>${join((p.owners || []).map(acct), ", ")}</dd></div><div><dt>Policy signers</dt><dd>${join((p.signers || []).map(acct), ", ")}</dd></div></dl><p>Owners can pause the treasury, revoke the agent and recover funds, even with the agent offline. Only a policy signer can change these limits.</p>`;
+    }, () => skRows(4, 36), "Loading who can change the policy…")}</div></section>
+  </div>`,
+};
+function policyForm() {
+  const p = S.policy.data;
+  if (!PF.edits || PF.version !== p.version) { PF.edits = Object.fromEntries(PFIELDS.map((f) => [f.k, String(p[f.k])])); PF.version = p.version; }
+  return h`<form id="pform" novalidate>
+    ${PFIELDS.map((f) => { const edited = String(PF.edits[f.k]).trim() !== String(p[f.k]); return h`<div class="field"><label for="f-${f.k}">${f.label}</label><p class="f-desc" id="d-${f.k}">${f.desc}</p>
+      <div class="inp"><input id="f-${f.k}" name="${f.k}" type="number" inputmode="numeric" min="${f.min}"${f.max != null ? raw(` max="${f.max}"`) : ""} step="1" autocomplete="off" value="${PF.edits[f.k]}" aria-describedby="d-${f.k} c-${f.k} e-${f.k}"><span class="u" aria-hidden="true">${f.unit}</span></div>
+      <p class="f-cur" id="c-${f.k}">Current: ${unitFmt(f.k, p[f.k])} <span class="tag warn" data-edited="${f.k}"${edited ? "" : raw(" hidden")}>Edited</span></p>
+      <p class="f-err" id="e-${f.k}" hidden></p></div>`; })}
+    <div class="callout">${IC.lock(18)}<p><b>Editing previews a change. A signature applies it.</b> Nothing changes until a policy signer signs the new version on-chain.</p></div>
+    <div class="formfoot"><button class="btn btn-primary" type="submit" id="pv-btn">Preview change</button><button class="btn btn-secondary" type="button" data-act="preset"${policyDirty() ? "" : raw(" disabled")}>Reset</button></div>
+    ${DEMO ? h`<p class="formnote">Previewing works here. Signing is off in this demo.</p>` : ""}
+    <p class="f-err" id="pf-alert" role="alert" hidden></p>
+  </form>`;
+}
+
+/* ---------- Ask ---------- */
+const CHAT = { msgs: [], autoQ: null, busy: false };
+const SUGGEST = ["Why was the 400 payment blocked?", "What is spendable?", "Any vendor changes?", "List bills"];
+VIEWS.ask = {
+  title: "Ask Takara", h1: raw(`Ask Takara <span class="rotag">${part(IC.lock(13))}Read-only</span>`),
+  desc: () => "Ask why something was blocked, what’s reserved, or what changed. Answers come from the ledger and link to the transaction. Takara can’t pay, approve or change anything here.",
+  body: () => h`<div class="ask"><div class="chatlog" id="chatlog" role="log" aria-live="polite" aria-label="Conversation with Takara" tabindex="0"></div>
+    <form class="chatform" id="chatform"><label class="vh" for="chat-q">Question for Takara</label><input id="chat-q" name="q" placeholder="Ask about a bill, a block or a figure…" autocomplete="off" enterkeyhint="send" spellcheck="false"><button class="btn btn-primary" type="submit">Ask</button></form></div>`,
+  after: (r) => {
+    paintChat();
+    const q = r.params.get("q");
+    if (q && CHAT.autoQ !== q) { CHAT.autoQ = q; history.replaceState(null, "", "#/ask"); if (cur) cur.key = "ask?"; ask(q); }
+  },
+};
+const REASON_LABEL = Object.fromEntries(Object.entries(REASONS).map(([k, v]) => [k, v.label]));
+function fmtAnswer(text) {
+  let s = esc(text);
+  s = s.replace(/`([^`]+)`/g, (mm, code) => (REASON_LABEL[code] ? `<abbr title="${code}">${esc(REASON_LABEL[code])}</abbr>` : `<code translate="no">${code}</code>`));
+  s = s.replace(/\d{4}-\d{2}-\d{2}T[\d:.]+Z/g, (iso) => { const t = Date.parse(iso); return Number.isFinite(t) ? part(timeEl(t, fmtDateTime(t))) : iso; });
+  const m = model();
+  s = s.replace(/new:[0-9a-f]{6,}/g, (id) => { const b = m && m.bills.find((x) => x.vid === id); return b ? part(nameHTML(b)) : "New vendor"; });
+  return s;
+}
+function paintChat() {
+  const log = $("#chatlog"); if (!log) return;
+  const parts = [h`<div class="msg a chat-hello">Ask about a bill, a block or a figure. Takara can’t pay, approve or change anything here.</div>`];
+  for (const msg of CHAT.msgs) {
+    if (msg.role === "q") parts.push(h`<div class="msg q">${msg.text}</div>`);
+    else if (msg.pending) parts.push(h`<div class="msg a pending">Reading the ledger…</div>`);
+    else if (msg.error) parts.push(h`<div class="msg a err">Takara couldn’t answer: ${msg.error.replace(/\.$/, "")}. Try again.</div>`);
+    else { const src = (msg.data.sources || []).filter((x) => x.url); parts.push(h`<div class="msg a">${raw(fmtAnswer(msg.data.answer || ""))}${src.map((x) => h`<span class="src">${ext(x.url, "View transaction")}</span>`)}</div>`); }
+  }
+  if (!CHAT.msgs.length) parts.push(h`<div class="chips" role="group" aria-label="Suggested questions">${SUGGEST.map((q) => h`<button class="chip" type="button" data-act="chip" data-q="${q}">${q}</button>`)}</div>`);
+  log.innerHTML = part(join(parts, ""));
+  log.scrollTop = log.scrollHeight;
+}
+async function ask(q) {
+  q = String(q).trim(); if (!q || CHAT.busy) return;
+  CHAT.busy = true;
+  CHAT.msgs.push({ role: "q", text: q }); const a = { role: "a", pending: true }; CHAT.msgs.push(a); paintChat();
+  try { a.data = await api("/api/chat", { q }); } catch (e) { a.error = e.message; }
+  a.pending = false; CHAT.busy = false; paintChat();
+}
+
+/* ---------- Public ledger ---------- */
+const stateWord = (s) => ({ claimed: ["Received", "neutral"], accepted: ["Reserved", "accent"], settled: ["Paid", "quiet"] })[s] || ["Recorded", "neutral"];
+const CHANGE_SENT = { suspended_destination_mismatch: "frozen, waiting for a signer", approved_cooling_off: "approved, in cooling-off", rejected: "rejected" };
+VIEWS.ledger = {
+  title: "Public ledger", h1: "Public ledger",
+  desc: () => "The same treasury as anyone can read it on NEAR testnet. Amounts, vendors and payees stay sealed.",
+  body: () => sec("ledger", ["public"], [], () => {
+    const p = S.public.data;
+    const cs = p.commitments || [];
+    const prio = (x) => cap(String(x || ""));
+    return h`<div class="stack">
+      <section class="panel" aria-labelledby="lg-1"><h2 class="vh" id="lg-1">Treasury summary</h2><dl class="sumdl">
+        <div><dt>Balance</dt><dd>${p.balance} tUSDC (test token, no value)</dd></div>
+        <div><dt>Agent</dt><dd>${p.agent ? h`${acct(p.agent)}<span class="tag acc">Active</span>` : h`<span class="tag bad">Revoked</span>`}</dd></div>
+        <div><dt>Treasury</dt><dd>${p.paused ? "Paused" : "Running"}</dd></div>
+        <div><dt>Policy</dt><dd>v${p.policy.version} ${hashC(p.policy.hash, "policy hash")}</dd></div>
+        <div><dt>Owners</dt><dd>${join((p.owners || []).map(acct), ", ")}</dd></div>
+        <div><dt>Policy signers</dt><dd>${join((p.signers || []).map(acct), ", ")}</dd></div>
+        <div><dt>Pinned engine</dt><dd>${p.engine && p.engine.wasm_hash ? h`${ext(p.engine.wasm_url, raw(`<span class="mono" translate="no">${esc(short(p.engine.wasm_hash))}</span>`))}${copyBtn(p.engine.wasm_hash, "engine hash")}` : ""}</dd></div>
+        <div><dt>Ledger state</dt><dd>${hashC(p.ledger_state_hash, "ledger state hash")}</dd></div>
+      </dl></section>
+      <section aria-labelledby="lg-2"><h2 class="sech" id="lg-2">What strangers see, and what stays sealed</h2><div class="vis">
+        <div class="see"><h3>${IC.eye()}Visible on-chain</h3><p>Bill states, priority, flags, hashes, attestations, the total balance.</p></div>
+        <div class="seal"><h3>${IC.lock(16)}Sealed</h3><p>Vendor names, amounts, payout destinations, policy contents.</p></div></div></section>
+      <section aria-labelledby="lg-3"><h2 class="sech" id="lg-3">Commitments</h2>
+        ${cs.length ? h`<div class="panel tblwrap"><table class="tbl"><caption class="vh">Commitments as read from NEAR testnet</caption><thead><tr><th scope="col" class="c-lb">Bill</th><th scope="col" class="c-ls">Status</th><th scope="col" class="c-lp">Priority</th><th scope="col" class="c-li">Issues</th><th scope="col" class="c-lh">Commitment hash</th><th scope="col" class="c-la">Attestation</th></tr></thead><tbody>${cs.map((c) => { const [t, tone] = stateWord(c.state); return h`<tr><td class="c-lb"><span class="tnum">#${c.id}</span><br><a class="sm-link" href="#/bills/${c.id}" data-open="bill-${c.id}">Open in your view</a></td><td class="c-ls">${pillOf(t, tone)}</td><td class="c-lp">${prio(c.priority)}</td><td class="c-li">${badges(flagsFromBits(Number(c.flags) || 0))}</td><td class="c-lh">${hashC(c.commitment_hash, `commitment hash for bill ${c.id}`)}</td><td class="c-la">${attLink(c.request_no)}</td></tr>`; })}</tbody></table></div>
+        <ul class="panel cards">${cs.map((c) => { const [t, tone] = stateWord(c.state); return h`<li class="crd"><div class="crd-1"><span class="nm"><b class="tnum">Bill #${c.id}</b> <span class="muted sm">${prio(c.priority)}</span></span>${pillOf(t, tone)}</div>${Number(c.flags) ? h`<div class="crd-3">${badges(flagsFromBits(Number(c.flags)))}</div>` : ""}<div class="crd-2"><span>${hashC(c.commitment_hash, `commitment hash for bill ${c.id}`)}</span>${attLink(c.request_no)}</div><div class="crd-2"><a href="#/bills/${c.id}" data-open="bill-${c.id}">Open in your view</a></div></li>`; })}</ul>` : h`<div class="panel empty"><p>No commitments on-chain yet.</p></div>`}
+      </section>
+      ${(p.vendor_changes || []).length ? h`<section aria-labelledby="lg-4"><h2 class="sech" id="lg-4">Payout destination changes</h2><ul class="panel changes">${p.vendor_changes.map((ch) => { const st = ch.settlement_status || ch.status; return h`<li>Change ${ch.id} on bill #${ch.commitment_id}: ${CHANGE_SENT[st] || humanCode(st || "recorded")}.${ch.decided_by ? h` Decided by ${roleOf(ch.decided_by)} (${acct(ch.decided_by)})${ch.decided_at ? ` on ${fmtDateTime(nsToMs(ch.decided_at))}` : ""}.` : ""}</li>`; })}</ul></section>` : ""}
+      <p class="footnote">Settlement on testnet releases escrow and records a receipt without publishing a payee or amount. The confidential mainnet payout is a separate, labelled demo, and this contract doesn’t enforce it.</p>
+    </div>`;
+  }, () => h`<div class="panel">${skRows(4, 36)}</div><div class="panel secgap">${skRows(5, 44)}</div>`, "Loading the public ledger…"),
+};
+
+/* ---------- Activity ---------- */
+const ACT_FILTERS = [["all", "All"], ["caught", "Caught"], ["held", "Held"], ["money", "Money moved"], ["admin", "Admin"]];
+VIEWS.activity = {
+  title: "Activity", h1: "Activity",
+  desc: () => "Every recorded decision in plain English, newest first, with a link to its transaction.",
+  body: (r) => sec("activity", ["decisions"], ["report", "public", "policy"], () => {
+    const m = model();
+    const f = ACT_FILTERS.some(([k]) => k === r.params.get("filter")) ? r.params.get("filter") : "all";
+    const items = activityItems(m, { withFlags: true });
+    const shown = items.filter((i) => f === "all" || i.kind === f);
+    const count = (k) => items.filter((i) => k === "all" || i.kind === k).length;
+    const breakdown = f === "caught" && m ? h`<dl class="breakdown">${CATS.map(([k, l]) => h`<div><dt>${l}</dt><dd>${m.caught.counts[k]}</dd></div>`)}<div><dt><b>Total</b></dt><dd>${m.caught.total}</dd></div></dl><p class="bnote">Counted from recorded decisions and bill flags. Each incident is counted once.</p>` : "";
+    return h`<div class="fwrap"><div class="filters" role="group" aria-label="Filter activity">${ACT_FILTERS.map(([k, l]) => h`<a href="${k === "all" ? "#/activity" : `#/activity?filter=${k}`}"${k === f ? raw(' aria-current="true"') : ""} data-filter>${l} <span class="c">(${count(k)})</span></a>`)}</div></div>
+      <section class="panel" aria-label="Activity list">${breakdown}${shown.length ? h`<div class="actwrap">${actGroups(shown, m, "h2")}</div>` : h`<p class="empty">${items.length ? "Nothing in this category yet." : "No decisions recorded on this deployment yet."}</p>`}</section>`;
+  }, () => h`${skBar("420px", 42, "max-width:100%;margin-bottom:20px;border-radius:10px")}<div class="panel">${skRows(6, 44)}</div>`, "Loading activity…"),
+};
+
+/* ================================================================== drawers */
+const drawer = $("#drawer");
+let drawerState = null; // {kind, id, fromApp}
+function billDrawer(id) {
+  const loading = ["report", "public", "policy", "decisions"].some((k) => S[k].status === "loading" || S[k].status === "idle");
+  const m = model();
+  if (!m) return S.report.status === "error" ? h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">Bill #${id}</h2></div><div class="dr-sec">${errBlock("report")}</div>` : h`<div class="dr-h" aria-busy="true"><h2 id="dr-title" tabindex="-1"><span class="vh">Loading bill details…</span>${skBar("60%", 20)}</h2>${skBar("120px", 26, "margin-top:12px")}</div>${skRows(5, 44)}`;
+  const b = m.byId[String(id)];
+  if (!b) return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">Bill #${id}</h2></div><p class="dr-sec">This bill isn’t on this treasury. <a href="#/bills">See all bills</a></p>`;
+  const idx = { claimed: 0, accepted: 1, settled: 2 }[b.state] ?? 0;
+  const steps = ["Received", "Reserved", "Paid"].map((t, i) => [t, i <= idx ? "done" : i === idx + 1 ? "now" : ""]);
+  const w = b.waitsOn;
+  const issues = ISSUES.filter(([k]) => b.flags[k]);
+  const pub = m.pub && (m.pub.commitments || []).find((x) => String(x.id) === b.sid);
+  const acts = activityItems(m).filter((i) => i.cid != null && String(i.cid) === b.sid);
+  const refusal = m.decs.find((d) => d.value && typeof d.value === "object" && d.value.ok === false && d.value.reason && String(d.value.commitment_id) === b.sid);
+  const vend = vendorGroups(m).find((v) => v.vid === b.vid);
+  const details = [];
+  if (b.due) details.push(["Due", h`${fmtDate(b.due)}${b.state !== "settled" ? ` (${relDays(b.due)})` : ""}`]);
+  if (b.recur) details.push(["Repeats", b.recur]);
+  if (b.c.priority) details.push(["Priority", h`<span title="Critical bills are paid first and are protected by reserves.">${cap(b.c.priority)}</span>`]);
+  if (b.c.accepted_by === "s") details.push(["Accepted by", "Policy signer"]); else if (b.c.accepted_by === "p") details.push(["Accepted by", "Takara, within policy"]);
+  if (vend) details.push(["Vendor", h`<a href="#/vendors/${encodeURIComponent(b.vid)}">${vName(vend)}</a>`]);
+  details.push(["Bill number", h`<span class="sm muted tnum">#${b.sid}</span>`]);
+  return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">${nameHTML(b)}</h2><div class="dr-tags">${fictTag(b)}${critTag(b)}${b.sub && !b.isNew ? h`<span class="tag">${b.sub}</span>` : ""}</div>
+      <div class="dr-amt">${money(b.amount)}${pill(b)}</div></div>
+    <section class="dr-sec" aria-labelledby="ds-tl"><h3 id="ds-tl">Progress</h3><ol class="tl">${steps.map(([t, c]) => h`<li class="${c}">${t}${c === "done" ? raw('<span class="vh"> (done)</span>') : c === "now" ? raw('<span class="vh"> (next)</span>') : ""}</li>`)}</ol>${w ? h`<p class="tl-note">Waiting on ${w.labelHTML}: ${w.task}.</p>` : ""}</section>
+    ${issues.length ? h`<section class="dr-sec" aria-labelledby="ds-is"><h3 id="ds-is">Issues</h3>${issues.map(([k, t, tone]) => h`<div class="callo t-${tone}">${tone === "bad" ? IC.diamond(14) : IC.tri(14)}<p><b>${t}.</b> ${issueSentence(k, b, m)}</p></div>`)}</section>` : ""}
+    <section class="dr-sec" aria-labelledby="ds-de"><h3 id="ds-de">Destination</h3>${b.proposed ? compareBoxes(b) : h`<div class="box"><p class="box-t">Registered destination</p><p class="box-v" translate="no">${b.destination}</p><p class="box-c">${(b.chain || "").toUpperCase()}</p></div>`}</section>
+    <section class="dr-sec" aria-labelledby="ds-dt"><h3 id="ds-dt">Details</h3><dl class="ddl">${details.map(([k, v]) => h`<dt>${k}</dt><dd>${v}</dd>`)}</dl></section>
+    ${acts.length ? h`<section class="dr-sec" aria-labelledby="ds-ac"><h3 id="ds-ac">Activity for this bill</h3><ul class="acts">${acts.map((i) => actItem(Object.assign({}, i, { cid: null }), m))}</ul></section>` : loading ? h`<div class="dr-sec" aria-busy="true">${skRows(2, 36)}</div>` : ""}
+    ${pub ? h`<details class="disc proof" data-k="proof"><summary>${IC.chev(14)}On-chain proof</summary><dl class="ddl">
+      <dt>Commitment hash</dt><dd>${hashC(pub.commitment_hash, "commitment hash")}</dd>
+      <dt>Evidence hash</dt><dd>${hashC(pub.evidence_hash, "evidence hash")}</dd>
+      <dt>Attestation</dt><dd>${ext(`https://testnet-api.outlayer.ai/attestations/by-request/${encodeURIComponent(pub.request_no)}`, `Attestation, request ${pub.request_no}`)}</dd>
+      ${pub.settled_nonce ? h`<dt>Settled nonce</dt><dd>${hashC(pub.settled_nonce, "settled nonce")}</dd>` : ""}</dl></details>` : ""}
+    ${b.state === "settled" ? h`<p class="note-box">Paid on NEAR testnet. The confidential mainnet payout is a separate demo and isn’t enforced by this contract.</p>` : ""}
+    ${refusal ? h`<p style="margin-top:20px"><a class="btn btn-secondary" href="#/ask?q=${encodeURIComponent(`why was the ${num(b.amount)} payment blocked?`)}">Ask why</a></p>` : ""}`;
+}
+function vendorDrawer(vid) {
+  const m = model();
+  if (!m) return S.report.status === "error" ? h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">Vendor</h2></div><div class="dr-sec">${errBlock("report")}</div>` : h`<div class="dr-h" aria-busy="true"><h2 id="dr-title" tabindex="-1"><span class="vh">Loading vendor details…</span>${skBar("60%", 20)}</h2></div>${skRows(4, 44)}`;
+  const v = vendorGroups(m).find((x) => x.vid === vid);
+  if (!v) return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">Vendor not found</h2></div><p class="dr-sec">No bills from this vendor are on this treasury. <a href="#/vendors">See all vendors</a></p>`;
+  const cb = v.changeBill;
+  const ch = cb && cb.change;
+  return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">${vName(v)}</h2><div class="dr-tags">${v.reg.isNew ? h`<span class="tag">New vendor</span>` : kindTag(v)}${fictTag(v.reg)}</div><div class="dr-amt">${vpill(v)}</div></div>
+    <section class="dr-sec" aria-labelledby="vs-d"><h3 id="vs-d">Registered destination</h3><div class="box"><p class="box-v" translate="no">${v.reg.destination}${copyBtn(v.reg.destination, "payout destination")}</p><p class="box-c">${(v.reg.chain || "").toUpperCase()}</p></div></section>
+    <section class="dr-sec" aria-labelledby="vs-t"><h3 id="vs-t">Totals</h3><dl class="ddl"><dt>Open</dt><dd>${money(v.open)}</dd><dt>Paid</dt><dd>${money(v.paid)}</dd></dl></section>
+    ${cb ? h`<section class="dr-sec" aria-labelledby="vs-c"><h3 id="vs-c">Payout destination change</h3>${compareBoxes(cb)}${ch ? h`<p class="tl-note">${cap(CHANGE_SENT[ch.settlement_status || ch.status] || humanCode(ch.settlement_status || ch.status || "recorded"))}.${ch.decided_by ? h` Decided by ${roleOf(ch.decided_by)} (${acct(ch.decided_by)})${ch.decided_at ? ` on ${fmtDateTime(nsToMs(ch.decided_at))}` : ""}.` : ""}</p>` : ""}</section>` : ""}
+    <section class="dr-sec" aria-labelledby="vs-b"><h3 id="vs-b">Bills</h3><ul class="vbills">${[...v.bills].sort(billSort).map((b) => h`<li><a href="#/bills/${b.sid}">Bill #${b.sid}${b.due ? `, due ${fmtDate(b.due)}` : ""}</a><span class="r">${money(b.amount)}${pill(b)}</span></li>`)}</ul></section>
+    ${v.kind === "team" ? h`<p class="note-box">Team members’ pay is visible to owners and managers only. Other members never see it.</p>` : ""}`;
+}
+function paintDrawer() {
+  if (!drawerState) return;
+  const body = $("#drawer-body");
+  const hadFocusInBody = body.contains(document.activeElement);
+  body.innerHTML = part(drawerState.kind === "bills" ? billDrawer(drawerState.id) : vendorDrawer(drawerState.id));
+  $('[data-act="close-drawer"]').setAttribute("aria-label", drawerState.kind === "bills" ? "Close bill details" : "Close vendor details");
+  if (hadFocusInBody) $('[data-act="close-drawer"]').focus();
+  const t = $("#dr-title"); if (drawer.open && t) document.title = `${t.textContent.trim()} · Takara AI`;
+}
+function openDrawer(kind, id, fromApp) {
+  const same = drawer.open && drawerState && drawerState.kind === kind && drawerState.id === id;
+  drawerState = { kind, id, fromApp: drawer.open ? drawerState.fromApp || fromApp : fromApp };
+  if (same) return;
+  paintDrawer();
+  $("#drawer-body").scrollTop = 0;
+  if (!drawer.open) drawer.showModal();
+  $('[data-act="close-drawer"]').focus();
+  document.title = `${drawer.querySelector("#dr-title").textContent.trim() || (kind === "bills" ? "Bill" : "Vendor")} · Takara AI`;
+}
+let opener = null;
+function restoreOpener() {
+  let el = null;
+  if (opener && opener.key) el = $$(`[data-open="${CSS.escape(opener.key)}"]`, main).find((x) => x.offsetParent !== null);
+  if (!el && opener && opener.el && opener.el.isConnected && opener.el.offsetParent !== null) el = opener.el;
+  if (!el) el = $("#h1");
+  if (el) el.focus({ preventScroll: false });
+}
+function closeDrawerSilently() {
+  if (drawer.open) drawer.close();
+  drawerState = null;
+  if (cur) document.title = `${VIEWS[cur.view].title} · Takara AI`;
+  restoreOpener();
+}
+function requestCloseDrawer() {
+  if (!drawerState) { drawer.close(); return; }
+  if (drawerState.fromApp && history.length > 1) history.back();
+  else location.replace(drawerState.kind === "bills" ? "#/bills" : "#/vendors");
+}
+drawer.addEventListener("cancel", (e) => { e.preventDefault(); requestCloseDrawer(); });
+drawer.addEventListener("click", (e) => { if (e.target === drawer) requestCloseDrawer(); });
+
+/* ================================================================== router */
+const main = $("#main");
+let cur = null;
+function parseHash() {
+  let hs = location.hash.replace(/^#/, "");
+  if (!hs.startsWith("/")) hs = "/overview";
+  const qi = hs.indexOf("?");
+  const path = qi >= 0 ? hs.slice(0, qi) : hs, qs = qi >= 0 ? hs.slice(qi + 1) : "";
+  const parts = path.split("/").filter(Boolean);
+  let view = parts[0] || "overview";
+  if (!VIEWS[view]) view = "overview";
+  let id = null; if (parts[1] != null) { try { id = decodeURIComponent(parts.slice(1).join("/")); } catch { id = parts[1]; } }
+  const params = new URLSearchParams(qs);
+  return { view, id, params, key: view + "?" + params.toString() };
+}
+function header(v, r) {
+  return h`<div class="ph"><div class="ph-t"><h1 id="h1" tabindex="-1">${v.h1}</h1><p class="ph-d" id="ph-d">${v.desc(r)}</p></div>
+    <div class="ph-r"><span class="stamp" aria-live="off">${stampText()}</span><button class="btn btn-ghost" type="button" data-act="refresh">${IC.refresh()}Refresh</button></div></div>`;
+}
+function renderView(r) {
+  const v = VIEWS[r.view];
+  SECTIONS = [];
+  const body = v.body(r);
+  main.innerHTML = part(header(v, r)) + part(body);
+  cur = { view: r.view, key: r.key, r };
+  SECTIONS.forEach(fillSection);
+  if (v.after) v.after(r);
+  paintNav();
+  document.title = `${v.title} · Takara AI`;
+}
+let guardPending = null;
+function onRoute(e) {
+  const r = parseHash();
+  if (moreSheet.open) moreSheet.close();
+  if (cur && cur.view === "policy" && r.view !== "policy" && policyDirty()) {
+    const target = e && e.newURL ? new URL(e.newURL).hash : "#/overview";
+    history.replaceState(null, "", "#/policy");
+    confirmDiscard(() => { location.hash = target; });
+    return;
+  }
+  const isDrawer = r.id != null && (r.view === "bills" || r.view === "vendors");
+  if (isDrawer) {
+    const fromApp = !!cur;
+    if (!cur) renderView(Object.assign({}, r, { key: r.view + "?", params: new URLSearchParams() }));
+    openDrawer(r.view, r.id, fromApp);
+    return;
+  }
+  if (drawer.open) {
+    drawerState = null; drawer.close();
+    if (cur && cur.key === r.key) { document.title = `${VIEWS[cur.view].title} · Takara AI`; restoreOpener(); return; }
+  }
+  if (cur && cur.key === r.key) return;
+  const sameView = cur && cur.view === r.view;
+  renderView(r);
+  if (sameView) { const f = $('.filters a[aria-current="true"]'); if (f) { f.focus(); return; } }
+  $("#h1").focus({ preventScroll: true });
+  window.scrollTo(0, 0);
+  announce(`${VIEWS[r.view].title}`);
+}
+window.addEventListener("hashchange", onRoute);
+
+/* ================================================================== chrome */
+function envTags(where) {
+  const t1 = DEMO ? "Testnet" : "Testnet · local";
+  const tip = DEMO ? "NEAR testnet, fictional fixture data, test token with no value" : "NEAR testnet, served from your machine, fictional fixture data";
+  if (where === "top") return h`<span class="etag" title="${tip}">Testnet</span><span class="etag fx" title="${tip}">Fictional data</span>`;
+  return h`<span class="etag" title="${tip}">${t1}</span><span class="etag fx" title="${tip}">Fictional data</span><span class="etag short" title="${t1}, fictional data">Test<span class="vh">: ${t1}, fictional data</span></span>`;
+}
+let navBuilt = false;
+function paintNav() {
+  const m = model(); const n = m ? m.signerItems.length : 0;
+  const curV = cur ? cur.view : null;
+  if (!navBuilt) { // build once, then update in place so focus is never lost
+    navBuilt = true;
+    const bdg = (v) => (v === "approvals" ? h`<span class="nv-b" aria-hidden="true" hidden></span>` : "");
+    $('[data-slot="sidenav"]').innerHTML = part(NAV.map(([v, label, ic]) => h`<li><a class="nv" href="#/${v}" data-nav="${v}" data-label="${label}">${IC[ic]()}<span class="nv-l">${label}</span>${bdg(v)}</a></li>`));
+    const tabs = NAV.filter(([v]) => ["overview", "approvals", "bills", "ask"].includes(v));
+    $('[data-slot="tabbar"]').innerHTML = part(h`${tabs.map(([v, label, ic, sh]) => h`<a class="tb" href="#/${v}" data-nav="${v}" data-label="${sh}">${IC[ic]()}<span>${sh}</span>${bdg(v)}</a>`)}<button class="tb" type="button" data-act="more" aria-haspopup="dialog">${IC.more()}<span>More</span></button>`);
+  }
+  $$("[data-nav]").forEach((a) => {
+    if (a.dataset.nav === curV) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    if (a.dataset.nav === "approvals") {
+      const b = $(".nv-b", a); b.textContent = n; b.hidden = !n;
+      if (n) a.setAttribute("aria-label", `${a.dataset.label}, ${n} waiting on a signer`); else a.removeAttribute("aria-label");
+    }
+  });
+  const more = $('[data-act="more"]'); if (more) more.classList.toggle("on", ["vendors", "policy", "ledger", "activity"].includes(curV));
+}
+function paintAcct() {
+  const p = S.public.data;
+  const html = p ? h`<span class="mono" translate="no" title="${p.treasury}">${p.treasury}</span>${copyBtn(p.treasury, "treasury account")}` : S.public.status === "error" ? h`<span class="sm muted">Treasury unavailable</span>` : h`<span class="sk" style="width:150px;height:10px"></span>`;
+  $('[data-slot="acct"]').innerHTML = part(html);
+  const d = $("#ph-d"); if (d && cur && cur.view === "overview") d.innerHTML = part(VIEWS.overview.desc());
+}
+function paintStateBar() {
+  const p = S.public.data; let msg = null;
+  if (p && p.paused === true) msg = h`<p class="t-bad" role="status">The treasury is paused. No payment can settle until an owner resumes it.</p>`;
+  else if (p && !p.agent) msg = h`<p class="t-warn" role="status">The agent’s access is revoked. It can’t record or pay bills until an owner restores it.</p>`;
+  $('[data-slot="statebar"]').innerHTML = msg ? part(h`<div class="statebar">${msg}</div>`) : "";
+}
+function paintDemo() {
+  let dismissed = false; try { dismissed = sessionStorage.getItem("takara.demoBanner") === "dismissed"; } catch { /* storage blocked */ }
+  $('[data-slot="demo"]').innerHTML = DEMO && !dismissed ? part(h`<div class="demo" role="region" aria-label="Demo notice"><div class="demo-in"><p>Hosted demo of a <b>fictional</b> treasury on NEAR testnet. Figures are live from chain. Signing is off here, because a public website never holds a signer’s key. <a href="/">Product page</a> <a href="${GITHUB}" target="_blank" rel="noopener">GitHub<span class="vh"> (opens in a new tab)</span></a></p><button class="iconbtn" type="button" data-act="dismiss-demo" aria-label="Dismiss for this visit" style="margin:-10px -12px -10px 0">${IC.close(18)}</button></div></div>`) : "";
+}
+function paintSheet() {
+  const curV = cur ? cur.view : null;
+  const p = S.public.data;
+  $('[data-slot="sheet"]').innerHTML = part(h`<div class="sheet-h"><h2 id="more-title">More</h2><button class="iconbtn" type="button" data-act="close-more" aria-label="Close menu">${IC.close()}</button></div>
+    <nav aria-label="More pages">${NAV.filter(([v]) => ["vendors", "policy", "ledger"].includes(v)).map(([v, label, ic]) => h`<a class="si" href="#/${v}"${curV === v ? raw(' aria-current="page"') : ""}>${IC[ic]()}${label}</a>`)}</nav>
+    <hr><a class="si" href="${PRODUCT}"${DEMO ? "" : raw(' target="_blank" rel="noopener"')}>Product page${DEMO ? "" : raw('<span class="vh"> (opens in a new tab)</span>')}</a><a class="si" href="${GITHUB}" target="_blank" rel="noopener">GitHub<span class="vh"> (opens in a new tab)</span></a>
+    ${p ? h`<hr><div class="acctrow"><span class="mono" translate="no">${p.treasury}</span>${copyBtn(p.treasury, "treasury account")}</div>` : ""}`);
+}
+const moreSheet = $("#moresheet");
+moreSheet.addEventListener("click", (e) => { if (e.target === moreSheet) moreSheet.close(); });
+function stampText() { return lastUpdated ? `Updated ${relTime(lastUpdated)}` : "Loading…"; }
+function paintStamp() { $$(".stamp").forEach((s) => (s.textContent = stampText())); }
+setInterval(paintStamp, 30000);
+function announce(msg) { const a = $("#announce"); a.textContent = ""; setTimeout(() => (a.textContent = msg), 60); }
+
+function onData(k) {
+  if (k === "public" || k === "report" || k === "policy" || k === "decisions") paintNav();
+  if (k === "public") { paintAcct(); paintStateBar(); }
+  refreshSections(k);
+  if (drawerState) paintDrawer();
+}
+
+/* ---------- toasts ---------- */
+function toast(msg, link) {
+  const box = $("#toasts");
+  while (box.children.length >= 3) box.firstElementChild.remove();
+  const t = document.createElement("div"); t.className = "toast";
+  t.innerHTML = part(h`<span>${msg}${link ? h` ${ext(link.href, link.text)}` : ""}</span><button type="button" aria-label="Dismiss">${IC.close(16)}</button>`);
+  box.appendChild(t);
+  let left = 6000, start = Date.now(), timer = null;
+  const run = () => { start = Date.now(); timer = setTimeout(() => t.remove(), left); };
+  const pause = () => { clearTimeout(timer); left -= Date.now() - start; };
+  t.addEventListener("mouseenter", pause); t.addEventListener("mouseleave", run);
+  t.addEventListener("focusin", pause); t.addEventListener("focusout", run);
+  t.querySelector("button").addEventListener("click", () => t.remove());
+  run();
+}
+
+async function copyText(v, btn) {
+  try { await navigator.clipboard.writeText(v); return true; } catch { /* permission denied or insecure context: fall back */ }
+  const host = document.querySelector("dialog[open]") || document.body; // stay inside an open modal, the rest is inert
+  const ta = document.createElement("textarea");
+  ta.value = v; ta.setAttribute("readonly", ""); ta.setAttribute("aria-hidden", "true"); ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;pointer-events:none";
+  host.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand("copy"); } catch { ok = false; }
+  ta.remove(); if (btn) btn.focus();
+  return ok;
+}
+
+/* ---------- confirm ---------- */
+const confirmDlg = $("#confirm"); let confirmCb = null;
+function confirmDiscard(cb) { confirmCb = cb; confirmDlg.showModal(); $('[data-act="cf-keep"]').focus(); }
+
+/* ---------- policy flows ---------- */
+const pdlg = $("#pdlg"); let pending = null, pdOpener = null;
+function diffRows(d, cur) {
+  const keys = Object.keys(d.diff || {}).filter((k) => k !== "version");
+  const factor = d.diff.max_auto_pay && cur && cur.max_auto_pay ? Number(d.diff.max_auto_pay.from) / Number(cur.max_auto_pay) : 1;
+  return keys.map((k) => {
+    let from = Number(d.diff[k].from), to = Number(d.diff[k].to);
+    if (k === "max_auto_pay") { from /= factor || 1; to /= factor || 1; }
+    const up = to > from;
+    return h`<tr><td>${PLABEL[k] || humanCode(k)}</td><td>${unitFmt(k, from)}</td><td class="pv">${up ? "↑" : "↓"} <span class="vh">${up ? "raised to" : "lowered to"} </span>${unitFmt(k, to)}</td></tr>`;
+  });
+}
+function paintPolicyDialog(d, state = {}) {
+  const rows = diffRows(d, S.policy.data);
+  const changed = rows.length > 0;
+  const signing = state.signing;
+  $("#pdlg-body").innerHTML = part(h`<h2 id="pd-title" tabindex="-1">Review policy change</h2>
+    <ol class="steps"><li class="now"><span class="n">1</span>Proposed</li><li aria-hidden="true" class="sep">›</li><li><span class="n">2</span>Signed by a policy signer</li><li aria-hidden="true" class="sep">›</li><li><span class="n">3</span>Live</li></ol>
+    ${changed ? h`<table class="difft"><caption class="vh">Proposed changes</caption><thead><tr><th scope="col">Setting</th><th scope="col">Current</th><th scope="col">Proposed</th></tr></thead><tbody>${rows}</tbody></table>` : h`<p class="nothing">Nothing changed. Edit a value to preview a new version.</p>`}
+    <div class="dmeta"><p>Policy version ${d.diff.version ? `${d.diff.version.from} → ${d.diff.version.to}` : ""}</p>
+      <p>New policy hash <span class="hashc"><span class="mono" translate="no" title="${d.next_hash}">${short(d.next_hash)}</span>${copyBtn(d.next_hash, "new policy hash")}</span> (now <span class="mono" translate="no" title="${d.current_hash}">${short(d.current_hash)}</span>)</p>
+      <p>Signer: ${acct(d.signer)}</p></div>
+    <details class="disc raw" data-k="raw"><summary>${IC.chev(14)}Show raw diff</summary><pre translate="no">${JSON.stringify(d.diff, null, 2)}</pre></details>
+    ${state.error ? h`<p class="dalert" role="alert">Not signed: ${state.error}</p>` : ""}
+    ${DEMO ? h`<div class="dfoot"><button class="btn btn-secondary" type="button" data-act="pd-close">Close</button><button class="btn btn-primary" type="button" disabled aria-describedby="pd-why">Signing is off in this demo</button></div><p class="dfoot-note" id="pd-why">A public website never holds a signer’s key. A policy signer applies this version from their own machine.</p>`
+      : h`<div class="dfoot"><button class="btn btn-secondary" type="button" data-act="pd-close"${signing ? raw(" disabled") : ""}>Cancel</button><button class="btn btn-primary" type="button" data-act="pd-sign"${!changed || signing ? raw(" disabled") : ""}${changed ? "" : raw(' aria-describedby="pd-why"')}>${signing ? h`<span class="spin" aria-hidden="true"></span>Waiting for signature and finality…` : "Sign as policy signer"}</button></div>${changed ? "" : h`<p class="dfoot-note" id="pd-why">There is nothing to sign until a value changes.</p>`}`}`);
+}
+const plainFailure = (f) => { const s = typeof f === "string" ? f : JSON.stringify(f || ""); if (/E_NOT_POLICY_SIGNER/.test(s)) return "this key isn’t a policy signer"; const c = failCode(f); return c ? humanCode(c.replace(/^E_/, "")).toLowerCase() : s || "the transaction failed"; };
+async function submitPolicy(form) {
+  const alert = $("#pf-alert"); alert.hidden = true;
+  let firstBad = null;
+  for (const f of PFIELDS) {
+    const inp = $(`#f-${f.k}`), err = $(`#e-${f.k}`), ok = validField(f, inp.value);
+    inp.setAttribute("aria-invalid", ok ? "false" : "true"); inp.closest(".inp").classList.toggle("invalid", !ok);
+    err.hidden = ok; err.textContent = ok ? "" : f.err;
+    if (!ok && !firstBad) firstBad = inp;
+  }
+  if (firstBad) { firstBad.focus(); return; }
+  const body = Object.fromEntries(PFIELDS.map((f) => [f.k, String($(`#f-${f.k}`).value).trim()]));
+  const btn = $("#pv-btn"); btn.disabled = true; btn.textContent = "Preparing preview…";
   try {
     const d = await api("/api/policy/diff", body);
-    pending = body;
-    $("#diff").textContent = JSON.stringify(d.diff, null, 2);
-    $("#signnote").textContent = `New policy hash ${short(d.next_hash)} (was ${short(d.current_hash)}). Signing as ${d.signer} submits propose_policy on-chain.`;
-    $("#signresult").textContent = "";
-    $("#signbtn").disabled = Object.keys(d.diff).length <= 1;
-    if ($("#signbtn").disabled) $("#signnote").textContent += " No values changed, so there is nothing to sign.";
-    $("#sign").showModal();
-  } catch (err) { banner(err.message); }
-});
-$("#cancel").addEventListener("click", () => $("#sign").close());
-$("#signbtn").addEventListener("click", async () => {
-  $("#signbtn").disabled = true;
-  $("#signresult").textContent = "Waiting for signature and finality…";
+    pending = { body, d };
+    pdOpener = btn;
+    paintPolicyDialog(d);
+    pdlg.showModal(); $("#pd-title").focus();
+  } catch (e) { alert.textContent = `Couldn’t prepare the preview: ${e.message}`; alert.hidden = false; }
+  finally { btn.disabled = false; btn.textContent = "Preview change"; }
+}
+async function signPolicy() {
+  if (DEMO || !pending) return; // the hosted page never calls the sign endpoint
+  paintPolicyDialog(pending.d, { signing: true });
   try {
-    const r = await api("/api/policy/sign", pending);
-    $("#signresult").innerHTML = r.ok ? `Applied. <a href="${esc(r.url)}" target="_blank" rel="noopener">View transaction</a>` : `Rejected: ${esc(r.failure)}`;
-    loadPublic(); loadOwner();
-  } catch (err) { $("#signresult").textContent = err.message; }
-});
+    const r = await api("/api/policy/sign", pending.body);
+    if (r.ok) {
+      pdlg.close();
+      const to = pending.d.diff.version ? pending.d.diff.version.to : "";
+      PF.edits = null;
+      toast(`Policy v${to} signed and live.`, r.url ? { href: r.url, text: "View transaction" } : null);
+      load("policy"); load("public"); load("report");
+    } else paintPolicyDialog(pending.d, { error: plainFailure(r.failure) });
+  } catch (e) { paintPolicyDialog(pending.d, { error: e.message }); }
+}
+pdlg.addEventListener("close", () => { if (pdOpener && pdOpener.isConnected) pdOpener.focus(); });
 
-$("#chat").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const q = $("#q").value.trim(); if (!q) return;
-  $("#q").value = "";
-  const log = $("#chatlog");
-  log.insertAdjacentHTML("beforeend", `<div class="msg q">${esc(q)}</div>`);
-  const wait = document.createElement("div");
-  wait.className = "msg a pending"; wait.textContent = "Reading the ledger…";
-  log.appendChild(wait); log.scrollTop = log.scrollHeight;
-  try {
-    const a = await api("/api/chat", { q });
-    const src = (a.sources || []).filter((s) => s.url).map((s) => ` <a href="${esc(s.url)}" target="_blank" rel="noopener">tx</a>`).join("");
-    wait.outerHTML = `<div class="msg a">${esc(a.answer)}${src}</div>`;
-  } catch (err) { wait.outerHTML = `<div class="msg a">${esc(err.message)}</div>`; }
-  log.scrollTop = log.scrollHeight;
+/* ================================================================== events */
+document.addEventListener("click", async (e) => {
+  const a = e.target.closest("a[href]");
+  if (a) {
+    const href = a.getAttribute("href");
+    if (href.startsWith("#/") && cur && cur.view === "policy" && !href.startsWith("#/policy") && policyDirty()) {
+      e.preventDefault(); confirmDiscard(() => { location.hash = href.slice(1); }); return;
+    }
+    if (/^#\/(bills|vendors)\/./.test(href)) opener = { key: a.dataset.open || null, el: a };
+  }
+  const t = e.target.closest("[data-act]"); if (!t) return;
+  const act = t.dataset.act;
+  if (act === "skip") { e.preventDefault(); main.focus(); main.scrollIntoView(); }
+  else if (act === "refresh") loadAll(true);
+  else if (act === "retry") load(t.dataset.k);
+  else if (act === "copy") toast((await copyText(t.dataset.v, t)) ? "Copied" : "Couldn’t copy. Select the text and copy it manually.");
+  else if (act === "dismiss-demo") { try { sessionStorage.setItem("takara.demoBanner", "dismissed"); } catch { /* storage blocked */ } paintDemo(); main.focus(); }
+  else if (act === "close-drawer") requestCloseDrawer();
+  else if (act === "more") { paintSheet(); moreSheet.showModal(); }
+  else if (act === "close-more") moreSheet.close();
+  else if (act === "chip") { ask(t.dataset.q); }
+  else if (act === "cf-keep") confirmDlg.close();
+  else if (act === "cf-discard") { confirmDlg.close(); PF.edits = null; const cb = confirmCb; confirmCb = null; if (cb) cb(); }
+  else if (act === "preset") {
+    const p = S.policy.data; PF.edits = null; PF.version = null; fillSection(SECTIONS.find((s) => s.id === "pform"));
+    if (p) $("#f-max_auto_pay").focus();
+  }
+  else if (act === "pd-close") pdlg.close();
+  else if (act === "pd-sign") signPolicy();
 });
-document.querySelectorAll(".suggest button").forEach((b) => b.addEventListener("click", () => { $("#q").value = b.dataset.q; $("#chat").requestSubmit(); }));
+document.addEventListener("submit", (e) => {
+  if (e.target.id === "pform") { e.preventDefault(); submitPolicy(e.target); }
+  if (e.target.id === "chatform") { e.preventDefault(); const i = $("#chat-q"); const q = i.value; i.value = ""; ask(q); }
+});
+document.addEventListener("input", (e) => {
+  const inp = e.target; if (!inp.closest || !inp.closest("#pform") || !PF.edits) return;
+  PF.edits[inp.name] = inp.value;
+  const p = S.policy.data;
+  const tag = $(`[data-edited="${inp.name}"]`); if (tag) tag.hidden = String(inp.value).trim() === String(p[inp.name]);
+  const err = $(`#e-${inp.name}`); const f = PFIELDS.find((x) => x.k === inp.name);
+  if (err && !err.hidden && validField(f, inp.value)) { err.hidden = true; inp.setAttribute("aria-invalid", "false"); inp.closest(".inp").classList.remove("invalid"); }
+  const rb = $('[data-act="preset"]'); if (rb) rb.disabled = !policyDirty();
+});
+window.addEventListener("beforeunload", (e) => { if (policyDirty()) { e.preventDefault(); e.returnValue = ""; } });
 
-(async () => {
-  await loadPublic().catch((e) => banner(e.message));
-  await loadOwner();
-})();
+/* ================================================================== boot */
+$('[data-slot="envtags-top"]').innerHTML = part(envTags("top"));
+$('[data-slot="envtags-side"]').innerHTML = part(envTags("side"));
+$('[data-slot="footlinks"]').innerHTML = part(h`<a href="${PRODUCT}"${DEMO ? "" : raw(' target="_blank" rel="noopener"')}>Product page${DEMO ? "" : raw('<span class="vh"> (opens in a new tab)</span>')}</a><span aria-hidden="true">·</span><a href="${GITHUB}" target="_blank" rel="noopener">GitHub<span class="vh"> (opens in a new tab)</span></a>`);
+paintDemo();
+onRoute();
+loadAll();
 </script>
 </body>
 </html>
