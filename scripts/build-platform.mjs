@@ -13,6 +13,8 @@ copyFileSync(join(ROOT, "dist", "takara-engine.wasm"), join(P, "data", "takara-e
 copyFileSync(join(ROOT, "fixtures", "deployment.json"), join(P, "data", "deployment.json"));
 const dec = join(ROOT, ".data", "decisions.jsonl");
 if (existsSync(dec)) copyFileSync(dec, join(P, "data", "decisions.jsonl"));
+// shared read-only chat intents (the local server imports the same file from scripts/lib)
+copyFileSync(join(ROOT, "scripts", "lib", "chat.mjs"), join(P, "lib", "chat.mjs"));
 // product page + its static data
 for (const f of ["architecture.svg", "deployment.json", "judge-run.json", "owner-snapshot.json"]) copyFileSync(join(ROOT, "site", f), join(P, f));
 let site = readFileSync(join(ROOT, "site", "index.html"), "utf8");

@@ -16,6 +16,7 @@ import { randomBytes, createHash } from "node:crypto";
 import { view, call, explorer, outcome, recordDecision, RPC } from "../scripts/lib/near.mjs";
 import { runEngine } from "../scripts/lib/engine.mjs";
 import * as K from "../scripts/lib/takara.mjs";
+import { answer } from "../scripts/lib/chat.mjs";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const POLICY_PLAIN = join(K.ROOT, ".secrets", "policy.plain.json");
@@ -56,47 +57,13 @@ function decisions() {
 }
 
 // ------------------------------------------------------------------ read-only chat
+// Plain-language intents shared with the hosted platform (scripts/lib/chat.mjs).
 async function chat(q) {
-  const text = String(q ?? "").toLowerCase();
-  if (/\b(pay|send|approve|accept|transfer|change|update|set|raise|delete|withdraw)\b/.test(text) && !/why|what|which|how much|show|list/.test(text)) {
-    return { answer: "This chat is read-only. It can explain decisions and figures, but it cannot pay, approve, or change anything. Use the policy controls (signature required) or ask a policy signer.", sources: [] };
-  }
-  const rep = await K.report();
-  const byId = Object.fromEntries(rep.commitments.map((c) => [String(c.id), c]));
-  const label = (id) => (byId[id] ? `#${id} ${byId[id].vendor} ${byId[id].amount} ${rep.symbol} (${byId[id].priority}, ${byId[id].state})` : `#${id}`);
-
-  if (/why|blocked|refused|rejected|denied|held/.test(text)) {
-    const amount = text.match(/(\d[\d,]*(?:\.\d+)?)/)?.[1]?.replace(/,/g, "");
-    const refusals = decisions().filter((d) => d.value && d.value.ok === false && d.value.reason).reverse();
-    const match = refusals.find((d) => !amount || byId[d.value.commitment_id]?.amount === amount) ?? refusals[0];
-    if (!match) return { answer: "No refusals have been recorded yet.", sources: [] };
-    const v = match.value;
-    let shortfall = null;
-    if (v.detail) shortfall = await K.openSealed(v.detail);
-    const lines = [`Commitment ${label(v.commitment_id)} was refused with reason \`${v.reason}\`.`];
-    if (v.blocking?.length) lines.push(`Blocking commitments: ${v.blocking.map(label).join("; ")}.`);
-    if (shortfall?.shortfall) lines.push(`Spendable was ${shortfall.spendable} ${rep.symbol}; the request was ${shortfall.requested}; shortfall ${shortfall.shortfall} ${rep.symbol}.`);
-    if (v.until) lines.push(`Held until ${new Date(Number(BigInt(v.until) / 1_000_000n)).toISOString()}.`);
-    return { answer: lines.join(" "), reason: v.reason, blocking: v.blocking, sources: [{ tx: match.tx, url: explorer(match.tx) }] };
-  }
-  if (/spend|balance|reserv|runway|how much|available/.test(text)) {
-    const f = rep.figures;
-    return {
-      answer: `Treasury balance ${f.treasury_balance} ${rep.symbol}; reserved for accepted commitments ${f.reserved}; settled outflow ${f.settled_outflow}; spendable ${f.spendable}; runway ${f.runway_days ?? "n/a"} days.`,
-      figures: f,
-      queries: rep.queries,
-      sources: [{ query: "engine report (deterministic)" }],
-    };
-  }
-  if (/vendor|destination|suspend|cooling|change/.test(text)) {
-    const changes = await view(K.T, "list_vendor_changes");
-    if (!changes.length) return { answer: "No vendor destination changes have been detected.", sources: [] };
-    return { answer: changes.map((c) => `Change ${c.id} on ${label(c.commitment_id)}: ${c.settlement_status}${c.decided_by ? ` (decided by ${c.decided_by})` : ""}. Proposed destination ${byId[c.commitment_id]?.proposed_destination ?? "?"} vs verified ${byId[c.commitment_id]?.destination ?? "?"}.`).join("\n"), sources: [] };
-  }
-  if (/commitment|bill|invoice|list|pending|claimed|accepted/.test(text)) {
-    return { answer: rep.commitments.map((c) => label(c.id)).join("\n") || "No commitments.", sources: [] };
-  }
-  return { answer: 'Ask me things like: "why was the 400 payment blocked?", "what is spendable?", "any vendor changes?", "list commitments". I am read-only.', sources: [] };
+  return answer(q, {
+    report: K.report, decisions, openSealed: K.openSealed, explorer,
+    vendorChanges: () => view(K.T, "list_vendor_changes"),
+    policy: async () => { const { policy } = await currentPolicy(); return { max_auto_pay: Number(policy.max_auto_pay) / 10 ** policy.decimals, cooling_off_hours: policy.cooling_off_hours, min_runway_days: policy.min_runway_days }; },
+  });
 }
 
 // ------------------------------------------------------------------ policy controls

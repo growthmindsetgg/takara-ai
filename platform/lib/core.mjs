@@ -14,6 +14,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WASI } from "node:wasi";
 import { randomBytes, createHash } from "node:crypto";
+import { answer } from "./chat.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
@@ -105,40 +106,9 @@ export function decisions() {
   return readFileSync(p, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
 }
 
+/** Read-only chat: the shared plain-language intents (scripts/lib/chat.mjs, copied here at build). */
 export async function chat(q) {
-  const text = String(q ?? "").toLowerCase().slice(0, 500);
-  if (/\b(pay|send|approve|accept|transfer|change|update|set|raise|delete|withdraw)\b/.test(text) && !/why|what|which|how much|show|list/.test(text)) {
-    return { answer: "This chat is read-only. It can explain decisions and figures, but it cannot pay, approve, or change anything.", sources: [] };
-  }
-  const rep = await report();
-  const byId = Object.fromEntries(rep.commitments.map((c) => [String(c.id), c]));
-  const label = (id) => (byId[id] ? `#${id} ${byId[id].vendor} ${byId[id].amount} ${rep.symbol} (${byId[id].priority}, ${byId[id].state})` : `#${id}`);
-  if (/why|blocked|refused|rejected|denied|held/.test(text)) {
-    const amount = text.match(/(\d[\d,]*(?:\.\d+)?)/)?.[1]?.replace(/,/g, "");
-    const refusals = decisions().filter((d) => d.value && d.value.ok === false && d.value.reason).reverse();
-    const match = refusals.find((d) => !amount || byId[d.value.commitment_id]?.amount === amount) ?? refusals[0];
-    if (!match) return { answer: "No refusals have been recorded yet.", sources: [] };
-    const v = match.value;
-    const detail = v.detail ? await openSealed(v.detail) : null;
-    const lines = [`Commitment ${label(v.commitment_id)} was refused with reason \`${v.reason}\`.`];
-    if (v.blocking?.length) lines.push(`Blocking commitments: ${v.blocking.map(label).join("; ")}.`);
-    if (detail?.shortfall) lines.push(`Spendable was ${detail.spendable} ${rep.symbol}; the request was ${detail.requested}; shortfall ${detail.shortfall} ${rep.symbol}.`);
-    if (v.until) lines.push(`Held until ${new Date(Number(BigInt(v.until) / 1_000_000n)).toISOString()}.`);
-    return { answer: lines.join(" "), reason: v.reason, blocking: v.blocking, sources: [{ tx: match.tx, url: explorer(match.tx) }] };
-  }
-  if (/spend|balance|reserv|runway|how much|available/.test(text)) {
-    const f = rep.figures;
-    return { answer: `Treasury balance ${f.treasury_balance} ${rep.symbol}; reserved for accepted commitments ${f.reserved}; settled outflow ${f.settled_outflow}; spendable ${f.spendable}; runway ${f.runway_days ?? "n/a"} days.`, figures: f, queries: rep.queries, sources: [{ query: "engine report (deterministic)" }] };
-  }
-  if (/vendor|destination|suspend|cooling|change/.test(text)) {
-    const changes = await view(T, "list_vendor_changes");
-    if (!changes.length) return { answer: "No vendor destination changes have been detected.", sources: [] };
-    return { answer: changes.map((c) => `Change ${c.id} on ${label(c.commitment_id)}: ${c.settlement_status}${c.decided_by ? ` (decided by ${c.decided_by})` : ""}. Proposed destination ${byId[c.commitment_id]?.proposed_destination ?? "?"} vs verified ${byId[c.commitment_id]?.destination ?? "?"}.`).join("\n"), sources: [] };
-  }
-  if (/commitment|bill|invoice|list|pending|claimed|accepted/.test(text)) {
-    return { answer: rep.commitments.map((c) => label(c.id)).join("\n") || "No commitments.", sources: [] };
-  }
-  return { answer: 'Ask me things like: "why was the 400 payment blocked?", "what is spendable?", "any vendor changes?", "list commitments". I am read-only.', sources: [] };
+  return answer(q, { report, decisions, openSealed, vendorChanges: () => view(T, "list_vendor_changes"), policy: policyCurrent, explorer });
 }
 
 // ------------------------------------------------------------------ policy (preview only)
