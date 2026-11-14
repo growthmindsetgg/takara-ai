@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Takara AI recording flow</title>
+<style>
+  :root {
+    --paper: #FAFAF7;
+    --ink: #0E1A16;
+    --green: #0B5D4B;
+    --green-soft: #E3EFEA;
+    --muted: #4A5A54;
+    --line: #D9DED9;
+    --red: #B42318;
+    --red-soft: #FDECEA;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Geist", "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    font-size: 22px;
+    line-height: 1.4;
+    width: 1240px;
+    padding: 48px 48px 56px;
+  }
+  code, .mono { font-family: "Geist Mono", Consolas, "Cascadia Mono", monospace; font-size: 0.88em; }
+  header { border-bottom: 4px solid var(--green); padding-bottom: 22px; margin-bottom: 28px; }
+  header .brand { color: var(--green); font-weight: 700; font-size: 22px; letter-spacing: 0.02em; }
+  h1 { font-size: 50px; line-height: 1.1; margin: 6px 0 10px; letter-spacing: -0.01em; }
+  header p { color: var(--muted); font-size: 22px; }
+  header p b { color: var(--ink); }
+
+  .top { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 30px; }
+  .box { border-radius: 14px; padding: 22px 26px; }
+  .box h2 { font-size: 26px; margin-bottom: 12px; }
+  .pre { background: var(--green-soft); border: 2px solid var(--green); }
+  .pre h2 { color: var(--green); }
+  .pre ol { padding-left: 28px; }
+  .pre li { margin-bottom: 10px; }
+  .pre li:last-child { margin-bottom: 0; }
+  .pre code { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; display: inline-block; margin-top: 4px; font-size: 18px; }
+  .rules { background: var(--red-soft); border: 3px solid var(--red); }
+  .rules h2 { color: var(--red); }
+  .rules ul { list-style: none; }
+  .rules li { color: var(--red); font-weight: 700; margin-bottom: 12px; padding-left: 30px; position: relative; }
+  .rules li::before { content: "X"; position: absolute; left: 0; top: 0; font-weight: 800; }
+  .rules li span { display: block; font-weight: 500; color: var(--ink); font-size: 19px; }
+  .figs { margin-top: 14px; padding-top: 12px; border-top: 1px solid #E6B8B3; font-size: 19px; color: var(--ink); }
+
+  .card { display: grid; grid-template-columns: 200px 1fr; border: 2px solid var(--line); border-radius: 14px; background: #fff; margin-bottom: 16px; overflow: hidden; break-inside: avoid; }
+  .card .side { background: var(--ink); color: var(--paper); padding: 20px 18px; }
+  .card .num { font-size: 52px; font-weight: 800; line-height: 1; }
+  .card .time { font-size: 26px; font-weight: 600; color: #9FD3C3; margin-top: 6px; }
+  .card .wallet { display: inline-block; margin-top: 14px; background: #F5C451; color: var(--ink); font-weight: 700; font-size: 16px; border-radius: 6px; padding: 3px 8px; }
+  .card .main { padding: 18px 24px 18px; }
+  .card .screen { font-size: 25px; font-weight: 700; color: var(--green); margin-bottom: 10px; }
+  .row { display: grid; grid-template-columns: 92px 1fr; gap: 12px; margin-top: 8px; }
+  .lbl { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding-top: 5px; }
+  .row ol { padding-left: 26px; }
+  .row ol li { margin-bottom: 2px; }
+  .say { font-style: italic; }
+  .check { background: var(--green-soft); border-left: 5px solid var(--green); border-radius: 6px; padding: 6px 12px; font-weight: 600; }
+  .warn { color: var(--red); font-weight: 700; }
+  .card.danger { border-color: var(--red); border-width: 3px; }
+  .card.danger .side { background: var(--red); }
+  .card.danger .time { color: #FFD6D1; }
+  b.btn { background: var(--paper); border: 1.5px solid var(--ink); border-radius: 6px; padding: 0 6px; font-weight: 700; white-space: nowrap; }
+
+  footer { margin-top: 26px; padding-top: 18px; border-top: 2px solid var(--line); color: var(--muted); font-size: 20px; }
+  footer b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">TAKARA AI · HACKATHON DEMO</div>
+  <h1>Recording flow, shot by shot</h1>
+  <p>About <b>3 minutes</b>. Record on <b>NEAR Mainnet</b> at <b>takara-ai.vercel.app</b>. Figures below are what the app showed at seeding; <b>read them off the screen</b> when you record.</p>
+</header>
+
+<div class="top">
+  <div class="box pre">
+    <h2>Preflight, before you press record</h2>
+    <ol>
+      <li>Open <b>takara-ai.vercel.app/app</b>. The footer says <b>Live from NEAR mainnet</b> (or add <code>?network=mainnet</code>).</li>
+      <li><i>Optional, to show the tour:</i> open the browser console, run<br><code>localStorage.removeItem("takara.tour.v2.main")</code><br>and reload.</li>
+      <li>Sidebar foot: <b>Viewing as: Owner</b>. Close Ask Banto.</li>
+      <li>Fresh window, 1280 × 800 or larger, no extensions on the page.</li>
+      <li>Signer wallet (<b>signer.takara-ai-hq.near</b>) ready in Meteor or MyNearWallet. Popups allowed.</li>
+      <li>Terminal open in the repo for shot 15.</li>
+    </ol>
+  </div>
+  <div class="box rules">
+    <h2>Rules</h2>
+    <ul>
+      <li>Reject the Bigagency bill as the Signer.
+        <span>Shots 9 and 10. Type a reason, confirm in the wallet.</span></li>
+      <li>Never press "Approve anyway".
+        <span>It would leave the treasury 0.825 USDC short for everyone.</span></li>
+      <li>Don't click the gear icon in the wallet chooser.
+        <span>It opens a developer settings screen.</span></li>
+      <li>Don't say "no tokens move".
+        <span>Settled bills are real USDC transfers on mainnet.</span></li>
+    </ul>
+    <div class="figs"><b>Retake?</b> Once Bigagency is rejected it's closed. Run <code>NEAR_NETWORK=mainnet node scripts/seed-demo.mjs --execute</code> for a fresh bill.</div>
+  </div>
+</div>
+
+<!-- 1 -->
+<div class="card">
+  <div class="side"><div class="num">1</div><div class="time">0:00</div></div>
+  <div class="main">
+    <div class="screen">Product page, top · takara-ai.vercel.app</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>Nothing. Let the Judge check 1 strip play.</li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"Takara is a treasury agent for small businesses that can't spend the money you've set aside for payroll."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">Headline "Never spend tomorrow's payroll on today's expenses"</div></div>
+  </div>
+</div>
+
+<!-- 2 -->
+<div class="card">
+  <div class="side"><div class="num">2</div><div class="time">0:10</div></div>
+  <div class="main">
+    <div class="screen">Product page · Proof on NEAR</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>Scroll down to <b>Proof on NEAR</b>.</li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"These figures are read live from NEAR. Free to spend is what's left after every accepted bill."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">in treasury − settled − set aside = free to spend</div></div>
+  </div>
+</div>
+
+<!-- 3 -->
+<div class="card">
+  <div class="side"><div class="num">3</div><div class="time">0:20</div></div>
+  <div class="main">
+    <div class="screen">App · Home, with the tour</div>
+    <div class="row"><div class="lbl">Click</div><ol><li><b class="btn">Open the app</b></li><li><b class="btn">Take a 30-second tour</b></li><li><b class="btn">Next</b> once</li><li><b class="btn">Skip</b></li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"This is Banto. It reserves money for every bill you accept and pays only inside the policy you signed."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">"1 bill is waiting for a Signer's approval. Bigagency, 0.90 USDC … 0.825 USDC short."</div></div>
+  </div>
+</div>
+
+<!-- 4 -->
+<div class="card">
+  <div class="side"><div class="num">4</div><div class="time">0:32</div></div>
+  <div class="main">
+    <div class="screen">App · Home · Money at a glance</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>Nothing. Hover over the envelope strip.</li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"One number matters: what's free to spend after every accepted bill."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">Free to spend 0.075 USDC · 0.805 USDC set aside for 4 bills · Runway 34 days · Caught for you 5</div></div>
+  </div>
+</div>
+
+<!-- 5 -->
+<div class="card">
+  <div class="side"><div class="num">5</div><div class="time">0:40</div></div>
+  <div class="main">
+    <div class="screen">App · Home · How is this calculated?</div>
+    <div class="row"><div class="lbl">Click</div><ol><li><b class="btn">How is this calculated?</b></li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"Every figure is read from the chain. No model writes a number. Paid bills leave the treasury as real token transfers."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">The equation with each figure's query. Read the Settled row as the app words it.</div></div>
+  </div>
+</div>
+
+<!-- 6 -->
+<div class="card">
+  <div class="side"><div class="num">6</div><div class="time">0:53</div></div>
+  <div class="main">
+    <div class="screen">App · Reports &amp; receipts › Caught</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>The <b class="btn">Caught for you</b> tile on Home</li><li>The "Blocked: paying Ana …" row</li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"This is the refusal. Paying Ana would have broken payroll's envelope, so the policy engine said no, inside a TEE."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">Refusal names money reserved for Payroll run and Railway</div></div>
+  </div>
+</div>
+
+<!-- 7 -->
+<div class="card">
+  <div class="side"><div class="num">7</div><div class="time">1:07</div></div>
+  <div class="main">
+    <div class="screen">App · Vendors › Railway</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>Sidebar: <b class="btn">Vendors</b></li><li><b class="btn">Railway</b></li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"An invoice tried to change Railway's bank account. Payment froze, a Signer approved it, and a 24-hour cooling-off runs before any money can go there."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">Railway · Cooling off · payroll.takara-ai-hq.near differs from railway-new-bank.takara-ai-hq.near</div></div>
+  </div>
+</div>
+
+<!-- 8 -->
+<div class="card">
+  <div class="side"><div class="num">8</div><div class="time">1:22</div><div class="wallet">WALLET NEXT</div></div>
+  <div class="main">
+    <div class="screen">App · Approvals</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>Sidebar: <b class="btn">Approvals</b></li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"Anything above the limit waits for a Signer. And the app won't pretend there's money: approving this would overdraw, so it says so."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">Needs you 1 · Bigagency 0.90 USDC · "0.825 USDC short" · Add funds / Approve anyway / Reject</div></div>
+  </div>
+</div>
+
+<!-- 9 -->
+<div class="card danger">
+  <div class="side"><div class="num">9</div><div class="time">1:32</div><div class="wallet">WALLET</div></div>
+  <div class="main">
+    <div class="screen">App · Approvals · Bigagency card</div>
+    <div class="row"><div class="lbl">Click</div><ol><li><b class="btn">Reject</b> on the Bigagency card. <span class="warn">Never Approve anyway.</span></li><li><b class="btn">Choose wallet</b> in the pre-sheet</li><li>Pick Meteor or MyNearWallet. <span class="warn">Don't click the gear icon.</span></li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"The page never holds a key. I connect the Signer's own wallet."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">"Approvals need the Signer on NEAR …" · chooser lists Meteor, MyNearWallet, Intear, NEAR CLI</div></div>
+  </div>
+</div>
+
+<!-- 10 -->
+<div class="card danger">
+  <div class="side"><div class="num">10</div><div class="time">1:45</div><div class="wallet">WALLET</div></div>
+  <div class="main">
+    <div class="screen">Wallet, then back to Approvals</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>Sign in as <b>signer.takara-ai-hq.near</b></li><li>Reason: type "Unknown agency, call us first"</li><li><b class="btn">Continue</b></li><li><b class="btn">Continue in wallet</b>, then confirm in the wallet</li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"One function call, shown in full, signed in my wallet. The contract checks who signed."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">close_commitment · 30 Tgas · no deposit → "Bill closed." with a transaction link · Needs you 0</div></div>
+  </div>
+</div>
+
+<!-- 11 -->
+<div class="card">
+  <div class="side"><div class="num">11</div><div class="time">2:00</div></div>
+  <div class="main">
+    <div class="screen">App · Viewing as Member · Ana › Alerts</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>Sidebar foot: <b class="btn">Viewing as</b> → <b class="btn">Member · Ana</b></li><li><b class="btn">Alerts</b> in her sidebar</li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"Ana, a team member, sees only her own claims: received, refused with a reason, accepted, paid. Nothing about the company."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">Her claim refused, then accepted and paid 0.40 USDC, each with its transaction</div></div>
+  </div>
+</div>
+
+<!-- 12 -->
+<div class="card">
+  <div class="side"><div class="num">12</div><div class="time">2:15</div></div>
+  <div class="main">
+    <div class="screen">Ask Banto (Ctrl K)</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>Press <b class="btn">Ctrl K</b></li><li>Chip <b class="btn">Was Ana reimbursed?</b></li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"Ask Banto answers from the ledger and links the transactions. It can't move money."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">"Yes …" with amounts and transaction links</div></div>
+  </div>
+</div>
+
+<!-- 13 -->
+<div class="card">
+  <div class="side"><div class="num">13</div><div class="time">2:25</div></div>
+  <div class="main">
+    <div class="screen">Ask Banto, as Owner</div>
+    <div class="row"><div class="lbl">Click</div><ol><li><b class="btn">Viewing as</b> → <b class="btn">Owner</b></li><li>Type "Why was Ana's payment blocked?"</li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"Every answer is a deterministic query over the books."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">Names Payroll run and Railway; settled later after a top-up</div></div>
+  </div>
+</div>
+
+<!-- 14 -->
+<div class="card">
+  <div class="side"><div class="num">14</div><div class="time">2:33</div></div>
+  <div class="main">
+    <div class="screen">App · Public view</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>Sidebar: <b class="btn">Public view</b> (under <b class="btn">More</b> on a narrow window)</li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"This is what a stranger sees on-chain: hashes and attestations, and the payouts themselves. Reserves, rules and the vendor list stay sealed."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">Balance 0.88 USDC · Public next to Sealed · TEE · Commitments Bill #0–#8 with hashes</div></div>
+  </div>
+</div>
+
+<!-- 15 -->
+<div class="card">
+  <div class="side"><div class="num">15</div><div class="time">2:43</div></div>
+  <div class="main">
+    <div class="screen">Terminal, in the repo</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>Run the mainnet attestation check from <b>docs/demo-script.md</b>, shot 15 (rehearse once first)</li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"And you don't have to trust me: anyone can verify the Intel TDX attestation of the engine's decisions."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">6 of 6 checks passing</div></div>
+  </div>
+</div>
+
+<!-- 16 -->
+<div class="card">
+  <div class="side"><div class="num">16</div><div class="time">2:55</div></div>
+  <div class="main">
+    <div class="screen">Product page</div>
+    <div class="row"><div class="lbl">Click</div><ol><li>Back to <b>takara-ai.vercel.app</b></li></ol></div>
+    <div class="row"><div class="lbl">Say</div><div class="say">"Takara: an agent that keeps your books and can't take your money."</div></div>
+    <div class="row"><div class="lbl">Check</div><div class="check">End on the headline</div></div>
+  </div>
+</div>
+
+<footer>
+  <b>If the wallet step fails live:</b> cancel in the wallet. The app says "You cancelled in the wallet. Nothing was sent." and Bigagency stays in the queue. Full details in <b>docs/demo-script.md</b>.
+</footer>
+
+</body>
+</html>

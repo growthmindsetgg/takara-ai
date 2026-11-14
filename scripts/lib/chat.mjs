@@ -11,7 +11,7 @@
 // "Settled" wording follows deps.settleMovesTokens (one flag, scripts/lib/networks.mjs): when false,
 // settlement releases the escrow, burns the nonce and emits a receipt, but no tokens move.
 
-const NF = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+const NF = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
 const n = (x) => { const v = Number(String(x).replace(/,/g, "")); return (v < 0 ? "−" : "") + NF.format(Math.abs(v)); };
 const DAY = 86400000;
 const day = (d) => new Date(d * DAY).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -21,8 +21,12 @@ const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const list = (a) => (a.length <= 1 ? a.join("") : `${a.slice(0, -1).join(", ")} and ${a[a.length - 1]}`);
 
 /** The display name of a bill's payee: never a raw id such as "new:6a77…". */
+// The mainnet demo pays several fixture vendors into one founder-owned account; the two new
+// vendors keep the names on their invoices (vendor ids are sealed hashes). Same map as the app.
+const NEW_VENDOR_LABELS = { "new:fb341c87866a": "Bigagency", "new:6a77f4b28dfd": "Tinylogo" };
 export function payeeName(c) {
   const vid = String(c.vendor_id || "");
+  if (vid.startsWith("new:") && NEW_VENDOR_LABELS[vid]) return NEW_VENDOR_LABELS[vid];
   if (vid.startsWith("new:")) { const head = String(c.destination || "").split(".")[0]; return head ? head.split(/[-_]/).map(cap).join(" ") : "a new vendor"; }
   return String(c.vendor || "").replace(/\s*\((fictional[^)]*)\)\s*$/i, "").replace(/\s*\(team member\)\s*$/i, "").trim() || "this payee";
 }
@@ -114,7 +118,7 @@ export async function answer(q, deps) {
     const line = (c) => { const s0 = settledAt[String(c.id)]; return `${n(c.amount)} ${sym}${c.due_day > 0 ? ` for the ${day(c.due_day)} cycle` : ""}${s0 ? ` (settled ${new Date(s0.at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })})` : ""}`; };
     const parts = [];
     const yes = /^(was|were|has|have|did|is|are)\b/.test(text.trim()) ? "Yes. " : "";
-    if (paid.length) parts.push(`${yes}${nm} was ${verb} ${paid.length === 1 ? "once" : paid.length === 2 ? "twice" : `${paid.length} times`}, ${n(total)} ${sym} in total: ${list(paid.map(line))}. ${paid.length === 1 ? "It is" : "Each is"} settled on the ledger, with the escrow released and a receipt on-chain. ${settleNote(deps)}`);
+    if (paid.length) parts.push(`${yes}${nm} was ${verb} ${paid.length === 1 ? "once" : paid.length === 2 ? "twice" : `${paid.length} times`}, ${n(total)} ${sym} in total: ${list(paid.map(line))}. ${paid.length === 1 ? "It is" : "Each is"} settled, with a receipt on chain. ${settleNote(deps)}`);
     else parts.push(`Not yet. Nothing to ${nm} has settled.`);
     const groups = new Map(); for (const c of open) { const k = `${c.amount}|${c.due_day}|${c.state}|${c.injection_flagged}|${c.new_vendor_over_limit}`; groups.set(k, [...(groups.get(k) || []), c]); }
     if (open.length) parts.push(`Still open: ${[...groups.values()].map((g) => { const c = g[0];
@@ -147,7 +151,7 @@ export async function answer(q, deps) {
     if (v && v.reason === "would_break_commitments") {
       const detail = v.detail ? await deps.openSealed(v.detail).catch(() => null) : null;
       const blockers = (v.blocking || []).map((id) => byId[String(id)]).filter(Boolean).map((c) => `${payeeName(c)} (${n(c.amount)} ${sym}, ${dueTxt(c)})`);
-      const lines = [`${cap(billPhrase(bill, sym))} was blocked at ${iso(at)} because paying it would have broken money reserved for ${list(blockers) || "other bills"}.`];
+      const lines = [`${cap(billPhrase(bill, sym))} was blocked on ${new Date(at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" })} UTC because paying it would have broken money reserved for ${list(blockers) || "other bills"}.`];
       if (detail && detail.shortfall) lines.push(`Only ${n(detail.spendable)} ${sym} was spendable then, ${n(detail.shortfall)} ${sym} short.`);
       if (bill.state === "settled") lines.push(`It went through later, after the treasury was topped up, and is now settled on the ledger.`);
       else if (bill.state === "accepted") lines.push(`It has since been accepted and its money is reserved.`);
@@ -229,7 +233,7 @@ export async function answer(q, deps) {
   // ---------- what is spendable
   if (/spend|balance|runway|how much|available|cash/.test(text)) {
     const floor = pol ? Number(pol.min_runway_days) : null;
-    return { answer: `${n(sp)} ${sym} is spendable: ${equation(f, sym)}. “Settled” means recorded as paid on the ledger: escrow released and a receipt on-chain. ${deps.settleMovesTokens ? "" : "It counts against the balance until payouts are reconciled. "}${settleNote(deps)} Runway is ${f.runway_days ?? "n/a"} days${floor != null ? ` against your ${floor}-day minimum` : ""}.`, figures: f, queries: rep.queries, sources: engine };
+    return { answer: `${n(sp)} ${sym} is spendable: ${equation(f, sym)}. “Settled” means paid, with a receipt on chain. ${deps.settleMovesTokens ? "" : "It counts against the balance until payouts are reconciled. "}${settleNote(deps)} Runway is ${f.runway_days ?? "n/a"} days${floor != null ? ` against your ${floor}-day minimum` : ""}.`, figures: f, queries: rep.queries, sources: engine };
   }
 
   // ---------- payout changes
