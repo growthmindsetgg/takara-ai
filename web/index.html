@@ -663,6 +663,19 @@ dialog::backdrop { background: var(--scrim); }
 .pre-accts .mono { font-size: var(--t-12); color: var(--ink-2); overflow-wrap: anywhere; }
 .pre-accts .w { grid-column: 1 / -1; font-size: var(--t-13); color: var(--ink-2); }
 .pre-accts li.need { box-shadow: inset 0 0 0 1px var(--brand); background: var(--surface); }
+/* In-app wallet list: browser wallets only; NEAR CLI sits behind a small Advanced link */
+.wl-h { margin-top: 20px; font-size: var(--t-13); font-weight: 500; color: var(--ink-2); }
+.wl { margin-top: 8px; display: grid; gap: 8px; }
+.wl button { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 14px; border: 1px solid var(--line-2); border-radius: var(--r-ctl); background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; transition: border-color var(--hover) var(--ease), background-color var(--hover) var(--ease); }
+.wl button:hover { border-color: var(--line-3); background: var(--row-hover); }
+.wl button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.wl button:disabled { cursor: progress; opacity: .6; }
+.wl img { width: 32px; height: 32px; border-radius: 8px; object-fit: contain; }
+.wl .n { font-weight: 500; }
+.wl .s { display: block; font-size: var(--t-12); color: var(--ink-2); }
+.wl .rec { font-size: var(--t-12); font-weight: 500; color: var(--brand-deep); background: var(--brand-wash); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.wl-adv { margin-top: 12px; font-size: var(--t-13); color: var(--muted); }
+.wl-err { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 @media (prefers-reduced-motion: no-preference) {
   .drawer[open] { animation: drIn var(--enter) var(--ease); }
   .modal[open] { animation: mdIn var(--enter) var(--ease); }
@@ -3178,13 +3191,14 @@ function paintPolicyDialog(d, state = {}) {
 }
 function policyFooter(d, changed, signing) {
   const close = (t) => h`<button class="btn btn-secondary" type="button" data-act="pd-close"${signing ? raw(" disabled") : ""}>${t}</button>`;
-  const keychain = !DEMO && changed ? h`<button class="btn btn-ghost" type="button" data-act="pd-sign" title="Fallback for operators without a wallet: signs with the Signer key in this machine’s NEAR CLI keychain"${signing ? raw(" disabled") : ""}>${signing ? h`<span class="spin dark" aria-hidden="true"></span>Signing with the local keychain` : "Sign with local keychain"}</button>` : "";
+  // Local dashboard only, and never the default: a small Advanced link under the wallet buttons.
+  const kc = !DEMO && changed ? h`<p class="dfoot-note">${signing ? h`<span class="spin dark" aria-hidden="true"></span>Signing with the local keychain` : h`<button class="linkbtn" type="button" data-act="pd-sign" title="Signs with the Signer key in this machine’s NEAR CLI keychain">Advanced: sign with NEAR CLI</button>`}</p>` : "";
   const sigs = join(((S.public.data && S.public.data.signers) || [d.signer]).map(acct), ", ");
   if (!changed) return h`<div class="dfoot">${close("Close")}<button class="btn btn-primary" type="button" disabled aria-describedby="pd-why">Sign with wallet</button></div><p class="dfoot-note" id="pd-why">There is nothing to sign until a value changes.</p>`;
-  if (WALLET.status === "absent") return h`<div class="dfoot">${close("Close")}${keychain}</div><p class="dfoot-note">Wallets are unavailable on this page. A Signer (${sigs}) can still sign with the NEAR CLI.</p>`;
-  if (!WALLET.accountId) return h`<div class="dfoot">${close("Close")}${keychain}<button class="btn btn-primary" type="button" data-act="wallet-connect" data-need="signer"${WALLET.status === "loading" ? raw(" disabled") : ""}>${IC.wallet()}Connect the Signer’s wallet</button></div><p class="dfoot-note">The dialog closes while your wallet opens. Your edits stay.</p>`;
-  if (isSigner()) return h`<div class="dfoot">${close("Cancel")}${keychain}<button class="btn btn-primary" type="button" data-act="pd-wallet"${signing ? raw(" disabled") : ""}>Sign with wallet</button></div><p class="dfoot-note">Before your wallet opens, this page checks that the hash matches the policy text and that only your edits changed.</p>`;
-  return h`<div class="dfoot">${close("Close")}${keychain}<button class="btn btn-primary" type="button" disabled aria-describedby="pd-why">Sign with wallet</button></div><p class="dfoot-note" id="pd-why">Signer only (${sigs}). You’re connected as ${acct(WALLET.accountId)}.${walletUsable() ? h` <button class="linkbtn" type="button" data-act="pd-try" title="Sends a real ${NET.id} transaction. The contract will refuse it, which is the point. It costs a little gas.">Try anyway</button>` : ""}</p>`;
+  if (WALLET.status === "absent") return h`<div class="dfoot">${close("Close")}</div><p class="dfoot-note">Wallets are unavailable on this page. A Signer (${sigs}) can still sign with the NEAR CLI.</p>${kc}`;
+  if (!WALLET.accountId) return h`<div class="dfoot">${close("Close")}<button class="btn btn-primary" type="button" data-act="wallet-connect" data-need="signer"${WALLET.status === "loading" ? raw(" disabled") : ""}>${IC.wallet()}Connect the Signer’s wallet</button></div><p class="dfoot-note">The dialog closes while your wallet opens. Your edits stay.</p>${kc}`;
+  if (isSigner()) return h`<div class="dfoot">${close("Cancel")}<button class="btn btn-primary" type="button" data-act="pd-wallet"${signing ? raw(" disabled") : ""}>Sign with wallet</button></div><p class="dfoot-note">Before your wallet opens, this page checks that the hash matches the policy text and that only your edits changed.</p>${kc}`;
+  return h`<div class="dfoot">${close("Close")}<button class="btn btn-primary" type="button" disabled aria-describedby="pd-why">Sign with wallet</button></div><p class="dfoot-note" id="pd-why">Signer only (${sigs}). You’re connected as ${acct(WALLET.accountId)}.${walletUsable() ? h` <button class="linkbtn" type="button" data-act="pd-try" title="Sends a real ${NET.id} transaction. The contract will refuse it, which is the point. It costs a little gas.">Try anyway</button>` : ""}</p>${kc}`;
 }
 async function openDiff(body, btn) { // the interview's finish card reuses the exact diff, hash check and wallet flow
   if (btn) btn.disabled = true;
@@ -3343,25 +3357,57 @@ function openPreSheet(need, from) {
   const sigA = (p.signers || [])[0] || NET.signer, ownA = (p.owners || [])[0] || NET.owner;
   const mgr = h`<li${need !== "owner" ? raw(' class="need"') : ""}><span class="r">For approvals: the Signer</span><span class="mono" translate="no">${sigA}</span><span class="w">Approve or reject bills and payout changes, sign policy changes.</span></li>`;
   const own = h`<li${need === "owner" ? raw(' class="need"') : ""}><span class="r">For owner actions: the owner</span><span class="mono" translate="no">${ownA}</span><span class="w">Pause or resume, revoke ${AGENT.name}, recover funds, release a reservation.</span></li>`;
+  const err = preDlg._err; preDlg._err = null; preDlg._need = need;
+  const list = walletChoices();
   $("#pre-body").innerHTML = part(h`<h2 id="pre-title" tabindex="-1">Connect a wallet</h2><p class="lead">${need === "owner" ? h`Owner actions need ${acct(ownA)} on ${netName()}.` : h`Approvals need ${acct(sigA)} on ${netName()}.`}</p>
     <ul class="pre-accts">${need === "owner" ? h`${own}${mgr}` : h`${mgr}${own}`}</ul>
-    <p class="sm" style="margin-top:12px;color:var(--ink-2)">Works on ${NET.id} with Meteor, MyNearWallet or Intear in the browser, or the NEAR CLI if the key lives in your terminal keychain.</p>
-    <p class="sm muted" style="margin-top:8px">Any other account can connect to look around; the contract refuses its actions. Signing in adds no key, so every action asks your wallet first.</p>
-    <div class="dfoot"><button class="btn btn-secondary" type="button" data-act="pre-close">Not now</button><button class="btn btn-primary" type="button" data-act="pre-go">${IC.wallet()}Choose wallet</button></div>`);
+    ${err ? h`<div class="dalert wl-err" role="alert"><span>${err.text}</span><button class="linkbtn" type="button" data-act="wal-pick" data-id="${err.id}">Try again</button></div>` : ""}
+    <p class="wl-h" id="wl-h">Choose your wallet</p>
+    <div class="wl" role="group" aria-labelledby="wl-h">${list.map((w) => h`<button type="button" data-act="wal-pick" data-id="${w.id}"><img src="${w.icon}" alt="" width="32" height="32"><span><span class="n">${w.name}</span><span class="s">${w.sub}</span></span>${w.rec ? h`<span class="rec">Recommended</span>` : ""}</button>`)}</div>
+    <p class="wl-adv">Signing in adds no key, so every action asks your wallet first. <button class="linkbtn" type="button" data-act="wal-pick" data-id="near-cli">Advanced: sign with NEAR CLI</button></p>
+    <div class="dfoot"><button class="btn btn-secondary" type="button" data-act="pre-close">Not now</button></div>`);
   preDlg._from = from || document.activeElement;
   if (!preDlg.open) preDlg.showModal();
-  $('[data-act="pre-go"]').focus();
+  const first = $(err ? '#presheet .wl-err [data-act="wal-pick"]' : '#presheet .wl [data-act="wal-pick"]'); if (first) first.focus();
+}
+// Meteor and Intear generate keys with WebCrypto Ed25519 (Chrome 137+, Safari 17+, Firefox 129+). On an older
+// browser their sign-in fails with "generateKey ... Algorithm: Unrecognized name"; MyNearWallet works everywhere.
+let ED25519 = null;
+try { crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"]).then(() => { ED25519 = true; }, () => { ED25519 = false; }); } catch { ED25519 = false; }
+const NEEDS_ED25519 = new Set(["meteor-wallet", "intear-wallet"]);
+const WALLET_SUB = { "meteor-wallet": "Browser extension or web wallet", "mynearwallet": "Web wallet, opens in a new window", "intear-wallet": "Web wallet" };
+function walletChoices() {
+  const all = (window.TW && window.TW.list ? window.TW.list() : []).filter((w) => w.id !== "near-cli");
+  const old = ED25519 === false;
+  return all.map((w) => ({ ...w, sub: old && NEEDS_ED25519.has(w.id) ? "Needs a newer browser. Update Chrome, then reload." : WALLET_SUB[w.id] || "",
+    rec: old ? w.id === "mynearwallet" : w.id === "meteor-wallet" }));
+}
+const walletLabel = (id) => { const w = window.TW && window.TW.list ? window.TW.list().find((x) => x.id === id) : null; return w ? w.name.replace(/ Wallet$/, "") : "The wallet"; };
+// A plain sentence for a wallet that failed to load or sign; the real error goes to the console.
+const oldBrowserErr = (msg) => /generateKey|Unrecognized name|Ed25519/i.test(String(msg || ""));
+function walletTrouble(id, msg) {
+  const name = walletLabel(id), alt = id === "mynearwallet" ? "Meteor" : "MyNearWallet";
+  if (oldBrowserErr(msg)) return `${name} needs a newer browser. Update Chrome and reload, or use ${alt}.`;
+  return `${name} didn’t load. Try again, or use ${alt}.`;
 }
 preDlg.addEventListener("click", (e) => { if (e.target === preDlg) { INTENT = null; preDlg.close(); } });
 preDlg.addEventListener("cancel", () => { INTENT = null; });
 // "Not now", Escape or a backdrop click hands focus back to the button that opened the sheet (not when the chooser opens next).
 preDlg.addEventListener("close", () => { const f = preDlg._from; preDlg._from = null; if (!preDlg._going && f && f.isConnected) f.focus(); preDlg._going = false; });
-async function connectWallet() {
+async function connectWallet(walletId) {
   if (!window.TW) return toast("Wallets are unavailable on this page. A Signer can still use the NEAR CLI.");
+  const need = preDlg._need || "signer", from = preDlg._from;
   if (preDlg.open) preDlg._going = true;
   closeDialogs();
-  try { await window.TW.connect(); }
-  catch (e) { INTENT = null; const m = String((e && e.message) || e || ""); if (!/reject|cancel|closed/i.test(m)) toast(`Couldn’t connect: ${m}`); }
+  try { await window.TW.connect(walletId); }
+  catch (e) {
+    const m = String((e && e.message) || e || "");
+    if (/reject|cancel|closed|denied/i.test(m)) { INTENT = null; return; }
+    console.error(`[takara] ${walletId || "wallet"} failed to connect:`, e);
+    // Never a dead end: back to the list with a plain message, a retry and the other wallets. INTENT survives.
+    preDlg._err = { id: walletId || "meteor-wallet", text: walletTrouble(walletId, m) };
+    openPreSheet(need, from);
+  }
 }
 
 const walIcon = (s = 16) => IC.wallet(s);
@@ -3439,7 +3485,7 @@ function resultLine(st) {
   if (r.kind === "refused") return h`<p class="txres refused" role="status">${IC.slash(14)}<span><b>The contract refused.</b> ${refusalText(r.code, r.signer || WALLET.accountId)} (<code translate="no">${r.code}</code>). Nothing changed. ${r.hash ? txLink(r.hash) : ""}</span></p>`;
   if (r.kind === "cancelled") return h`<p class="txres" role="status">You cancelled in the wallet. Nothing was sent.</p>`;
   if (r.kind === "submitted") return h`<p class="txres" role="status">Sent, but finality couldn’t be confirmed yet. Refresh in a moment. ${r.hash ? txLink(r.hash) : ""}</p>`;
-  return h`<p class="txres err" role="alert">Couldn’t reach the wallet: ${r.message}. Nothing was sent unless your wallet shows a transaction.</p>`;
+  return h`<p class="txres err" role="alert">${IC.slash(14)}<span>${walletLabel(r.walletId)} ${oldBrowserErr(r.message) ? "needs a newer browser" : "didn’t open"}, so nothing was sent. ${oldBrowserErr(r.message) ? "Update Chrome" : "Try again"}, or <button class="linkbtn" type="button" data-act="wallet-connect">switch wallet</button>.</span></p>`;
 }
 function paintTxSlot(slot, focus) {
   const el = $(`[data-txslot="${CSS.escape(slot)}"]`), reg = ACTS[slot];
@@ -3492,7 +3538,7 @@ async function runTx(slot) {
   if (r.kind === "done") toast(spec.ok, link, billId != null && st.from === "drawer" ? { href: `#/bills/${billId}`, text: "View bill" } : null);
   else if (r.kind === "refused") { announce(`The contract refused: ${r.code}. Nothing changed.`); if (!$(`[data-txslot="${CSS.escape(slot)}"]`)) toast(`The contract refused (${r.code}). Nothing changed.`, link); }
   else if (r.kind === "cancelled") announce("You cancelled in the wallet. Nothing was sent.");
-  else if (!$(`[data-txslot="${CSS.escape(slot)}"]`)) toast(r.kind === "submitted" ? "Sent. Finality not confirmed yet." : `Couldn’t reach the wallet: ${r.message}`, link);
+  else if (!$(`[data-txslot="${CSS.escape(slot)}"]`)) toast(r.kind === "submitted" ? "Sent. Finality not confirmed yet." : `${walletTrouble(r.walletId, r.message || "")} Nothing was sent.`, link);
 }
 
 // Every transaction goes through here: allowlist, pending marker, wallet, chain re-check, record, reload.
@@ -3506,7 +3552,8 @@ async function sendTx(method, args, onHash) {
   let r;
   try { r = await window.TW.call(method, args, spec, onHash); } catch (e) { r = { kind: "error", message: String((e && e.message) || e) }; }
   store.del("takara.pendingTx", "session");
-  r.signer = signer;
+  r.signer = signer; r.walletId = window.TW.state.walletId || null;
+  if (r.kind === "error") console.error(`[takara] ${r.walletId || "wallet"} failed on ${method}:`, r.message);
   if (r.hash && (r.kind === "done" || r.kind === "refused")) {
     if (note) { SAVED_REASONS[r.hash] = note; store.set("takara.reasons", JSON.stringify(SAVED_REASONS), "session"); }
     SESSION_TX.unshift({ at: new Date().toISOString(), tx: r.hash, signer, contract: TREASURY_ID(), method, ok: r.kind === "done", failure: r.kind === "refused" ? r.code : null, value: r.value || null, events: (r.events || []).filter((e) => e.standard === "takara-ai"), session: true, note, bill });
@@ -3559,7 +3606,7 @@ async function signPolicyWithWallet(tryAnyway) {
     toast(thr > 1 ? `Proposal ${r.value} created: 1 of ${thr} approvals.` : `Policy v${args.version} signed and live.`, link);
   } else if (r.kind === "refused") reopen({ refused: r });
   else if (r.kind === "submitted") toast("Sent. Finality not confirmed yet. Refresh in a moment.", link);
-  else if (r.kind !== "cancelled") reopen({ error: r.message || "not confirmed" });
+  else if (r.kind !== "cancelled") reopen({ error: r.message ? walletTrouble(r.walletId, r.message) : "not confirmed" });
   else announce("You cancelled in the wallet. Nothing was sent.");
 }
 
@@ -3648,6 +3695,7 @@ document.addEventListener("click", async (e) => {
   else if (act === "off-close") offdlg.close();
   else if (act === "pre-close") { INTENT = null; preDlg.close(); }
   else if (act === "pre-go") connectWallet();
+  else if (act === "wal-pick") connectWallet(t.dataset.id);
   else if (act === "lens-focus") { // desktop: the switch in the sidebar; phone: the switch inside the More sheet
     if (isPhone() || !isVis($(".side"))) { paintSheet(); moreSheet.showModal(); const s = $(".sheet select[data-act='lens']"); if (s) s.focus(); }
     else { const s = $(".side select[data-act='lens']"); if (s) s.focus(); }
@@ -3663,7 +3711,7 @@ document.addEventListener("click", async (e) => {
   else if (act === "pd-sign") signPolicy();
   else if (act === "pd-wallet") signPolicyWithWallet(false);
   else if (act === "pd-try") signPolicyWithWallet(true);
-  else if (act === "wallet-connect") { if (WALLET.accountId) connectWallet(); else openPreSheet(t.dataset.need || "signer", t); }
+  else if (act === "wallet-connect") openPreSheet(t.dataset.need || (WALLET.accountId && roleKey() === "owner" ? "owner" : "signer"), t);
   else if (act === "wallet-disconnect") { if (window.TW) window.TW.disconnect().catch(() => toast("Couldn’t disconnect. Try again.")); }
   else if (act === "more-wallet") { paintSheet(); moreSheet.showModal(); const f = $(".sheet .walblk button"); if (f) f.focus(); }
   else if (act === "tx-start") startTx(t);
@@ -4055,14 +4103,19 @@ const NETWORK = NET.id;
 const RPC = NET.rpc;
 const TREASURY = NET.treasury;
 // Filtered copy of hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069 repository/manifest.json.
-// Executors pinned to commits where one exists (Meteor and Intear can't be). Bump -takara.N when an executor URL changes.
+// Executors pinned to commits where one exists. Bump -takara.N when an executor URL changes (the library caches code per id:version).
+// Meteor (2026-11-15): pinned through jsDelivr to Meteor-Wallet/meteor_wallet_sdk@6369ad789d2f3aaf8e6ccb065021723111027174
+// (data-storage branch, build 2026-11-11T06-11-04, byte-identical to meteor-near-connect-latest.js on that day). This build
+// needs WebCrypto Ed25519 (Chrome 137+); the page detects that and points older browsers to MyNearWallet. Intear can't be
+// pinned (served from wallet.intear.tech). "mainnet":true added to MyNearWallet and Intear for clarity: 0.12.0 only
+// filters on "testnet", so they were already listed on mainnet.
 // Shortlist 2026-11-13 (docs/wallet-connect-plan.md): only wallets that sign in and sign function calls on NEAR
 // (tested on testnet) and suit a recorded browser demo, recommended first. Nightly (extension only, blank without it) and
 // Ledger (hardware) were removed. NEAR CLI stays last, for an operator whose key lives in the terminal keychain.
 const WALLET_MANIFEST = { version: "takara-2", wallets: [
-  {"id":"meteor-wallet","name":"Meteor Wallet","icon":"https://raw.githubusercontent.com/Meteor-Wallet/meteor_wallet_sdk/main/assets/meteor-logo-svg.svg","description":"The most simple and secure wallet to manage your crypto, access DeFi, and explore Web3","website":"https://meteorwallet.app/","version":"1.1.1-takara.1","executor":"https://raw.githubusercontent.com/Meteor-Wallet/meteor_wallet_sdk/data-storage/storage/meteor-near-connect-latest.js","type":"sandbox","features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"signInWithFunctionCallKey":true,"signDelegateActions":true,"mainnet":true,"testnet":true},"platform":{"web":"https://wallet.meteorwallet.app","chrome":"https://chromewebstore.google.com/detail/meteor-wallet/pcndjhkinnkaohffealmlmhaepkpmgkb","android":"https://play.google.com/store/apps/details?id=app.meteorwallet.v2","ios":"https://apps.apple.com/us/app/meteor-wallet/id6739558223"},"permissions":{"storage":true,"allowsOpen":["https://chromewebstore.google.com","https://wallet.meteorwallet.app","https://meteorwallet.app","meteorwallet://","meteorwalletdev://"],"external":["meteorCom","meteorComV2"]}},
-  {"id":"mynearwallet","name":"MyNearWallet","icon":"https://storage.herewallet.app/upload/d0544304123d10518af961a15d5722ff1cef7abf62155f830e6d733e41f7da4b.png","description":"Web wallet for NEAR.","website":"https://mynearwallet.com","version":"1.0.0-takara.1","executor":"https://cdn.jsdelivr.net/gh/hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069/repository/mnw.js","type":"sandbox","platform":{"web":"https://app.mynearwallet.com"},"features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"testnet":true},"permissions":{"storage":true,"allowsOpen":["https://app.mynearwallet.com","https://testnet.mynearwallet.com"]}},
-  {"id":"intear-wallet","name":"Intear Wallet","icon":"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='49.152' height='49.152' viewBox='0 0 36.864 36.864' fill='%230079fb'><path d='M18.487 32.306c-4.599.067-8.487-3.315-9.181-7.846-.278-1.81.068-3.077.628-4.791 1.403-4.291 3.971-8.695 6.427-12.51l.949-1.478c.309-.484.487-1.03 1.115-1.125.512.052.64.423.897.807 2.484 3.706 8.36 13.272 8.334 17.704-.029 5.044-4.068 9.27-9.169 9.238zm-.063-25.712c-2.557 3.771-4.933 7.827-6.631 12.055-.838 2.086-1.485 3.738-1.052 5.983.693 3.599 3.997 6.409 7.684 6.303 4.346.06 7.767-3.49 7.827-7.766.042-2.97-3.226-9.081-4.764-11.757-.373-.65-2.709-4.575-3.064-4.818zM13.18 24.15c-.768.067-.771-.701-.769-1.27.004-1.585.41-2.564.69-3.114.179-.512.807-1.39 1.38-1.807.334-.208.836-.51 1.137-.21.362.547.163.6-.06.906a6.14 6.14 0 0 0-1.754 4.195c-.003.577.098 1.181-.625 1.299zm7.543 5.012c-.598-.034-.626-.334-.735-.811.143-.444.303-.695.753-.698 1.166-.664 2.362-1.655 2.564-3.328.194-.569.104-1.219.864-1.332.852 0 .743 1.326.622 1.885-.923 2.883-2.483 3.648-4.068 4.284z'/></svg>","description":"A fast and secure wallet for everyday interactions with dapps","website":"https://intea.rs/","version":"1.0.0-takara.1","executor":"https://wallet.intear.tech/near-selector.js","type":"sandbox","features":{"signMessage":true,"signTransaction":false,"signAndSendTransaction":true,"signAndSendTransactions":true,"signInWithoutAddKey":true,"verifyOwner":false,"testnet":true,"signDelegateActions":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true},"platform":{"web":"https://wallet.intear.tech"},"permissions":{"storage":true,"location":true,"allowsOpen":["https://wallet.intear.tech","https://staging.wallet.intear.tech","http://intearwallet.local","https://intearwallet.local","http://intearwallet.localhost:3000","intear://","https://logout-bridge-service.intear.tech"]}},
+  {"id":"meteor-wallet","name":"Meteor Wallet","icon":"https://raw.githubusercontent.com/Meteor-Wallet/meteor_wallet_sdk/main/assets/meteor-logo-svg.svg","description":"The most simple and secure wallet to manage your crypto, access DeFi, and explore Web3","website":"https://meteorwallet.app/","version":"1.1.1-takara.2","executor":"https://cdn.jsdelivr.net/gh/Meteor-Wallet/meteor_wallet_sdk@6369ad789d2f3aaf8e6ccb065021723111027174/storage/meteor-near-connect-2026-11-11T06-11-04.js","type":"sandbox","features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"signInWithFunctionCallKey":true,"signDelegateActions":true,"mainnet":true,"testnet":true},"platform":{"web":"https://wallet.meteorwallet.app","chrome":"https://chromewebstore.google.com/detail/meteor-wallet/pcndjhkinnkaohffealmlmhaepkpmgkb","android":"https://play.google.com/store/apps/details?id=app.meteorwallet.v2","ios":"https://apps.apple.com/us/app/meteor-wallet/id6739558223"},"permissions":{"storage":true,"allowsOpen":["https://chromewebstore.google.com","https://wallet.meteorwallet.app","https://meteorwallet.app","meteorwallet://","meteorwalletdev://"],"external":["meteorCom","meteorComV2"]}},
+  {"id":"mynearwallet","name":"MyNearWallet","icon":"https://storage.herewallet.app/upload/d0544304123d10518af961a15d5722ff1cef7abf62155f830e6d733e41f7da4b.png","description":"Web wallet for NEAR.","website":"https://mynearwallet.com","version":"1.0.0-takara.1","executor":"https://cdn.jsdelivr.net/gh/hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069/repository/mnw.js","type":"sandbox","platform":{"web":"https://app.mynearwallet.com"},"features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"mainnet":true,"testnet":true},"permissions":{"storage":true,"allowsOpen":["https://app.mynearwallet.com","https://testnet.mynearwallet.com"]}},
+  {"id":"intear-wallet","name":"Intear Wallet","icon":"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='49.152' height='49.152' viewBox='0 0 36.864 36.864' fill='%230079fb'><path d='M18.487 32.306c-4.599.067-8.487-3.315-9.181-7.846-.278-1.81.068-3.077.628-4.791 1.403-4.291 3.971-8.695 6.427-12.51l.949-1.478c.309-.484.487-1.03 1.115-1.125.512.052.64.423.897.807 2.484 3.706 8.36 13.272 8.334 17.704-.029 5.044-4.068 9.27-9.169 9.238zm-.063-25.712c-2.557 3.771-4.933 7.827-6.631 12.055-.838 2.086-1.485 3.738-1.052 5.983.693 3.599 3.997 6.409 7.684 6.303 4.346.06 7.767-3.49 7.827-7.766.042-2.97-3.226-9.081-4.764-11.757-.373-.65-2.709-4.575-3.064-4.818zM13.18 24.15c-.768.067-.771-.701-.769-1.27.004-1.585.41-2.564.69-3.114.179-.512.807-1.39 1.38-1.807.334-.208.836-.51 1.137-.21.362.547.163.6-.06.906a6.14 6.14 0 0 0-1.754 4.195c-.003.577.098 1.181-.625 1.299zm7.543 5.012c-.598-.034-.626-.334-.735-.811.143-.444.303-.695.753-.698 1.166-.664 2.362-1.655 2.564-3.328.194-.569.104-1.219.864-1.332.852 0 .743 1.326.622 1.885-.923 2.883-2.483 3.648-4.068 4.284z'/></svg>","description":"A fast and secure wallet for everyday interactions with dapps","website":"https://intea.rs/","version":"1.0.0-takara.1","executor":"https://wallet.intear.tech/near-selector.js","type":"sandbox","features":{"signMessage":true,"signTransaction":false,"signAndSendTransaction":true,"signAndSendTransactions":true,"signInWithoutAddKey":true,"verifyOwner":false,"mainnet":true,"testnet":true,"signDelegateActions":true,"signInAndSignMessage":true,"signInWithFunctionCallKey":true},"platform":{"web":"https://wallet.intear.tech"},"permissions":{"storage":true,"location":true,"allowsOpen":["https://wallet.intear.tech","https://staging.wallet.intear.tech","http://intearwallet.local","https://intearwallet.local","http://intearwallet.localhost:3000","intear://","https://logout-bridge-service.intear.tech"]}},
   {"id":"near-cli","name":"NEAR CLI","icon":"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a1a2e'/%3E%3Cpolyline points='18 40 28 30 18 20' fill='none' stroke='%2300d4aa' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='32' y1='42' x2='46' y2='42' stroke='%2300d4aa' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E","description":"Sign transactions using near-cli-rs in your terminal","website":"https://near.cli.rs","version":"1.0.0-takara.1","executor":"https://cdn.jsdelivr.net/gh/near/near-cli-connect@dc5cb123e3a8e42ed095739f4ea058b767a80ad2/dist/near-cli.js","type":"sandbox","platform":{},"features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"signDelegateActions":true,"signInWithFunctionCallKey":true,"mainnet":true,"testnet":true},"permissions":{"storage":true,"clipboardWrite":true}},
 ] };
 
@@ -4093,13 +4146,13 @@ const connector = new NearConnector({
   storage,
 });
 
-const state = { status: "ready", accountId: null, walletName: null };
+const state = { status: "ready", accountId: null, walletName: null, walletId: null };
 const emit = () => window.dispatchEvent(new CustomEvent("takara:wallet", { detail: { ...state } }));
-const setAccount = (accountId, walletName) => { Object.assign(state, { status: accountId ? "connected" : "ready", accountId: accountId || null, walletName: walletName || null }); emit(); };
+const setAccount = (accountId, walletName, walletId) => { Object.assign(state, { status: accountId ? "connected" : "ready", accountId: accountId || null, walletName: walletName || null, walletId: (accountId && walletId) || null }); emit(); };
 
 connector.on("wallet:signIn", async (e) => {
   const w = await connector.wallet().catch(() => null);
-  setAccount(e.accounts && e.accounts[0] && e.accounts[0].accountId, w && w.manifest && w.manifest.name);
+  setAccount(e.accounts && e.accounts[0] && e.accounts[0].accountId, w && w.manifest && w.manifest.name, w && w.manifest && w.manifest.id);
 });
 connector.on("wallet:signOut", () => setAccount(null));
 
@@ -4150,7 +4203,12 @@ window.TW = {
   state,
   TREASURY,
   wallets: () => connector.availableWallets.map((w) => w.manifest.id),
-  async connect() { return connector.connect(); }, // rejects with "User rejected" when the chooser is closed
+  // The page draws its own wallet list (browser wallets first, NEAR CLI behind an Advanced link) and passes the id.
+  list: () => WALLET_MANIFEST.wallets.map((w) => ({ id: w.id, name: w.name, icon: w.icon })),
+  async connect(walletId) {
+    try { return await connector.connect(walletId ? { walletId } : {}); } // "User rejected" when a chooser or wallet is closed
+    catch (e) { if (!/reject|cancel|closed|denied/i.test(String((e && e.message) || e))) console.error(`[takara] ${walletId || "wallet"} connect error:`, e); throw e; }
+  },
   async disconnect() { return connector.disconnect(); },
   async accountExists(id) {
     try { await rpc("query", { request_type: "view_account", finality: "final", account_id: id }); return true; }
@@ -4168,14 +4226,14 @@ window.TW = {
         signerId, receiverId: TREASURY,
         actions: [{ type: "FunctionCall", params: { methodName: method, args, gas: spec.gas, deposit: spec.deposit } }],
       });
-    } catch (e) { thrown = e; }
+    } catch (e) { thrown = e; console.warn(`[takara] ${state.walletId || "wallet"} signAndSendTransaction threw:`, e); }
     return settle(outcome, thrown, signerId, onHash);
   },
   rpc,
 };
 
 connector.getConnectedWallet()
-  .then(({ wallet, accounts }) => setAccount(accounts && accounts[0] && accounts[0].accountId, wallet && wallet.manifest && wallet.manifest.name))
+  .then(({ wallet, accounts }) => setAccount(accounts && accounts[0] && accounts[0].accountId, wallet && wallet.manifest && wallet.manifest.name, wallet && wallet.manifest && wallet.manifest.id))
   .catch(() => setAccount(null));
 </script>
 </body>
