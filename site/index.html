@@ -748,6 +748,7 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const short = (h) => (h ? `${String(h).slice(0, 8)}…${String(h).slice(-4)}` : "");
 const nb = (tx) => `https://testnet.nearblocks.io/txns/${encodeURIComponent(tx)}`;
+const nbMain = (tx) => `https://nearblocks.io/txns/${encodeURIComponent(tx)}`;
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const n0 = (v) => Number(v).toLocaleString("en-US");
 const n2 = (v) => Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // money in the live equations, as in the app
@@ -928,7 +929,7 @@ function paintNetworks(D, nets) {
   const m = nets.main, testMoves = nets.testMoves || D.settle_moves_tokens === true;
   if (m) {
     const el = $("#mainnet-live");
-    el.innerHTML = `<b>Live on NEAR mainnet</b> · real USDC, small demo amounts${m.balance != null ? ` · the treasury holds ${usdc2(m.balance)}` : ""} · <a href="https://nearblocks.io/address/${encodeURIComponent(m.T)}" target="_blank" rel="noopener">${esc(m.T)} on NearBlocks</a>. The ten checks below ran on testnet.`;
+    el.innerHTML = `<b>Live on NEAR mainnet</b> · real USDC, small demo amounts${m.balance != null ? ` · the treasury holds ${usdc2(m.balance)}` : ""} · <a href="https://nearblocks.io/address/${encodeURIComponent(m.T)}" target="_blank" rel="noopener">${esc(m.T)} on NearBlocks</a>.`;
     el.hidden = false;
     $("#demo-t").textContent = "Live on NEAR mainnet · real USDC, small demo amounts · fictional business";
   }
@@ -947,7 +948,8 @@ function paintNetworks(D, nets) {
 /* ---------- main load ---------- */
 (async () => {
   const D = await getJSON("deployment.json");
-  liveNetworks().then((nets) => paintNetworks(D, nets)).catch(() => {});
+  const netsP = liveNetworks().catch(() => ({ main: null, testMoves: false }));
+  netsP.then((nets) => paintNetworks(D, nets)).catch(() => {});
   const T = D.accounts.treasury;
   let pub = null, pubList = null;
   try {
@@ -1007,13 +1009,21 @@ function paintNetworks(D, nets) {
   $("#bookrows").innerHTML = `<div class="row hdr" aria-hidden="true"><span>#</span><span>Public chain</span><span>Owner, with the ledger key <span class="sealed">SEALED · TEE</span></span></div>${rows}`;
   if (!repLive) $("#booksnote").textContent += ` Owner column from the snapshot of ${rep.generated_at.slice(0, 16).replace("T", " ")} UTC.`;
 
-  // judge run
-  const run = await getJSON("judge-run.json");
+  // judge run: the mainnet run when mainnet is live (explorer links on nearblocks.io), else the testnet run
+  const nets = await netsP;
+  let run = null, nbx = nb, onMain = false;
+  if (nets.main) { try { run = await getJSON("judge-run.mainnet.json"); if (run && run.network === "mainnet" && Array.isArray(run.results)) { onMain = true; nbx = nbMain; } else run = null; } catch { run = null; } }
+  if (!run) run = await getJSON("judge-run.json");
+  if (onMain) {
+    $("#h-proof").textContent = "Proof on NEAR mainnet";
+    $("#h-checks").textContent = "The ten judge checks, on NEAR mainnet";
+    $("#proof .lede").textContent = "The ten checks below ran as real transactions against the mainnet treasury, with real USDC in small amounts; each one links to NearBlocks. The panels further down read the testnet demo treasury from your browser. On testnet the current contract passed 9 of 10: the one failure was an engine_error while OutLayer’s testnet was down.";
+  }
   const totalA = run.results.reduce((a, r) => a + r.checks.length, 0);
   const passA = run.results.reduce((a, r) => a + r.checks.filter((c) => c.ok).length, 0);
-  $("#runmeta").innerHTML = `${esc(run.passed)} of ${esc(run.total)} pass · ${passA} of ${totalA} assertions · run <span class="num">${esc(run.run)}</span>, ${esc(run.at.slice(0, 16).replace("T", " "))} UTC`;
+  $("#runmeta").innerHTML = `${onMain ? "NEAR mainnet · " : ""}${esc(run.passed)} of ${esc(run.total)} pass · ${passA} of ${totalA} assertions · run <span class="num">${esc(run.run)}</span>, ${esc(run.at.slice(0, 16).replace("T", " "))} UTC${!onMain && run.at < "2026-11-14" ? " · previous contract build" : ""}`;
   const t1 = run.txs.find((t) => t.test === 1 && /request_acceptance/.test(t.label));
-  if (t1) Object.assign($("#herotx"), { href: nb(t1.tx), target: "_blank", rel: "noopener" });
+  if (t1) Object.assign($("#herotx"), { href: nbx(t1.tx), target: "_blank", rel: "noopener" });
   const tick = `<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.2 3L15 6.5" fill="none" style="stroke:var(--green)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   const cross = `<svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 6l8 8M14 6l-8 8" style="stroke:var(--red)" stroke-width="2.2" stroke-linecap="round"/></svg>`;
   const chev = `<svg class="chev" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -1025,15 +1035,15 @@ function paintNetworks(D, nets) {
     const key = txs.find((t) => KEYTX[r.n]?.test(t.label)) || txs[0];
     return `<li class="chk" id="chk-${esc(r.n)}"><details><summary><span class="pass${r.ok ? "" : " fail"}"><span class="dot ${r.ok ? "green" : "red"}" aria-hidden="true"></span>${r.ok ? "PASS" : "FAIL"}</span><span class="n">${esc(r.n)}</span><span class="t">${esc(PLAIN[r.n] || r.title)}</span><span class="ct">${passed} of ${r.checks.length} assertions</span>${chev}</summary>
       <div class="body"><div><h4>Assertions · ${esc(r.title)}</h4><ul class="asserts">${r.checks.map((c) => `<li>${c.ok ? tick : cross}<span>${esc(c.name)}${showDetail(c) ? `<span class="d">${esc(clip(String(c.detail)))}</span>` : ""}</span></li>`).join("")}</ul></div>
-      ${txs.length ? `<div><h4>Transactions</h4><ul class="txs">${txs.map((t) => `<li><a href="${nb(t.tx)}" target="_blank" rel="noopener"><span>${esc(t.label)}</span><span>${esc(t.tx.slice(0, 6))}…</span></a></li>`).join("")}</ul></div>` : ""}</div></details>
-      ${key ? `<a class="xl" href="${nb(key.tx)}" target="_blank" rel="noopener" aria-label="Check ${esc(r.n)} on NearBlocks">Explorer</a>` : ""}</li>`;
+      ${txs.length ? `<div><h4>Transactions</h4><ul class="txs">${txs.map((t) => `<li><a href="${nbx(t.tx)}" target="_blank" rel="noopener"><span>${esc(t.label)}</span><span>${esc(t.tx.slice(0, 6))}…</span></a></li>`).join("")}</ul></div>` : ""}</div></details>
+      ${key ? `<a class="xl" href="${nbx(key.tx)}" target="_blank" rel="noopener" aria-label="Check ${esc(r.n)} on NearBlocks">Explorer</a>` : ""}</li>`;
   }).join("");
   if (location.hash.startsWith("#chk-")) { const d = $(`${location.hash} details`); if (d) d.open = true; }
   document.addEventListener("click", (e) => { const a = e.target.closest('a[href^="#chk-"]'); if (a) { const d = $(`${a.getAttribute("href")} details`); if (d) d.open = true; } });
 
   // caught for you: the hosted app’s decision log when present, otherwise the published judge run
   try { const decs = await api("/api/decisions"); if (!Array.isArray(decs)) throw 0; renderCaught(caughtFromDecisions(decs, pubList), "Counted from the treasury’s decision log, the same rules the app uses."); }
-  catch { renderCaught(caughtFromRun(run), `Counted from judge run ${run.run}, which made every one of these attempts on this treasury.`); }
+  catch { renderCaught(caughtFromRun(run), `Counted from judge run ${run.run}, which made every one of these attempts on ${onMain ? "the mainnet treasury" : "this treasury"}.`); }
 })().catch((e) => { console.error(e); });
 </script>
 </body>

@@ -690,7 +690,7 @@ runway     = (balance - settled_outflow) / daily_burn   <span class="c"># report
           <li>Signer approvals and owner controls in the app, signed with your own NEAR wallet.</li>
           <li>Owner pause, switch-off and withdrawal with Banto offline.</li>
           <li>Sealed books, with the owner’s view next to the public one.</li>
-          <li>Ten security checks passing as real testnet transactions.</li>
+          <li>Ten security checks as real testnet transactions: 9 of 10 on the current contract. The one failure was an OutLayer error while its testnet was down.</li>
         </ul>
         <h3 class="h3">Partly built</h3>
         <ul class="ticks wait">
@@ -795,6 +795,7 @@ node -e 'import("./scripts/lib/near.mjs").then(async m=&gt;console.log(await m.v
       var href = "https://nearblocks.io/address/" + encodeURIComponent(m.T);
       $("#mainnet-status").innerHTML = '<h3 class="h3" style="margin-top:0">Live on NEAR mainnet</h3><ul class="ticks"><li>The same treasury contract and policy engine, holding real USDC in small demo amounts' + (m.balance != null ? " (" + esc(m.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 })) + " USDC now)" : "") + ': <a href="' + href + '" target="_blank" rel="noopener">' + esc(m.T) + "</a>.</li><li>" + (moves ? "Each settled bill is paid out in USDC on chain." : "Settlement records the payment; it doesn’t send the USDC yet.") + "</li><li>The business is still the fictional fixture company.</li></ul>";
       $("#mainnet-status").hidden = false;
+      var ml = $("#mainnet-status ul"); if (ml) ml.insertAdjacentHTML("afterbegin", '<li>All ten security checks pass on mainnet, as real transactions: <a href="https://github.com/growthmindsetgg/takara-ai/blob/main/docs/runs/judge-mainnet-2026-11-14-fa4a1a16.json" target="_blank" rel="noopener">run fa4a1a16</a>.</li>');
       if (moves) $("#plan-mainnet").textContent = "Private payouts through NEAR Intents 1Click, so a payout’s payee and amount stay off the public chain. The code is built; it needs a 1Click partner key.";
       $("#h-live-testnet").style.marginTop = "";
       $("#mn-t").textContent = m.T; $("#mn-a").href = href;

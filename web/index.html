@@ -1347,10 +1347,13 @@ function activityAsOf() {
 }
 const asOfLine = () => { const t = DEMO ? activityAsOf() : null; return t ? h`<p class="asof">Activity recorded at deploy, ${timeEl(t, fmtDateTime(t))}. Balances and bills are live.</p>` : ""; };
 // Readable names: provisional vendors are named from their payout account, never "new:6a77…".
+// The mainnet demo pays several fixture vendors into one founder-owned account, so the two new
+// vendors from the fixture invoices keep the names on their invoices (vendor ids are sealed hashes).
+const NEW_VENDOR_LABELS = { "new:fb341c87866a": "Bigagency", "new:6a77f4b28dfd": "Tinylogo" };
 const titleFromAcct = (a) => { const head = String(a || "").split(".")[0]; return head ? head.split(/[-_]/).map(cap).join(" ") : "New vendor"; };
 function cleanName(c) {
   const vid = String(c.vendor_id || "");
-  if (vid.startsWith("new:")) return { name: titleFromAcct(c.destination), sub: "New vendor", isNew: true };
+  if (vid.startsWith("new:")) return { name: NEW_VENDOR_LABELS[vid] || titleFromAcct(c.destination), sub: "New vendor", isNew: true };
   const v = String(c.vendor || "").replace(/\s*\((fictional[^)]*)\)\s*$/i, "").replace(/\s*\(team member\)\s*$/i, "").trim();
   return { name: v || `Bill #${c.id}`, sub: vid.startsWith("member:") ? "Team member" : vid === "payroll" ? "Payroll" : null, isNew: false };
 }
@@ -2154,7 +2157,7 @@ function projBody() {
   return h`<div class="proj" style="border-top:0"><div class="proj-h"><h2 class="h2" id="pj-h">Cash over the next 60 days</h2><p>${summary}</p></div>
     <div class="proj-wrap" data-proj>
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="pj-t pj-d"><title id="pj-t">Cash over the next 60 days</title><desc id="pj-d">Step line. Starts at ${numM(m.avail)} ${symbol()}, which is ${numM(m.bal)} in treasury minus ${numM(m.paid)} settled. ${steps.map((s) => `${fmtDate(s.day)}: ${s.b.name} ${numM(s.b.amount)}, leaving ${numM(s.bal)}.`).join(" ")}${floor != null ? ` Protected runway floor: ${numM(floor)}.` : ""} The table below has the same numbers.</desc>
-      ${yt.map((v) => h`<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="gd${v === 0 ? " zero" : ""}"/><text class="ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${num(Math.round(v))}</text>`)}
+      ${yt.map((v) => h`<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="gd${v === 0 ? " zero" : ""}"/><text class="ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${Math.abs(ymax) >= 10 ? num(Math.round(v)) : num(+v.toFixed(2))}</text>`)}
       ${xt.map((dd, i) => h`<text class="ax${i === 0 || i === xt.length - 1 ? "" : " ax-mid"}" x="${x(dd)}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === xt.length - 1 ? "end" : "middle"}">${fmtDate(dd)}</text>`)}
       <path d="${area}" class="ar"/>
       ${floor != null ? h`<line x1="${L}" x2="${W - R}" y1="${y(floor)}" y2="${y(floor)}" class="fl"/><text class="lb" x="${W - R}" y="${y(floor) - 6}" text-anchor="end">Protected: ${minDays}-day floor ${numM(floor)}</text>` : ""}

@@ -1,8 +1,8 @@
 # Takara AI on NEAR mainnet
 
-**Status: live on NEAR mainnet at [`treasury.takara-ai-hq.near`](https://nearblocks.io/address/treasury.takara-ai-hq.near)**, where settlement pays the payee in real USDC. Testnet stays live as the fully tested reference: [`treasury.takara-ai-hq.testnet`](https://testnet.nearblocks.io/address/treasury.takara-ai-hq.testnet), where all ten security checks pass.
+**Status: live on NEAR mainnet at [`treasury.takara-ai-hq.near`](https://nearblocks.io/address/treasury.takara-ai-hq.near)**, where settlement pays the payee in real USDC. **All ten security checks pass on mainnet** ([run fa4a1a16](runs/judge-mainnet-2026-11-14-fa4a1a16.json)). Testnet stays live as the reference deployment: [`treasury.takara-ai-hq.testnet`](https://testnet.nearblocks.io/address/treasury.takara-ai-hq.testnet). On testnet the current contract passed 9 of 10; the one failure (check 10) was an OutLayer `engine_error` while OutLayer's testnet was down that afternoon. The earlier testnet 10/10 (2026-11-12) ran on the previous contract build.
 
-Everything on this page is a public record you can check yourself on [NearBlocks](https://nearblocks.io) and the [OutLayer API](https://api.outlayer.ai). The business is the same fictional fixture company as on testnet. Amounts are **1/1000 of the testnet fixtures** (the "min" profile), so the treasury is funded with about 1 USDC of real money.
+Everything on this page is a public record you can check yourself on [NearBlocks](https://nearblocks.io) and the [OutLayer API](https://api.outlayer.ai). The business is the same fictional fixture company as on testnet. Amounts are **1/1000 of the testnet fixtures** (the "min" profile), so the treasury held about 1 USDC of real money.
 
 Source of truth for the hashes below: [`fixtures/mainnet/setup-progress.json`](../fixtures/mainnet/setup-progress.json) (setup) and `fixtures/deployment.mainnet.json` (the treasury record, written only once the treasury is deployed; the app treats its presence as "mainnet is live").
 
@@ -85,22 +85,32 @@ NEAR_NETWORK=mainnet node scripts/verify-attestation.mjs 3580 \
 | Policy | version 1, hash `cbf814b46758686eab9055e27e948fdb9705555fb9db2410d6009b8f490474af`, signer `signer.takara-ai-hq.near`, threshold 1 |
 | Owner / agent | `takara-ai-hq.near` / `agent.takara-ai-hq.near` |
 | Settlement | `settle` sends the USDC to the NEAR payee with `ft_transfer` (a failed transfer reverts the settlement); capped per payment by `max_payout` |
-| USDC in the treasury | 0 at deploy; the founder funds it with 1 USDC (`node scripts/mainnet-usdc.mjs fund`) before the check run |
+| USDC in the treasury | 0 at deploy; funded by the founder before the check run; 0.88 after it |
 | Per-payment ceiling (`max_payout`) | 1 USDC |
 | NearBlocks code hash | `5H8d7wgh7DKbgVZiU99Cs95gBZV9miLhUhhKt3vcXm1n` (base58 of the sha256 above; the testnet treasury runs the same code hash) |
 
 ## Mainnet check run
 
-<!-- FILL:judge -->
-Pending. The founder funds the treasury and runs the ten checks against it:
+**10 of 10 checks pass, 47 of 47 assertions**: [run fa4a1a16](runs/judge-mainnet-2026-11-14-fa4a1a16.json), 2026-11-14 15:52:32 UTC, 40 transactions against `treasury.takara-ai-hq.near`, amounts 1/1000 of testnet.
 
-```bash
-node scripts/mainnet-usdc.mjs fund                        # moves 1 USDC from takara-ai-hq.near into the treasury
-NEAR_NETWORK=mainnet node scripts/judge.mjs               # the ten checks; about 10 minutes
-```
+Real USDC moved: the founder funded the treasury, and two settlements paid NEAR payees with `ft_transfer`. On-chain USDC right after the run: treasury 0.88, `ana.takara-ai-hq.near` 0.40, `payroll.takara-ai-hq.near` 0.12, owner 0.60.
 
-The run record will be linked here, with every transaction.
-<!-- /FILL:judge -->
+| Check | What happened | Key transaction |
+|---|---|---|
+| 1. Reserve protection | Ana's 0.40 refused `would_break_commitments` while payroll 0.60 and Railway 0.12 are reserved | [`2rYVAAWD…`](https://nearblocks.io/txns/2rYVAAWDYhCWEy1AhE13R7QhH5dQ9vf7V2QBHjy36AmS) |
+| 2. Release after funding | after a 0.50 top-up ([`65moq49N…`](https://nearblocks.io/txns/65moq49NxBeffNgyuNFtyGTmQydVtx5sSVDcaFcJPW3h)) the same bill is accepted and **paid: 0.40 USDC sent to `ana.takara-ai-hq.near`** | [`BenNh8MF…`](https://nearblocks.io/txns/BenNh8MF7CCsDCs2Xwq34TgjKPbPVBKzdJQZEdo8i7fY) |
+| 3. Claimed is not accepted | a new bill reserves nothing until a signer accepts it | [`2Vh22ySF…`](https://nearblocks.io/txns/2Vh22ySFK5ynSiq4ziKndo6xaPtNXn2djMXLNqRsgdhG) |
+| 4. Duplicate rejection | the same invoice again is refused `duplicate_evidence` | [`4xG57A7f…`](https://nearblocks.io/txns/4xG57A7f4rKkKKDsaPRFfUVWPVPnHsunEpW2KgyCLvhg) |
+| 5. Destination change | changed bank details suspended `vendor_destination_mismatch`; the agent's approval is refused, the signer's is accepted, cooling-off holds | agent refused [`6eJBwFxG…`](https://nearblocks.io/txns/6eJBwFxGmqin5DiUS86GJU3PE7scNHQkvcfqts5xyu2A), signer [`3fySMk6w…`](https://nearblocks.io/txns/3fySMk6wTXK6H6BzAsp2QE2FAspeCzhgvxP6QU1JxQrF) |
+| 6. Prompt injection | instructions in the invoice text flagged and ignored | [`6zPpFWPg…`](https://nearblocks.io/txns/6zPpFWPgfwRDasgCmPqRc7iBqaUjmxYAiuBdrxFYR3zX) |
+| 7. Replay and tampering | **first settlement pays 0.12 USDC to `payroll.takara-ai-hq.near`**; the replay is refused `nonce_used`; an amount changed by one unit is refused `authorization_mismatch` | paid [`37kXzVrN…`](https://nearblocks.io/txns/37kXzVrNWZPsQgsdtapqqUJsEnqehgr67X6PGcs8oWXH), replay [`5KnaCz9Y…`](https://nearblocks.io/txns/5KnaCz9YigwbPMdd3FsHEJtsmu3j1L1XDa8XwygxAqvs), tampered [`GnFVYt8Q…`](https://nearblocks.io/txns/GnFVYt8QaZRDbXahRNjb6CXKYazgXesTeEj9X4zBdrer) |
+| 8. Non-custodial proof | the owner pauses, revokes the agent and recovers funds with the agent offline; the agent's withdrawal, policy rewrite and re-initialisation are refused | recover [`HYV5wZgu…`](https://nearblocks.io/txns/HYV5wZguKarjDCa7vLecytCj3iEFN8MMeneaYFmHvC91), agent refused [`4fNS56Bi…`](https://nearblocks.io/txns/4fNS56BiBpw83nf5cnLncgPcxkuEVcaQGe6j3HCSka9j) |
+| 9. Field-level spoofing | a memo asking to be treated as payroll is recorded as the real vendor, priority normal | [`7jkpQ7sf…`](https://nearblocks.io/txns/7jkpQ7sffgkPGDBnkAmEABJVaPG94GwchT562xsP82GJ) |
+| 10. Tiered friction | a new 0.04 vendor is accepted automatically; a new 0.90 vendor (Big Agency) is held for a signer | [`F4NBShNA…`](https://nearblocks.io/txns/F4NBShNAzev56ZHCKWH3ToFKt67NZWZDq3waxeEcwm6M) |
+
+After the run, demo data was added without moving money, including a refused claim from someone who isn't on the team ([`B5i2Zv5s…`](https://nearblocks.io/txns/B5i2Zv5sTA9AGWBnCTzyat66zh18cD9Q6eywGU9sTtrt)). The ledger then: balance 0.88, set aside 0.805, free to spend 0.075, runway 34 days; Big Agency's 0.90 waits for a signer.
+
+Re-run it yourself on a funded treasury: `NEAR_NETWORK=mainnet node scripts/judge.mjs`.
 
 ## NEAR spent
 
@@ -123,7 +133,7 @@ Most of what remains is not spent: it pays for account storage and comes back wh
 | Treasury contract: reserves, refusals with a reason, payout-change freeze and hold, owner pause and recovery | Live | Live | Same contract, same engine build |
 | Policy engine in Intel TDX (OutLayer), attestation per decision | Live | Live | Smoke runs and 6/6 attestation above |
 | Settlement pays the payee | Live | Live (test token) | `settle` checks the engine's one-time permit and the salted amount and payee opening, enforces a per-payment ceiling (`max_payout`, 1 USDC on mainnet), then sends the USDC to the NEAR payee with `ft_transfer`; a failed transfer reverts the settlement. Same contract on both networks |
-| Ten security checks as real transactions | Pending | Run on testnet | Mainnet amounts are 1/1000 of testnet. Results: see "Mainnet check run" above and [docs/runs/](runs/) |
+| Ten security checks as real transactions | **10/10** ([run fa4a1a16](runs/judge-mainnet-2026-11-14-fa4a1a16.json)) | 9/10 on the current contract | Mainnet amounts are 1/1000 of testnet. The testnet failure (check 10) was an OutLayer `engine_error` while OutLayer's testnet was down; the 2026-11-12 testnet 10/10 ran on the previous contract build |
 | Sealed books: reserves, signed policy, vendor registry, refusal reasons | Live | Live | Each NEAR payout shows its amount and payee on chain when it is paid; nothing else about the books is public |
 | Owner view in the hosted app | Live | Live | The app has a Mainnet / Testnet switch once both are live |
 | Private payouts through NEAR Intents 1Click (`confidentiality: "basic"`) | Planned | n/a (Intents has no testnet) | Quote, deposit and status flow are built and dry quotes are verified on mainnet; a confidential quote needs a 1Click partner key, which we don't have yet |

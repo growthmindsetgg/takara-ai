@@ -10,10 +10,24 @@ For the founder. Updated 2026-11-14 for the new UI (Home, sidebar of six plus Mo
 
 ## Which network to record on
 
-**Record on mainnet if it is live; otherwise on testnet.** "Live" means all of these are true:
+**Record on MAINNET.** As of 15:56 UTC on 2026-11-14 it is live: the mainnet judge passed 10/10 (run `fa4a1a16`), the demo state is seeded, and the seed's dry run prints all `ok`. The accounts are:
+- treasury `treasury.takara-ai-hq.near`;
+- Signer `signer.takara-ai-hq.near`;
+- agent `agent.takara-ai-hq.near`;
+- owner `takara-ai-hq.near`.
+
+Use testnet only if mainnet breaks before recording. Mainnet counts as healthy when:
 - `treasury.takara-ai-hq.near` exists;
-- the app's network switch shows **Mainnet** and opens on it by default;
-- the seed's dry run (below) prints no `TODO` or `gap` lines except the ones listed as acceptable.
+- the app's network switch shows **Mainnet** and opens on it by default (or add `?network=mainnet`);
+- `NEAR_NETWORK=mainnet node scripts/seed-demo.mjs` prints no `TODO` or `gap` lines.
+
+State at seeding, to check against what you see. The screen is the source of truth.
+- **Balance:** 0.88 USDC.
+- **Set aside:** 0.805 for Payroll, Railway, Inkwell and Tiny Logo.
+- **Free to spend:** 0.075.
+- **Runway:** 34 days.
+- **Big Agency:** 0.90, waiting for a Signer; approving would leave 0.825 short.
+- **Settled:** Ana 0.40, Railway 0.12.
 
 | | Mainnet (preferred) | Testnet (fallback) |
 |---|---|---|
@@ -29,15 +43,15 @@ On mainnet the small amounts are the point: they are real USDC, and every settle
 ## Preflight (10 minutes before recording)
 
 1. **Seed the demo state (read-only check first).** On the network you chose, run the seed's dry run:
-   - `node scripts/seed-demo.mjs` (testnet) or `NEAR_NETWORK=mainnet node scripts/seed-demo.mjs` (mainnet).
+   - `NEAR_NETWORK=mainnet node scripts/seed-demo.mjs` (mainnet, the recording network). For testnet, drop the `NEAR_NETWORK=mainnet` prefix.
    - It prints the live figures, a checklist and a plan. Each line starting with `ok` is in place.
    - The demo needs: Payroll run, Railway, Inkwell and Tiny Logo **reserved**; one **Big Agency** bill **claimed** whose approval would overdraw; at least one **settled** payment to **Ana**; and the **Caught** refusals (payout change, hidden instructions, duplicate, reserve breach, a sender not on the team).
    - If there are `TODO` lines, re-run with `--execute`. The seed only claims, reserves (policy or Signer acceptance) and records one refusal. It never pays, so it can't move money.
    - If it prints a **Founder-run** block, that is a payment (it sends real tokens). Run it yourself only if you want it in the story.
    - Never run the seed while a judge run is in progress. It refuses to execute if the treasury had activity in the last 3 minutes.
-2. **Top up gas.** The agent pays gas for claims and engine calls. Check its balance (`agent.takara-ai-hq.testnet` / `agent.takara-ai-hq.near`) and top it up from the owner if it is under about 1 NEAR, for example on testnet:
-   `near tokens takara-ai-hq.testnet send-near agent.takara-ai-hq.testnet '2 NEAR' network-config testnet sign-with-legacy-keychain send`
-   The Signer needs a little NEAR for the one signature below.
+2. **Check gas.** The agent pays gas for claims and engine calls. `agent.takara-ai-hq.near` had about 1.0 NEAR after the mainnet judge run and seed, which is enough for a retake seed. The video itself doesn't use the agent. To top it up from the owner, for example:
+   `near tokens takara-ai-hq.near send-near agent.takara-ai-hq.near '0.5 NEAR' network-config mainnet sign-with-legacy-keychain send`
+   The Signer (`signer.takara-ai-hq.near`) needs a little NEAR for the one `close_commitment` signature below (30 Tgas, well under 0.01 NEAR).
 3. **Deploy what you reviewed.** Run `node scripts/build-platform.mjs` right before deploying, so the hosted activity log includes the judge run and the seed. The hosted app labels it "Activity as of <time of the latest entry>".
 4. **Choose the surface.** Record on `https://takara-ai.vercel.app` (product page) and `/app` (the app). If Vercel is slow, run `node backend/server.mjs` and use `http://localhost:8787` instead. It's the same app, and its activity log updates live. To force a network, add `?network=mainnet` or `?network=testnet`.
 5. **Wallet dry run 🔑.** The Reject step needs the Signer account for your network (table above) in one of these:
@@ -53,7 +67,7 @@ On mainnet the small amounts are the point: they are real USDC, and every settle
    - If you skip the tour, run nothing: Home opens straight to the figures.
 8. Have a terminal ready in the repo for the last step.
 
-**Retakes:** once the Signer rejects Big Agency, it's closed. For another take, run the seed again with `--execute`: it claims a fresh Big Agency bill (a new invoice number, so it isn't refused as a duplicate).
+**Retakes:** once the Signer rejects Big Agency, it's closed. For another take, run `NEAR_NETWORK=mainnet node scripts/seed-demo.mjs --execute` again: it claims a fresh Big Agency bill (a new invoice number, so it isn't refused as a duplicate).
 
 ---
 

@@ -33,6 +33,8 @@ copyFileSync(join(ROOT, "scripts", "lib", "chat.mjs"), join(P, "lib", "chat.mjs"
 copyFileSync(join(ROOT, "scripts", "lib", "networks.mjs"), join(P, "lib", "networks.mjs"));
 // product page + its static data
 for (const f of ["architecture.svg", "deployment.json", "judge-run.json", "owner-snapshot.json"]) copyFileSync(join(ROOT, "site", f), join(P, f));
+// the mainnet judge run, shown by the product page only when the mainnet record loads
+if (existsSync(join(ROOT, "site", "judge-run.mainnet.json"))) copyFileSync(join(ROOT, "site", "judge-run.mainnet.json"), join(P, "judge-run.mainnet.json"));
 let site = readFileSync(join(ROOT, "site", "index.html"), "utf8");
 const PLATFORM_BAR = `<div style="background:#0f6b5c;color:#fff;text-align:center;padding:10px 16px;font:600 15px/1.4 system-ui,sans-serif">Live platform: <a href="/app" style="color:#fff;text-decoration:underline">open the Takara AI owner console</a> (owner view, policy controls, read-only chat, public ledger)</div>`;
 if (!site.includes('href="/app"')) site = site.replace(/<body([^>]*)>/, `<body$1>
