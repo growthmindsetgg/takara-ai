@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="theme-color" content="#FAFAF7" media="(prefers-color-scheme: light)" data-scheme="light">
+<meta name="theme-color" content="#0C1311" media="(prefers-color-scheme: dark)" data-scheme="dark">
+<script>/* theme before first paint: "light" | "dark" | absent = System. Key shared with site/. */(function(){var t=null,d=document.documentElement;try{t=localStorage.getItem("takara.theme")}catch(e){}if(t!=="light"&&t!=="dark")return;d.setAttribute("data-theme",t);try{var m=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<m.length;i++)m[i].setAttribute("content",t==="dark"?"#0C1311":"#FAFAF7")}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Home · Takara AI</title>
 <meta name="takara-token" content="__TAKARA_TOKEN__">
 <meta name="description" content="Takara AI owner app: Banto, your treasury agent, shows what you can spend, what is waiting and on whom, what is due, and what it caught. Fictional fixture treasury on NEAR testnet.">
-<meta name="theme-color" content="#FAFAF7">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230B5D4B'/%3E%3Crect x='8' y='8' width='16' height='16' rx='3' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3Crect x='13' y='13' width='6' height='6' rx='1' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,14 +37,56 @@
   --spend: var(--c-mint); --paid: var(--c-paid);
   --wait: var(--c-amber); --bad: var(--c-verm); --issue: var(--c-verm-muted); --bad-wash: var(--c-verm-wash);
   --sheet-shadow: 0 24px 64px -24px rgba(14,26,22,.32), 0 2px 8px rgba(14,26,22,.06);
+  --on-ink: #FFFFFF; --btn-primary-hover: #22312C; /* text on ink-filled controls; primary hover */
+  --brand-fill: var(--c-green); --on-brand: #FFFFFF; /* filled green (avatar, envelopes, step dots) and its text */
+  --inverse-bg: var(--c-ink); --inverse-ink: #FFFFFF; --inverse-ink-2: #E6ECE9; /* demo strip, toasts, chart tip, own chat bubble */
+  --scrim: rgba(14,26,22,.32); --row-hover: #FBFBF9; --inverse-link: #BFE3DA;
+  --paid-dot: var(--paid); --logo: var(--c-green); --strip-bg: var(--inverse-bg); --strip-ink: var(--inverse-ink); --strip-ink-2: var(--inverse-ink-2);
+  --brand-line: rgba(11,93,75,.18); --bad-line: rgba(180,67,47,.28); --paid-ring: rgba(14,26,22,.18); --av-off: var(--c-ink-3);
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='none' stroke='%234A5550' stroke-width='2'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
   --hover: 140ms; --press: 100ms; --enter: 240ms;
 }
 /* ===== layer 3: component tokens */
 :root {
   --side: 248px; --maxw: 1240px; --pad: 32px; --dock: 380px; --strip-h: 32px;
   --r-ctl: 8px; --r-card: 12px; --r-sheet: 16px;
-  --btn-h: 40px; --btn-primary: var(--ink); --env: var(--brand);
+  --btn-h: 40px; --btn-primary: var(--ink); --env: var(--brand-fill);
 }
+/* ===== dark: the same roles, derived (docs/ux/design-direction.md). Primitives are re-pointed, so layers 2 and 3 follow.
+   Shared with site/: paper #0C1311, surface #121B18, raised #17221E. Key takara.theme: "light" | "dark" | absent = System. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --c-paper: #0C1311; --c-white: #121B18; --c-stone: #17221E; --c-stone-2: #1E2A26;
+    --c-ink: #E8EEEA; --c-ink-2: #B3BDB8; --c-ink-3: #8A948F;
+    --c-green: #5FBF9F; --c-green-deep: #8AD6BC; --c-green-wash: #14302A; --c-mint: #16352B; --c-paid: #2A332F;
+    --c-amber: #E0A84A; --c-verm: #E98A75; --c-verm-muted: #DE9585; --c-verm-wash: #2B1A16;
+    --line: rgba(232,238,234,.10); --line-2: rgba(232,238,234,.18); --line-3: rgba(232,238,234,.40);
+    --sheet-shadow: 0 0 0 1px rgba(232,238,234,.08), 0 24px 64px -24px rgba(0,0,0,.72), 0 2px 8px rgba(0,0,0,.40);
+    --on-ink: #0C1311; --btn-primary-hover: #C9D3CE;
+    --brand-fill: #1F4D40; --on-brand: #E8EEEA;
+    --inverse-bg: #22302B; --inverse-ink: #E8EEEA; --inverse-ink-2: #C9D2CD;
+    --scrim: rgba(0,0,0,.56); --row-hover: rgba(232,238,234,.035); --paid-dot: #6F7A75; --logo: #1F6B57; --strip-bg: #17221E; --strip-ink: #E8EEEA; --strip-ink-2: #E8EEEA;
+    --brand-line: rgba(95,191,159,.26); --bad-line: rgba(233,138,117,.34); --paid-ring: rgba(232,238,234,.30); --av-off: #46504B;
+    --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='none' stroke='%23B3BDB8' stroke-width='2'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-paper: #0C1311; --c-white: #121B18; --c-stone: #17221E; --c-stone-2: #1E2A26;
+  --c-ink: #E8EEEA; --c-ink-2: #B3BDB8; --c-ink-3: #8A948F;
+  --c-green: #5FBF9F; --c-green-deep: #8AD6BC; --c-green-wash: #14302A; --c-mint: #16352B; --c-paid: #2A332F;
+  --c-amber: #E0A84A; --c-verm: #E98A75; --c-verm-muted: #DE9585; --c-verm-wash: #2B1A16;
+  --line: rgba(232,238,234,.10); --line-2: rgba(232,238,234,.18); --line-3: rgba(232,238,234,.40);
+  --sheet-shadow: 0 0 0 1px rgba(232,238,234,.08), 0 24px 64px -24px rgba(0,0,0,.72), 0 2px 8px rgba(0,0,0,.40);
+  --on-ink: #0C1311; --btn-primary-hover: #C9D3CE;
+  --brand-fill: #1F4D40; --on-brand: #E8EEEA;
+  --inverse-bg: #22302B; --inverse-ink: #E8EEEA; --inverse-ink-2: #C9D2CD;
+  --scrim: rgba(0,0,0,.56); --row-hover: rgba(232,238,234,.035); --paid-dot: #6F7A75; --logo: #1F6B57; --strip-bg: #17221E; --strip-ink: #E8EEEA; --strip-ink-2: #E8EEEA;
+  --brand-line: rgba(95,191,159,.26); --bad-line: rgba(233,138,117,.34); --paid-ring: rgba(232,238,234,.30); --av-off: #46504B;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='none' stroke='%23B3BDB8' stroke-width='2'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
+}
+:root[data-theme="light"] { color-scheme: light; }
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: 24px; }
 body { margin: 0; min-height: 100dvh; background: var(--paper); color: var(--ink); font: 400 var(--t-14)/20px var(--f-sans); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
@@ -63,20 +107,21 @@ button, a, summary, input, select { touch-action: manipulation; }
 .amt { font-family: var(--f-mono); white-space: nowrap; font-size: .96em; }
 .amt .u { color: var(--muted); font-size: max(12px, .86em); }
 svg { flex: none; }
+svg.logo { color: var(--on-brand); }
 code { font-family: var(--f-mono); font-size: .92em; }
-.skip { position: fixed; left: 12px; top: 12px; z-index: 100; padding: 8px 16px; background: var(--ink); color: #fff; border-radius: var(--r-ctl); transform: translateY(-200%); }
-.skip:focus-visible { transform: none; color: #fff; }
+.skip { position: fixed; left: 12px; top: 12px; z-index: 100; padding: 8px 16px; background: var(--ink); color: var(--on-ink); border-radius: var(--r-ctl); transform: translateY(-200%); }
+.skip:focus-visible { transform: none; color: var(--on-ink); }
 .muted { color: var(--muted); }
 .sm { font-size: var(--t-13); line-height: 18px; }
 
 /* ===== fiction strip: the one place fiction is marked */
-.strip { position: sticky; top: 0; z-index: 40; height: var(--strip-h); background: var(--ink); color: #E6ECE9; font-size: var(--t-13); display: flex; align-items: center; gap: 12px; padding: 0 8px 0 16px; }
+.strip { position: sticky; top: 0; z-index: 40; height: var(--strip-h); background: var(--strip-bg); color: var(--strip-ink-2); font-size: var(--t-13); display: flex; align-items: center; gap: 12px; padding: 0 8px 0 16px; }
 .strip p { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 [data-slot="strip"] { display: contents; } /* lets the strip stick to the page, not to its own 32px box */
 .strip-s { display: none; } @media (max-width: 479px) { .strip-l { display: none; } .strip-s { display: inline; } }
-.strip a { color: #fff; text-decoration: underline; text-underline-offset: 3px; margin-left: 8px; }
-.strip .scopebtn { width: auto; height: 24px; padding: 0 8px; margin-left: 8px; border: 1px solid rgba(255,255,255,.32); border-radius: 6px; font: 500 var(--t-12)/1 var(--f-mono); color: #fff; display: inline-flex; vertical-align: middle; }
-.strip button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: transparent; color: #fff; border-radius: 6px; cursor: pointer; }
+.strip a { color: var(--strip-ink); text-decoration: underline; text-underline-offset: 3px; margin-left: 8px; }
+.strip .scopebtn { width: auto; height: 24px; padding: 0 8px; margin-left: 8px; border: 1px solid rgba(255,255,255,.32); border-radius: 6px; font: 500 var(--t-12)/1 var(--f-mono); color: var(--strip-ink); display: inline-flex; vertical-align: middle; }
+.strip button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: transparent; color: var(--strip-ink); border-radius: 6px; cursor: pointer; }
 .strip button:hover { background: rgba(255,255,255,.12); }
 
 /* ===== shell */
@@ -116,12 +161,12 @@ main { display: block; max-width: calc(var(--maxw) + 2 * var(--pad)); margin: 0 
 .topbar, .tabbar { display: none; }
 
 /* ===== avatar with live status ring */
-.av { position: relative; display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 8px; background: var(--brand); color: #fff; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ring, var(--brand)); }
+.av { position: relative; display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 8px; background: var(--brand-fill); color: var(--on-brand); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ring, var(--brand)); }
 .av svg { width: 100%; height: 100%; }
 .av.s24 { width: 24px; height: 24px; border-radius: 7px; font-size: var(--t-12); }
 .av.st-active { --ring: var(--brand); }
 .av.st-paused { --ring: var(--wait); }
-.av.st-revoked { --ring: var(--line-3); background: var(--muted); }
+.av.st-revoked { --ring: var(--line-3); background: var(--av-off); }
 .av.st-revoked::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--bad); transform: rotate(45deg); border-radius: 2px; }
 .av.st-unknown { --ring: var(--line-2); }
 
@@ -136,7 +181,7 @@ main { display: block; max-width: calc(var(--maxw) + 2 * var(--pad)); margin: 0 
 @media (prefers-reduced-motion: no-preference) { .live { animation: live 2.4s var(--ease) infinite; } }
 @keyframes live { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 .lens { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t-13); color: var(--ink-2); }
-.lens select { height: 32px; padding: 0 28px 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-ctl); background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='none' stroke='%234A5550' stroke-width='2'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 10px center; appearance: none; -webkit-appearance: none; font-weight: 500; color: var(--ink); cursor: pointer; }
+.lens select { height: 32px; padding: 0 28px 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-ctl); background: var(--surface) var(--chev) no-repeat right 10px center; appearance: none; -webkit-appearance: none; font-weight: 500; color: var(--ink); cursor: pointer; }
 .lens select:hover { border-color: var(--line-3); }
 .lensnote { display: flex; gap: 8px; align-items: baseline; margin: -8px 0 24px; padding: 8px 12px; border: 1px solid var(--line-2); border-radius: var(--r-ctl); background: var(--surface); font-size: var(--t-13); color: var(--ink-2); }
 .lenstag { flex: none; font: 500 var(--t-12)/16px var(--f-mono); color: var(--brand); }
@@ -145,8 +190,8 @@ main { display: block; max-width: calc(var(--maxw) + 2 * var(--pad)); margin: 0 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--btn-h); padding: 8px 16px; border-radius: var(--r-ctl); border: 1px solid transparent; font: 500 var(--t-14)/1.2 var(--f-sans); cursor: pointer; white-space: nowrap; transition: background-color var(--hover) var(--ease), border-color var(--hover) var(--ease), color var(--hover) var(--ease), transform var(--press) var(--ease); }
 .btn:hover { text-decoration: none; }
 .btn:active:not(:disabled) { transform: scale(.98); }
-.btn-primary { background: var(--btn-primary); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: #22312C; color: #fff; }
+.btn-primary { background: var(--btn-primary); color: var(--on-ink); }
+.btn-primary:hover:not(:disabled) { background: var(--btn-primary-hover); color: var(--on-ink); }
 .btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--line-3); }
 .btn-secondary:hover:not(:disabled) { background: var(--sunken); color: var(--ink); }
 .btn-ghost { background: transparent; color: var(--ink-2); padding: 8px 12px; }
@@ -163,8 +208,8 @@ main { display: block; max-width: calc(var(--maxw) + 2 * var(--pad)); margin: 0 
 .linkbtn { display: inline; min-height: 24px; padding: 0; border: 0; background: none; color: var(--brand); font: inherit; font-weight: 500; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; cursor: pointer; }
 .linkbtn:hover { color: var(--brand-deep); }
 .more { font-size: var(--t-13); font-weight: 500; white-space: nowrap; }
-.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; }
-.spin.dark { border-color: rgba(14,26,22,.18); border-top-color: var(--ink); }
+.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid color-mix(in srgb, currentColor 35%, transparent); border-top-color: currentColor; }
+.spin.dark { border-color: var(--line-2); border-top-color: var(--ink); }
 @media (prefers-reduced-motion: no-preference) { .spin { animation: rot .7s linear infinite; } }
 @keyframes rot { to { transform: rotate(360deg); } }
 
@@ -174,7 +219,7 @@ main { display: block; max-width: calc(var(--maxw) + 2 * var(--pad)); margin: 0 
 .st.t-good::before { background: var(--brand); }
 .st.t-wait { color: var(--wait); } .st.t-wait::before { background: var(--wait); }
 .st.t-bad { color: var(--bad); } .st.t-bad::before { background: var(--bad); }
-.st.t-paid::before { background: var(--paid); box-shadow: inset 0 0 0 1px rgba(14,26,22,.18); }
+.st.t-paid::before { background: var(--paid-dot); box-shadow: inset 0 0 0 1px var(--paid-ring); }
 .st.t-quiet { color: var(--muted); }
 .iss { margin-top: 2px; font-size: var(--t-13); line-height: 18px; color: var(--issue); }
 .kindt { font-size: var(--t-13); color: var(--ink-2); white-space: nowrap; }
@@ -222,7 +267,7 @@ main { display: block; max-width: calc(var(--maxw) + 2 * var(--pad)); margin: 0 
 .proj svg.tight .ax.ax-mid, .proj svg.tight .lb { display: none; } /* narrow: keep start/end dates and the y scale; the sentence and the table carry the rest */
 .proj .hit { fill: transparent; cursor: default; }
 .proj .hit:hover + .mk, .proj .hit:focus + .mk { r: 6; }
-.proj-tip { position: absolute; pointer-events: none; padding: 6px 10px; border-radius: 6px; background: var(--ink); color: #fff; font-size: var(--t-12); line-height: 16px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); }
+.proj-tip { position: absolute; pointer-events: none; padding: 6px 10px; border-radius: 6px; background: var(--inverse-bg); color: var(--inverse-ink); font-size: var(--t-12); line-height: 16px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); }
 .proj-wrap { position: relative; }
 .proj .gd { stroke: var(--line); stroke-width: 1; } .proj .gd.zero { stroke: var(--line-3); }
 .proj .ar { fill: var(--brand-wash); }
@@ -275,7 +320,7 @@ main { display: block; max-width: calc(var(--maxw) + 2 * var(--pad)); margin: 0 
 .rs { margin-top: 24px; }
 .rs-bar { display: flex; height: 40px; gap: 3px; align-items: stretch; }
 .rs-bar.sm { height: 28px; }
-.env { position: relative; container-type: inline-size; min-width: 10px; background: var(--env); color: #fff; border-radius: 6px; display: flex; align-items: center; padding: 0 8px; }
+.env { position: relative; container-type: inline-size; min-width: 10px; background: var(--env); color: var(--on-brand); border-radius: 6px; display: flex; align-items: center; padding: 0 8px; }
 .env-l { position: relative; font: 500 var(--t-12)/16px var(--f-mono); white-space: nowrap; overflow: hidden; text-overflow: clip; min-width: 0; }
 /* small envelopes: the label moves out to a callout under the bar, with a short leader */
 .env-c { display: none; position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); padding-top: 6px; font: 500 var(--t-12)/16px var(--f-mono); color: var(--ink-2); white-space: nowrap; pointer-events: none; }
@@ -388,8 +433,8 @@ a.row:focus-visible { outline-offset: -2px; }
 .seg::-webkit-scrollbar { display: none; }
 .seg a, .seg button { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2); font-weight: 500; font-size: var(--t-13); white-space: nowrap; cursor: pointer; transition: background-color var(--hover) var(--ease), color var(--hover) var(--ease); }
 .seg a:hover, .seg button:hover { background: var(--sunken); color: var(--ink); text-decoration: none; }
-.seg [aria-current="true"], .seg [aria-pressed="true"] { background: var(--ink); color: #fff; }
-.seg [aria-current="true"]:hover, .seg [aria-pressed="true"]:hover { background: var(--ink); color: #fff; }
+.seg [aria-current="true"], .seg [aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+.seg [aria-current="true"]:hover, .seg [aria-pressed="true"]:hover { background: var(--ink); color: var(--on-ink); }
 .seg .c { font-family: var(--f-mono); font-size: var(--t-12); opacity: .75; }
 .tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--line); margin-bottom: 24px; overflow-x: auto; scrollbar-width: none; }
 .tabs a { display: inline-flex; align-items: center; gap: 6px; height: 40px; border-bottom: 2px solid transparent; margin-bottom: -1px; color: var(--ink-2); font-weight: 500; white-space: nowrap; }
@@ -411,7 +456,7 @@ a.row:focus-visible { outline-offset: -2px; }
 .tbl tbody tr:last-child td { border-bottom: 0; }
 .tbl .num { text-align: right; }
 .tbl tr.tr { position: relative; transition: background-color var(--hover) var(--ease); }
-.tbl tr.tr:hover { background: #FBFBF9; }
+.tbl tr.tr:hover { background: var(--row-hover); }
 .tbl tr.tr:focus-within { outline: 2px solid var(--brand); outline-offset: -2px; }
 .stretch { color: var(--ink); }
 .stretch:hover { color: var(--ink); text-decoration: none; }
@@ -500,7 +545,7 @@ textarea.txt { min-height: 72px; resize: vertical; }
 .qsec > h2 + .ap, .qsec > h2 + div { margin-top: 12px; }
 .cmp { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 16px; }
 .box { background: var(--sunken); border: 1px solid transparent; border-radius: var(--r-ctl); padding: 12px 16px; min-width: 0; align-self: stretch; }
-.box.prop { background: var(--bad-wash); border-color: rgba(180,67,47,.28); }
+.box.prop { background: var(--bad-wash); border-color: var(--bad-line); }
 .box-t { font-size: var(--t-12); line-height: 16px; color: var(--ink-2); }
 .box.prop .box-t { color: var(--bad); }
 .box-v { margin-top: 4px; font: var(--t-14)/20px var(--f-mono); overflow-wrap: anywhere; color: var(--ink); }
@@ -514,7 +559,7 @@ textarea.txt { min-height: 72px; resize: vertical; }
 .txrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .txnote { font-size: var(--t-13); line-height: 18px; color: var(--muted); max-width: 64ch; }
 .txnote .mono { color: var(--ink-2); }
-.txconfirm, .reasonbox { display: grid; gap: 12px; padding: 16px; border-radius: var(--r-ctl); background: var(--brand-wash); border: 1px solid rgba(11,93,75,.18); font-size: var(--t-14); line-height: 20px; color: var(--ink-2); }
+.txconfirm, .reasonbox { display: grid; gap: 12px; padding: 16px; border-radius: var(--r-ctl); background: var(--brand-wash); border: 1px solid var(--brand-line); font-size: var(--t-14); line-height: 20px; color: var(--ink-2); }
 .reasonbox { background: var(--surface); border-color: var(--line-2); }
 .reasonbox label { font-weight: 500; color: var(--ink); }
 .txconfirm b { color: var(--ink); font-weight: 500; font-family: var(--f-mono); font-size: var(--t-13); }
@@ -550,7 +595,7 @@ textarea.txt { min-height: 72px; resize: vertical; }
 
 /* ===== drawer, modal, sheets */
 dialog { border: 0; padding: 0; color: var(--ink); background: var(--surface); overscroll-behavior: contain; }
-dialog::backdrop { background: rgba(14,26,22,.32); }
+dialog::backdrop { background: var(--scrim); }
 .drawer { margin: 0 0 0 auto; width: min(560px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; box-shadow: var(--sheet-shadow); border-radius: var(--r-sheet) 0 0 var(--r-sheet); }
 .dr-in { position: relative; height: 100%; display: flex; flex-direction: column; }
 .dr-top { position: absolute; top: 12px; right: 12px; z-index: 2; background: var(--surface); border-radius: var(--r-ctl); }
@@ -585,7 +630,7 @@ dialog::backdrop { background: rgba(14,26,22,.32); }
 .steps { display: flex; flex-wrap: wrap; gap: 8px 4px; margin-top: 16px; font-size: var(--t-13); color: var(--muted); align-items: center; }
 .steps li { display: inline-flex; align-items: center; gap: 6px; }
 .steps li .n { width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; font: 500 var(--t-12)/1 var(--f-mono); background: var(--sunken); color: var(--ink-2); }
-.steps li.now { color: var(--ink); font-weight: 500; } .steps li.now .n { background: var(--brand); color: #fff; }
+.steps li.now { color: var(--ink); font-weight: 500; } .steps li.now .n { background: var(--brand-fill); color: var(--on-brand); }
 .steps .sep { color: var(--line-3); margin: 0 4px; }
 .difft { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: var(--t-14); table-layout: fixed; }
 .difft th { text-align: left; font-size: var(--t-12); font-weight: 500; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--line); }
@@ -636,7 +681,7 @@ dialog::backdrop { background: rgba(14,26,22,.32); }
 .dock-note { padding: 12px 16px 0; font-size: var(--t-13); line-height: 18px; color: var(--ink-2); }
 .chatlog { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .msg { max-width: 92%; padding: 10px 14px; border-radius: 12px; font-size: var(--t-14); line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.msg.q { align-self: flex-end; background: var(--ink); color: #fff; border-bottom-right-radius: 4px; }
+.msg.q { align-self: flex-end; background: var(--inverse-bg); color: var(--inverse-ink); border-bottom-right-radius: 4px; }
 .msg.a { align-self: flex-start; background: var(--sunken); border-bottom-left-radius: 4px; }
 .msg.pending { color: var(--muted); }
 .msg.err { background: var(--bad-wash); color: var(--bad); }
@@ -667,7 +712,7 @@ dialog::backdrop { background: rgba(14,26,22,.32); }
 .stepper li:last-child::before { display: none; }
 .stepper li.done::before { background: var(--brand); }
 .sn { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font: 500 var(--t-12)/1 var(--f-mono); border: 2px solid var(--line-2); background: var(--surface); color: var(--ink-2); }
-.done .sn { background: var(--brand); border-color: var(--brand); color: #fff; }
+.done .sn { background: var(--brand-fill); border-color: var(--brand); color: var(--on-brand); }
 .stepper h3 { font-size: var(--t-16); line-height: 24px; font-weight: 500; margin-top: 2px; }
 .stepper .proof { margin-top: 4px; color: var(--ink-2); }
 .stepper .acts2 { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: var(--t-13); }
@@ -696,8 +741,8 @@ dialog::backdrop { background: rgba(14,26,22,.32); }
 .segc { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line-2); border-radius: var(--r-ctl); }
 .segc label { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 6px; cursor: pointer; font-weight: 500; color: var(--ink-2); }
 .segc input { position: absolute; opacity: 0; pointer-events: none; }
-.segc input:checked + span { color: #fff; }
-.segc label:has(input:checked) { background: var(--ink); color: #fff; }
+.segc input:checked + span { color: var(--on-ink); }
+.segc label:has(input:checked) { background: var(--ink); color: var(--on-ink); }
 .segc label:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
 .toggle { display: flex; align-items: center; gap: 10px; font-weight: 500; }
 .toggle input { width: 18px; height: 18px; accent-color: var(--brand); }
@@ -805,9 +850,9 @@ dialog::backdrop { background: rgba(14,26,22,.32); }
 
 /* toasts */
 .toasts { position: fixed; right: 24px; bottom: 24px; z-index: 60; display: grid; gap: 8px; justify-items: end; pointer-events: none; }
-.toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: 420px; padding: 10px 8px 10px 16px; background: var(--ink); color: #fff; font-size: var(--t-14); border-radius: var(--r-ctl); box-shadow: var(--sheet-shadow); }
-.toast a { color: #BFE3DA; text-decoration: underline; }
-.toast button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: transparent; color: #fff; border-radius: 6px; cursor: pointer; flex: none; }
+.toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; max-width: 420px; padding: 10px 8px 10px 16px; background: var(--inverse-bg); color: var(--inverse-ink); font-size: var(--t-14); border-radius: var(--r-ctl); box-shadow: var(--sheet-shadow); }
+.toast a { color: var(--inverse-link); text-decoration: underline; }
+.toast button { width: 32px; height: 32px; display: grid; place-items: center; border: 0; background: transparent; color: var(--inverse-ink); border-radius: 6px; cursor: pointer; flex: none; }
 .toast button:hover { background: rgba(255,255,255,.12); }
 @media (prefers-reduced-motion: no-preference) { .toast { animation: mdIn var(--enter) var(--ease); } }
 
@@ -914,7 +959,7 @@ dialog::backdrop { background: rgba(14,26,22,.32); }
 .greet .greet-n b { font-weight: 500; }
 .greet .greet-n .d { color: var(--ink-2); }
 .tourbtn .q { display: inline-grid; place-items: center; width: 18px; height: 18px; border: 1.5px solid currentColor; border-radius: 50%; font: 500 12px/1 var(--f-sans); }
-.coach-spot { position: fixed; z-index: 60; pointer-events: none; border-radius: 10px; outline: 2px solid var(--brand); outline-offset: 0; box-shadow: 0 0 0 100vmax rgba(14,26,22,.32); transition: left var(--enter) var(--ease), top var(--enter) var(--ease), width var(--enter) var(--ease), height var(--enter) var(--ease); }
+.coach-spot { position: fixed; z-index: 60; pointer-events: none; border-radius: 10px; outline: 2px solid var(--brand); outline-offset: 0; box-shadow: 0 0 0 100vmax var(--scrim); transition: left var(--enter) var(--ease), top var(--enter) var(--ease), width var(--enter) var(--ease), height var(--enter) var(--ease); }
 .coach { position: fixed; z-index: 61; left: 0; top: 0; width: min(320px, calc(100vw - 24px)); padding: 16px; background: var(--surface); color: var(--ink); border: 1px solid var(--line-2); border-radius: var(--r-card); box-shadow: var(--sheet-shadow); font-size: var(--t-14); line-height: 20px; text-align: left; }
 .coach:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .coach.hint { z-index: 62; width: min(280px, calc(100vw - 24px)); padding: 12px 14px; }
@@ -959,6 +1004,12 @@ dialog::backdrop { background: rgba(14,26,22,.32); }
 .navmore > summary svg { transition: transform var(--hover) var(--ease); }
 .navmore[open] > summary svg { transform: rotate(90deg); }
 .sheet-lens .lens { display: flex; justify-content: space-between; width: 100%; padding: 4px 4px 0; }
+/* theme switch: System / Light / Dark, in the sidebar foot and the More sheet */
+.thm-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--t-12); color: var(--muted); }
+.thm { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 8px; border: 1px solid var(--line-2); border-radius: var(--r-ctl); background: var(--surface); color: var(--ink-2); font: 500 var(--t-12)/1 var(--f-sans); cursor: pointer; transition: background-color var(--hover) var(--ease), border-color var(--hover) var(--ease), color var(--hover) var(--ease); }
+.thm:hover { background: var(--sunken); border-color: var(--line-3); color: var(--ink); }
+.thm:active { transform: scale(.98); }
+.sheet-theme .thm-row { padding: 8px 4px 0; font-size: var(--t-13); color: var(--ink-2); }
 .lensnote .linkbtn { margin-left: auto; flex: none; }
 .walblk:empty { display: none; }
 .blocks.shortf { color: var(--ink); font-weight: 500; }
@@ -981,6 +1032,7 @@ main[data-view="approvals"] { max-width: calc(760px + 2 * var(--pad)); }
 @media (pointer: coarse) {
   .btn, .btn-sm, .iconbtn, .refbtn, .tourbtn, .walbtn, .si, .nv, .tb, .seg a, .seg button, .lens select, .disc > summary, .navmore > summary, .menu-l a, .menu-l button, .strip button, .more, a.row, .coach-f .btn { min-height: 44px; }
   .iconbtn, .refbtn, .tourbtn, .strip button { min-width: 44px; }
+  .thm { min-height: 44px; }
   .skip, .topbar .brand { min-height: 44px; display: inline-flex; align-items: center; }
   .bsteps > summary { display: flex; align-items: center; min-height: 44px; }
   .txg { width: 44px; height: 44px; }
@@ -998,12 +1050,12 @@ main[data-view="approvals"] { max-width: calc(760px + 2 * var(--pad)); }
 <div data-slot="strip"></div>
 
 <header class="topbar">
-  <a class="brand" href="#/overview"><svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0B5D4B"/><rect x="8" y="8" width="16" height="16" rx="3" fill="none" stroke="#fff" stroke-width="2.5"/><rect x="13" y="13" width="6" height="6" rx="1" fill="#fff"/></svg><span>Takara AI</span></a>
+  <a class="brand" href="#/overview"><svg class="logo" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" style="fill:var(--logo)"/><rect x="8" y="8" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/><rect x="13" y="13" width="6" height="6" rx="1" fill="currentColor"/></svg><span>Takara AI</span></a>
   <span data-slot="wallet-top"></span>
 </header>
 
 <div class="side">
-  <a class="brand" href="#/overview"><svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0B5D4B"/><rect x="8" y="8" width="16" height="16" rx="3" fill="none" stroke="#fff" stroke-width="2.5"/><rect x="13" y="13" width="6" height="6" rx="1" fill="#fff"/></svg><span>Takara AI</span></a>
+  <a class="brand" href="#/overview"><svg class="logo" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" style="fill:var(--logo)"/><rect x="8" y="8" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2.5"/><rect x="13" y="13" width="6" height="6" rx="1" fill="currentColor"/></svg><span>Takara AI</span></a>
   <div data-slot="agent"></div>
   <div class="side-ask"><button class="askbtn" type="button" data-act="ask-open" data-tour="ask" aria-keyshortcuts="Control+K Meta+K"><span data-slot="askav"></span><span class="l">Ask Banto</span><kbd data-slot="kbd">Ctrl K</kbd></button></div>
   <div class="walblk" data-slot="wallet"></div>
@@ -1078,6 +1130,9 @@ const join = (arr, sep) => raw(arr.filter((x) => x != null && x !== false && x !
 const SV = (d, size = 18, extra = "") => raw(`<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra}>${d}</svg>`);
 const IC = {
   start: (s) => SV('<path d="M5 17V3.5"/><path d="M5 4h9l-2 3 2 3H5"/>', s),
+  monitor: (s) => SV('<rect x="2.5" y="3.5" width="15" height="10" rx="1.5"/><path d="M7 16.5h6M10 13.5v3"/>', s),
+  sun: (s) => SV('<circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v1.8M10 15.7v1.8M2.5 10h1.8M15.7 10h1.8M4.7 4.7l1.3 1.3M14 14l1.3 1.3M4.7 15.3L6 14M14 6l1.3-1.3"/>', s),
+  moon: (s) => SV('<path d="M16 12.2A6.5 6.5 0 0 1 7.8 4a6.5 6.5 0 1 0 8.2 8.2z"/>', s),
   overview: (s) => SV('<rect x="3" y="3" width="6" height="6" rx="1.5"/><rect x="11" y="3" width="6" height="6" rx="1.5"/><rect x="3" y="11" width="6" height="6" rx="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5"/>', s),
   approvals: (s) => SV('<path d="M3 11.5v4A1.5 1.5 0 0 0 4.5 17h11a1.5 1.5 0 0 0 1.5-1.5v-4"/><path d="M3 11.5h4l1 2h4l1-2h4"/><path d="M7 6l2.2 2.2L13.5 4"/>', s),
   money: (s) => SV('<path d="M5 2.5h6.5L15 6v11.5H5z"/><path d="M11.5 2.5V6H15"/><path d="M7.5 9.5h5M7.5 12h5M7.5 14.5h3"/>', s),
@@ -1224,7 +1279,7 @@ const AGENT = {
 function agentStatus() { const p = S.public.data; if (!p) return "unknown"; if (!p.agent) return "revoked"; return p.paused ? "paused" : "active"; }
 const STATUS_WORD = { active: "Active", paused: "Paused: treasury paused", revoked: "Revoked by an owner", unknown: "Reading status" };
 // Banto's mark: a B built from two stacked envelopes, drawn like the Takara square mark (same 32 grid, 2.5 stroke, rounded corners).
-const BANTO_MARK = raw(`<svg viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"><path d="M10 7.5h7.5a3 3 0 0 1 3 3V13a3 3 0 0 1-3 3H10z"/><path d="M10 16h9.5a3 3 0 0 1 3 3v2.5a3 3 0 0 1-3 3H10z"/></svg>`);
+const BANTO_MARK = raw(`<svg viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"><path d="M10 7.5h7.5a3 3 0 0 1 3 3V13a3 3 0 0 1-3 3H10z"/><path d="M10 16h9.5a3 3 0 0 1 3 3v2.5a3 3 0 0 1-3 3H10z"/></svg>`);
 const avatar = (small) => h`<span class="av${small ? " s24" : ""} st-${agentStatus()}" aria-hidden="true">${BANTO_MARK}</span>`;
 
 /* ---------- derived model ---------- */
@@ -1827,6 +1882,38 @@ function lensGate(view) {
   if (l === "auditor") return h`<section class="panel gate"><h2>Auditors see records for ${audLabel()}, read-only.</h2><a class="btn btn-secondary" href="#/reports">Open Reports</a></section>`;
   return h`<section class="panel gate"><h2>Public visitors only see the Public view.</h2><a class="btn btn-secondary" href="#/ledger">Open Public view</a></section>`;
 }
+/* ---------- theme: System (default) / Light / Dark. Key shared with site/: "light" | "dark" | absent = System.
+   The inline script at the top of <head> applies it before first paint; this keeps it in sync afterwards. */
+const THEME_KEY = "takara.theme";
+const THEME_COLOR = { light: "#FAFAF7", dark: "#0C1311" };
+const THEMES = [["system", "System", "monitor"], ["light", "Light", "sun"], ["dark", "Dark", "moon"]]; // cycle order
+const readTheme = () => { try { const v = localStorage.getItem(THEME_KEY); return v === "light" || v === "dark" ? v : "system"; } catch { return "system"; } };
+let THEME = readTheme();
+const darkMQ = window.matchMedia ? matchMedia("(prefers-color-scheme: dark)") : null;
+const effTheme = () => THEME === "system" ? (darkMQ && darkMQ.matches ? "dark" : "light") : THEME;
+function applyTheme() {
+  const r = document.documentElement;
+  if (THEME === "system") r.removeAttribute("data-theme"); else r.setAttribute("data-theme", THEME);
+  $$('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", THEME_COLOR[THEME === "system" ? (m.dataset.scheme || "light") : THEME]));
+  $$('[data-act="theme"]').forEach((b) => { b.outerHTML = themeBtn(); });
+  window.dispatchEvent(new CustomEvent("takara:theme", { detail: { pref: THEME, theme: effTheme() } }));
+}
+function setTheme(v) {
+  THEME = v === "light" || v === "dark" ? v : "system";
+  try { if (THEME === "system") localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, THEME); } catch { /* storage blocked: applies to this page only */ }
+  applyTheme();
+  announce(THEME === "system" ? `Theme: System, ${effTheme()} right now` : `Theme: ${THEME === "dark" ? "Dark" : "Light"}`);
+}
+if (darkMQ) { const onScheme = () => { if (THEME === "system") applyTheme(); }; if (darkMQ.addEventListener) darkMQ.addEventListener("change", onScheme); else if (darkMQ.addListener) darkMQ.addListener(onScheme); }
+window.addEventListener("storage", (e) => { if (e.key === THEME_KEY || e.key === null) { THEME = readTheme(); applyTheme(); } });
+applyTheme();
+const themeNext = () => THEMES[(THEMES.findIndex(([v]) => v === THEME) + 1) % THEMES.length];
+function themeBtn() {
+  const [, l, ic] = THEMES.find(([v]) => v === THEME), nx = themeNext();
+  const name = `Theme: ${l}${THEME === "system" ? ` (${effTheme()})` : ""}. Switch to ${nx[1]}`;
+  return part(h`<button class="thm" type="button" data-act="theme" data-v="${nx[0]}" aria-label="${name}" title="${name}">${IC[ic](14)}<span aria-hidden="true">${l}</span></button>`);
+}
+const themeControl = () => h`<div class="thm-row"><span aria-hidden="true">Theme</span>${raw(themeBtn())}</div>`;
 const lensControl = () => h`<label class="lens"><span>Viewing as</span><select data-act="lens" data-tour="lens">${Object.entries(LENSES()).map(([k, l]) => h`<option value="${k}"${k === lens() ? raw(" selected") : ""}>${l}</option>`)}</select></label>`;
 const lensNote = () => (lens() === "owner" ? "" : h`<p class="lensnote" role="note"><span class="lenstag">Lens</span><span>What ${LENSES()[lens()].toLowerCase().startsWith("member") ? "Ana" : "this role"} would see. A view, not access control.</span><button class="linkbtn" type="button" data-act="lens-focus">Switch view</button></p>`);
 
@@ -2892,7 +2979,7 @@ function paintNav() {
     $('[data-slot="sidenav"]').innerHTML = part(navFor().map(([g, items], gi) => g === "More"
       ? h`<details class="navg navmore" data-navg="more"><summary><span>More</span>${IC.chev(12)}</summary>${items.map(nvA)}</details>`
       : h`<div class="navg" role="group" aria-labelledby="ng-${gi}" data-navg="${items[0][0] === "start" ? "start" : "main"}"><h2 id="ng-${gi}"${g === "Everyday" ? raw(' class="vh"') : ""}>${g}</h2>${items.map(nvA)}</div>`));
-    $('[data-slot="sidebot"]').innerHTML = part(h`${lensControl()}${liveLine("sideline")}`);
+    $('[data-slot="sidebot"]').innerHTML = part(h`${lensControl()}${themeControl()}${liveLine("sideline")}`);
     const tabItems = tabs.map((v) => flat.find((x) => x[0] === v)).filter(Boolean);
     const tb = $('[data-slot="tabbar"]');
     tb.style.gridTemplateColumns = `repeat(${tabItems.length + 2}, minmax(0, 1fr))`;
@@ -2935,7 +3022,8 @@ function paintSheet() {
   const items = navFor().flatMap(([, it]) => it).filter(([v]) => !tabs.includes(v) && !(v === "start" && done && curV !== "start"));
   $('[data-slot="sheet"]').innerHTML = part(h`<div class="sheet-h"><h2 id="more-title">More</h2><button class="iconbtn" type="button" data-act="close-more" aria-label="Close menu">${IC.close()}</button></div>
     ${items.length ? h`<nav aria-label="More pages">${items.map(([v, label, ic]) => h`<a class="si" href="#/${v}"${curV === v ? raw(' aria-current="page"') : ""}${v === "alerts" && al ? raw(` aria-label="Alerts, ${al} live"`) : ""}>${IC[ic]()}<span style="flex:1">${label}</span>${v === "alerts" && al ? h`<span class="nv-b hot" aria-hidden="true">${al}</span>` : ""}</a>`)}</nav><hr>` : ""}
-    <div class="sheet-lens">${lensControl()}</div><hr>
+    <div class="sheet-lens">${lensControl()}</div>
+    <div class="sheet-theme">${themeControl()}</div><hr>
     ${WALLET.accountId || !readOnlyLens() ? h`<section class="walblk" aria-label="Wallet">${walletBlock()}</section><hr>` : ""}
     <button class="si" type="button" data-act="scope" style="width:100%;border:0;background:none;font:inherit;cursor:pointer;text-align:left">Demo scope</button>
     <a class="si" href="${PRODUCT}"${DEMO ? "" : raw(' target="_blank" rel="noopener"')}>Product page</a><a class="si" href="${GITHUB}" target="_blank" rel="noopener">GitHub<span class="vh"> (opens in a new tab)</span></a>`);
@@ -3494,6 +3582,7 @@ document.addEventListener("click", async (e) => {
   else if (act === "how-close") howDlg.close();
   else if (act === "scope") { if (moreSheet.open) moreSheet.close(); openScope(t); }
   else if (act === "scope-close") scopeDlg.close();
+  else if (act === "theme") { const inSheet = !!t.closest(".sheet"); setTheme(t.dataset.v); const nb = $(`${inSheet ? ".sheet" : ".side"} [data-act="theme"]`); if (nb) nb.focus(); }
   else if (act === "offboard") openOffboard(t.dataset.id, t);
   else if (act === "off-close") offdlg.close();
   else if (act === "pre-close") { INTENT = null; preDlg.close(); }
