@@ -872,7 +872,7 @@ function miniStrip(envs, spendable) {
 function renderGuarantees(rep, pub, pol, changes) {
   const f = rep.figures;
   const acc = rep.commitments.filter((c) => c.state === "accepted").map((c) => ({ name: vendorName(c.vendor, c.destination), amount: Number(c.amount) })).sort((a, b) => b.amount - a.amount);
-  $("#v-reserve").innerHTML = miniStrip(acc, Number(f.spendable)) + `<p class="small" style="margin-top:12px">${usdc2(f.treasury_balance)} in treasury − ${usdc2(f.settled_outflow)} settled − ${usdc2(f.reserved)} set aside = ${usdc2(f.spendable)} free to spend. ${esc(f.runway_days)} days of runway.</p>`;
+  $("#v-reserve").innerHTML = miniStrip(acc, Number(f.spendable)) + `<p class="small" style="margin-top:12px">${usdc2(f.treasury_balance)} in treasury − ${usdc2(f.settled_outflow)} settled − ${usdc2(f.reserved)} set aside = ${usdc2(f.spendable)} free to spend.${f.runway_days != null ? ` ${esc(f.runway_days)} days of runway.` : ""}</p>`;
 
   const ch = rep.commitments.find((c) => c.proposed_destination);
   const hours = pol?.cooling_off_hours ?? 24;
@@ -976,8 +976,8 @@ function paintNetworks(D, nets) {
   if (pub) {
     const f = rep.figures;
     live.innerHTML = `<p class="meta">Treasury balance, public</p>
-      <p class="bal">${esc(n0(pub.balance))}<span class="unit"> USDC</span></p>
-      <div class="ownerline" style="display:block"><p class="meta" style="color:var(--text2);margin-bottom:8px">The owner also sees, with the ledger key <span class="sealed">SEALED · TEE</span></p><p class="eq"><span><b>${esc(n2(f.treasury_balance))}</b> in treasury</span>${Number(f.settled_outflow) ? `<span class="op">−</span><span><b>${esc(n2(f.settled_outflow))}</b> settled</span>` : ""}<span class="op">−</span><span><b>${esc(n2(f.reserved))}</b> set aside</span><span class="op">=</span><span class="res"><b>${esc(n2(f.spendable))}</b> free to spend USDC</span></p><p class="meta" style="margin-top:8px">${D.settle_moves_tokens === true ? "Settled: paid out to the payee in test tokens, with a receipt on chain." : "Settled: recorded as paid on the ledger, with a receipt on-chain. Testnet: no tokens move."} Runway <span class="num">${esc(f.runway_days)}</span> days.</p></div>
+      <p class="bal">${esc(n0(pub.balance))}<span class="unit"> tUSDC</span></p>
+      <div class="ownerline" style="display:block"><p class="meta" style="color:var(--text2);margin-bottom:8px">The owner also sees, with the ledger key <span class="sealed">SEALED · TEE</span></p><p class="eq"><span><b>${esc(n2(f.treasury_balance))}</b> in treasury</span>${Number(f.settled_outflow) ? `<span class="op">−</span><span><b>${esc(n2(f.settled_outflow))}</b> settled</span>` : ""}<span class="op">−</span><span><b>${esc(n2(f.reserved))}</b> set aside</span><span class="op">=</span><span class="res"><b>${esc(n2(f.spendable))}</b> free to spend tUSDC</span></p><p class="meta" style="margin-top:8px">${D.settle_moves_tokens === true ? "Settled: paid out to the payee in test tokens, with a receipt on chain." : "Settled: recorded as paid on the ledger, with a receipt on-chain. Testnet: no tokens move."}${f.runway_days != null ? ` Runway <span class="num">${esc(f.runway_days)}</span> days.` : ""}</p></div>
       <dl class="facts">
         <dt>Banto, the agent</dt><dd><span class="st"><span class="dot ${pub.agent ? "green" : "red"}" aria-hidden="true"></span>${pub.agent ? "Active" : "Switched off"}</span> <code>${esc(pub.agent || "")}</code></dd>
         <dt>Treasury paused</dt><dd>${pub.paused ? "Yes" : "No"}</dd>
