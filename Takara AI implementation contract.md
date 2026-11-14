@@ -220,3 +220,50 @@ The refusal shot is the opening, not an optional extra at the end.
 First line of the post leads with the user problem, not the tech. Something in the register of: your production database goes down because one person's card expired and nobody noticed. Then what Takara AI does about it, then the repo and demo links, then a real question to invite replies.
 
 **Submission.** One submission per project, not editable afterwards. Tracks `privacy`, `business`, `realworld`. Repo public before 14 Nov 23:59 UTC. Publish the repo and the post first, then send the form.
+
+## Amendment 2026-11-14: NEAR-native settlement transfers
+
+This amendment changes what `settle` does for payouts whose destination chain is NEAR. Where it conflicts with the sections above, including the mainnet scope statement, this amendment wins for NEAR-native payouts. The policy engine is unchanged: same wasm, same pinned hash (`bc7a4694…caeb`), same OutLayer secret binding.
+
+**What changed.** `settle(auth, amount, receiver_id, salt)` keeps every existing check: nonce, issued here, field-by-field equality, expiry, engine pin, policy hash and expiry, ledger state, spendable asserted, commitment accepted. It then recomputes the engine's salted commitments from the plain arguments, byte for byte as the engine builds them inside the TEE:
+
+- `amount_commit = sha256("takara-ai:amount:{asset}:{amount}:{salt}")`, with the amount in asset base units.
+- `destination_commit = sha256("takara-ai:destination:{chain}:{receiver_id}:{salt}")`.
+
+If either differs, the payment is refused with `opening_mismatch`. A stolen agent key can therefore pay only the verified payee, and only the exact amount the engine authorized.
+
+When the authorization's `destination_chain` is `near`:
+
+- The opening is required.
+- The amount must not exceed a hard per-payment ceiling, `max_payout`. It defaults to 25 USDC (25,000,000 base units) and is set at init or by the owner with `set_max_payout`. Refusal reason: `payout_over_ceiling`.
+- The amount must not exceed the balance. Refusal reason: `insufficient_balance`.
+- The contract then:
+  - settles the commitment and burns the nonce;
+  - lowers its `balance` by the amount;
+  - updates the ledger hash and emits the settlement receipt;
+  - calls `ft_transfer`, with 1 yocto attached, on the treasury's asset contract to `receiver_id`.
+- The sealed settled-outflow total is not advanced for these payments. The engine computes spendable as balance − outflow − reserved, and the balance already fell, so advancing the total would count the payment twice.
+- If the transfer fails, the callback reverts the settlement and emits `settlement_reverted`:
+  - the balance is restored;
+  - the commitment returns to `accepted` and reserves again;
+  - the ledger hash moves.
+
+  The nonce stays burned, so the agent requests a fresh authorization.
+
+Other destination chains keep ledger-only settlement, unchanged. No tokens move in the contract, and the sealed outflow total advances as before.
+
+**What this reveals.** Each NEAR payout now reveals its amount and its payee on chain at payment time: they are `settle` arguments and the `ft_transfer` arguments. Still sealed:
+
+- reserves and the composition of the balance;
+- the policy and its limits;
+- the vendor registry;
+- the private commitment records;
+- the private detail behind each refusal, such as the shortfall (the reason code itself was already public).
+
+Commitments that have not been paid also stay sealed. Confidential cross-chain payouts remain a 1Click (NEAR Intents) roadmap item. The contract does not enforce them.
+
+**Testnet.** The treasury was redeployed and re-initialised on testnet with this build. Because the fixture payments are 400 and 120 tUSDC, testnet sets `max_payout` to 1,000 tUSDC. The fixture payees are registered on the valueless tUSDC token. The judge script now:
+
+- passes the opening;
+- asserts that the payee's `ft_balance_of` rises by exactly the authorized amount (check 2);
+- submits a tampered plain amount and expects `opening_mismatch` (check 7).

@@ -1,0 +1,523 @@
+{
+  "run": "05226c9c",
+  "at": "2026-11-14T15:10:29.813Z",
+  "network": "testnet",
+  "treasury": "treasury.takara-ai-hq.testnet",
+  "engine": "bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb",
+  "passed": 9,
+  "total": 10,
+  "results": [
+    {
+      "n": 1,
+      "title": "Reserve protection: 400 refused while payroll 600 and Railway 120 are reserved",
+      "checks": [
+        {
+          "name": "spendable reads 280",
+          "ok": true,
+          "detail": "spendable 280"
+        },
+        {
+          "name": "refused with would_break_commitments",
+          "ok": true,
+          "detail": "would_break_commitments"
+        },
+        {
+          "name": "names both blocking commitments",
+          "ok": true,
+          "detail": "blocking [\"10\",\"11\"]"
+        },
+        {
+          "name": "shortfall is 120 (sealed to owner)",
+          "ok": true,
+          "detail": "shortfall 120"
+        },
+        {
+          "name": "spendable still 280",
+          "ok": true,
+          "detail": ""
+        }
+      ],
+      "ok": true
+    },
+    {
+      "n": 2,
+      "title": "Release after funding: same payment clears after a 500 top-up",
+      "checks": [
+        {
+          "name": "accepted under policy",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "authorization issued",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "settled",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "payee's ft_balance_of rises by exactly 400",
+          "ok": true,
+          "detail": "+400000000 base units to ana.fixtureco.testnet"
+        },
+        {
+          "name": "spendable recomputed to 380",
+          "ok": true,
+          "detail": "spendable 380"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "n": 3,
+      "title": "Claimed is not accepted",
+      "checks": [
+        {
+          "name": "new invoice lands as claimed",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "name": "spendable unchanged",
+          "ok": true,
+          "detail": "380 -> 380"
+        },
+        {
+          "name": "accepted by a policy signer",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "name": "spendable drops by 45",
+          "ok": true,
+          "detail": "380 -> 335"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "n": 4,
+      "title": "Duplicate rejection",
+      "checks": [
+        {
+          "name": "rejected as duplicate_evidence",
+          "ok": true,
+          "detail": "duplicate_evidence"
+        },
+        {
+          "name": "references the original commitment",
+          "ok": true,
+          "detail": "original 11"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "n": 5,
+      "title": "Destination change on a verified vendor: suspended, agent cannot approve, signer can, cooling-off holds",
+      "checks": [
+        {
+          "name": "suspended: vendor_destination_mismatch",
+          "ok": true,
+          "detail": "vendor_destination_mismatch"
+        },
+        {
+          "name": "commitment stays claimed; change record suspended",
+          "ok": true,
+          "detail": "suspended_destination_mismatch"
+        },
+        {
+          "name": "both destinations shown to the owner",
+          "ok": true,
+          "detail": "railway-pay.testnet vs railway-new-bank.testnet"
+        },
+        {
+          "name": "vendor record unchanged (policy hash same)",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "name": "agent key rejected: E_NOT_POLICY_SIGNER",
+          "ok": true,
+          "detail": "E_NOT_POLICY_SIGNER"
+        },
+        {
+          "name": "signer approval recorded",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "name": "payment held: vendor_change_cooling_off",
+          "ok": true,
+          "detail": "vendor_change_cooling_off"
+        },
+        {
+          "name": "hold ends 24h after approval",
+          "ok": true,
+          "detail": "2026-11-15T15:05:48.404Z"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "n": 6,
+      "title": "Prompt injection: the invoice text changes nothing",
+      "checks": [
+        {
+          "name": "lands as claimed",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "name": "instruction flagged in the record",
+          "ok": true,
+          "detail": "flags 4"
+        },
+        {
+          "name": "destination not changed by the text",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "name": "policy hash unchanged",
+          "ok": true,
+          "detail": ""
+        }
+      ],
+      "ok": true
+    },
+    {
+      "n": 7,
+      "title": "Replay and field tampering",
+      "checks": [
+        {
+          "name": "first settlement succeeds",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "replay rejected: nonce_used",
+          "ok": true,
+          "detail": "nonce_used"
+        },
+        {
+          "name": "opening matches the authorization's amount commitment",
+          "ok": true,
+          "detail": "amount 600000000"
+        },
+        {
+          "name": "rejected: authorization_mismatch on amount_commit",
+          "ok": true,
+          "detail": "authorization_mismatch amount_commit"
+        },
+        {
+          "name": "tampered plain amount rejected: opening_mismatch",
+          "ok": true,
+          "detail": "opening_mismatch"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "n": 8,
+      "title": "Non-custodial proof: owner recovers with the agent offline; agent key refused",
+      "checks": [
+        {
+          "name": "owner recovery moved funds",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "name": "recovery never touched OutLayer or the agent",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "name": "agent withdrawal rejected: E_NOT_OWNER",
+          "ok": true,
+          "detail": "E_NOT_OWNER"
+        },
+        {
+          "name": "agent policy rewrite rejected: E_NOT_POLICY_SIGNER",
+          "ok": true,
+          "detail": "E_NOT_POLICY_SIGNER"
+        },
+        {
+          "name": "agent cannot re-initialise the contract",
+          "ok": true,
+          "detail": "{\"ActionError\":{\"index\":0,\"kind\":{\"FunctionCallError\":{\"ExecutionError\":\"Smart contract panicked: Method new is private\"}}}}"
+        },
+        {
+          "name": "revoked agent cannot act: E_AGENT_REVOKED",
+          "ok": true,
+          "detail": "E_AGENT_REVOKED"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "n": 9,
+      "title": "Field-level spoofing: memo asks to become payroll/critical",
+      "checks": [
+        {
+          "name": "records the real vendor (resolved from verified sender)",
+          "ok": true,
+          "detail": "railway"
+        },
+        {
+          "name": "priority normal",
+          "ok": true,
+          "detail": "normal"
+        }
+      ],
+      "ok": true
+    },
+    {
+      "n": 10,
+      "title": "Tiered friction",
+      "checks": [
+        {
+          "name": "new $40 vendor flagged provisional",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "name": "accepted with no signature, no wait",
+          "ok": true,
+          "detail": "\"policy\""
+        },
+        {
+          "name": "new $900 vendor held for one signer acceptance",
+          "ok": false,
+          "detail": "engine_error"
+        },
+        {
+          "name": "verified vendor destination change hits the full freeze (test 5)",
+          "ok": true,
+          "detail": ""
+        }
+      ],
+      "ok": false
+    }
+  ],
+  "txs": [
+    {
+      "label": "unpause (owner)",
+      "tx": "ACB2zVApxtLvjBe6aZCCPg8Ehpjpm6yezGCQNAWRXfyj"
+    },
+    {
+      "label": "set_agent (owner)",
+      "tx": "F5xHvQiR76nV9XKLD2GzMiHK1cGa3CxiAosbauEX8C5R"
+    },
+    {
+      "label": "recover (owner)",
+      "tx": "8fn5WiCbn5ZT9fSL5gWHKWbYDGSbm6XojF4ZCMpHiBt3"
+    },
+    {
+      "label": "reconcile_outflow (owner)",
+      "tx": "9Fdj82vgkKZvKmxFk1UZV6qDR1e7HXSSYdyTc2Wt7rmD"
+    },
+    {
+      "label": "fund 1000000000",
+      "tx": "NrMWszSgRNmJChwzA6hZTfNVbc2d9vZMoNzsLbiXGVq"
+    },
+    {
+      "test": 1,
+      "label": "register_claim payroll-2026-12.eml",
+      "tx": "BHzpGpEuX7er68e1WZv2Km4Nt3q8jkxNSRK4XBvAVSH2"
+    },
+    {
+      "test": 1,
+      "label": "accept_commitment (signer)",
+      "tx": "2VutUXLGCHFj3yJ8jSxqNNtbmj8AvjB42yTMa77F7x1y"
+    },
+    {
+      "test": 1,
+      "label": "register_claim railway-2026-11.eml",
+      "tx": "3VCavkf849grPsoXcSaVzr19yHD3aZFKG1RrwBQ7dUaW"
+    },
+    {
+      "test": 1,
+      "label": "accept_commitment (signer)",
+      "tx": "7EC1x1uhY3xuoqBsACsQBRJHXFf4GvkHhjxF3PoJqtCc"
+    },
+    {
+      "test": 1,
+      "label": "register_claim ana-request-offsite.eml",
+      "tx": "EQm797E2Ka6nWnCCE9VL4Uj3g8ozpkXjrbzTZVcgwoSc"
+    },
+    {
+      "test": 1,
+      "label": "request_acceptance #12",
+      "tx": "DsdBaX6cs9L3u6BfxGfhmcMGBihvCdTSEkCdiyUdSWa"
+    },
+    {
+      "test": 2,
+      "label": "fund 500000000",
+      "tx": "4vZxgMizeSF1egsr8UKYvooxuZHHHXuwUUVnGGb64jDE"
+    },
+    {
+      "test": 2,
+      "label": "request_acceptance #12",
+      "tx": "D3M7VAmDxV7endYdrPn7obfNLNTNGgMCVdJkSa1np7Wf"
+    },
+    {
+      "test": 2,
+      "label": "request_authorization #12",
+      "tx": "Vm9UFn7QjNCC8w8bvpr2DKSLifHZTe7wrVEYcvSenzS"
+    },
+    {
+      "test": 2,
+      "label": "settle",
+      "tx": "959P8wRMP5jfEY8M8TzHEiEp5Gyv7byF2mSmSVoSHwtv"
+    },
+    {
+      "test": 3,
+      "label": "register_claim inkwell-2026-11.eml",
+      "tx": "63U9HxLTzW7TJKhYuZdXYgFRY5HR7X1BDYGwtyQBH5Vw"
+    },
+    {
+      "test": 3,
+      "label": "accept_commitment (signer)",
+      "tx": "6oVSaLzxCQtgSxjNVsfLrtyDCdKdup63MupK4qbhRS3u"
+    },
+    {
+      "test": 4,
+      "label": "register_claim railway-2026-11.eml",
+      "tx": "42btZ6Y3oyFJ3RbnNTxcCWr7f3NdHioe953bsG7mpK9T"
+    },
+    {
+      "test": 5,
+      "label": "register_claim railway-2026-12-swapped.eml",
+      "tx": "3ZhSdbfu1fdnXCexgjr44YLnUMPpFyZpAeAMPxLKx92R"
+    },
+    {
+      "test": 5,
+      "label": "approve_vendor_change (AGENT key)",
+      "tx": "8NR5FNtdKBJUHpm5eyyp7PdDuWtr6UTBZoaNKWrBy7BG"
+    },
+    {
+      "test": 5,
+      "label": "approve_vendor_change (signer)",
+      "tx": "A8SpW4bkLBZ71NnBshiCWp6WQevHdVK9mn76ZW7x2jee"
+    },
+    {
+      "test": 5,
+      "label": "accept_commitment (signer)",
+      "tx": "EZ3HEuef7aycpdKCuaEgseMXYdCYL1cbFbRjEqMMvssF"
+    },
+    {
+      "test": 5,
+      "label": "request_authorization #14",
+      "tx": "7Rudo91jiu1fTKWZDJD2beQBXopaDXCnSTwwUDsDkR2r"
+    },
+    {
+      "test": 6,
+      "label": "register_claim railway-2026-12-injection.eml",
+      "tx": "CMHj9KnJUSgG7nfutiox7WnsYFrfkh37sfs5YVhBQRsL"
+    },
+    {
+      "test": 7,
+      "label": "request_authorization #11",
+      "tx": "5ikd8c3rHmdCBv17HVYGt7373U3uTvQkAMaTCcdPZkDv"
+    },
+    {
+      "test": 7,
+      "label": "settle (first)",
+      "tx": "FwViEYyepTGcDmtSxARQJ2nykZidvXnBMcVF3XNtXL2w"
+    },
+    {
+      "test": 7,
+      "label": "settle (replay)",
+      "tx": "ALhVjxNdhCvPFM2JVZPATEji81qw67GapEmSCaUgpm7x"
+    },
+    {
+      "test": 7,
+      "label": "request_authorization #10",
+      "tx": "DL3qg7H3t5EdHrPPUB3BxHrGLJ1CyoVwzJzGZDGbuSXN"
+    },
+    {
+      "test": 7,
+      "label": "settle (amount +1 unit)",
+      "tx": "CaGNjBueLLw5JYCEm4sz83uvzdFFiY8CqRxDWdVNKCf1"
+    },
+    {
+      "test": 7,
+      "label": "settle (plain amount +1 unit)",
+      "tx": "JDZJSGFFhe78cUhpnfa5PfYwHpSeQvrBJpTrU1H1TYs8"
+    },
+    {
+      "test": 8,
+      "label": "pause (owner)",
+      "tx": "7kdSuZYzKMdKDrd6ACxW8yeGQJytcSqQBQ84ojBPLTpH"
+    },
+    {
+      "test": 8,
+      "label": "revoke_agent (owner)",
+      "tx": "ASV2DMWCUk6QbyCXr1iE8AJoPBAaBP2bfAvnj25yqNwU"
+    },
+    {
+      "test": 8,
+      "label": "recover (owner)",
+      "tx": "EhinrB2CNEbYnKJhUPKyNHNDZw88p36NzawNMbw88dDA"
+    },
+    {
+      "test": 8,
+      "label": "recover (AGENT key)",
+      "tx": "8hvKFUJan5AzfW8ERDApKnwSh5qaymQKvKK6jBVRY4Rd"
+    },
+    {
+      "test": 8,
+      "label": "propose_policy (AGENT key)",
+      "tx": "41CWdrQK9UJu92FwpMrTnGVDfN6iHjRRAnRqFoDYMj2s"
+    },
+    {
+      "test": 8,
+      "label": "new (AGENT tries to re-initialise)",
+      "tx": "HWT2ntvxNbT1XSswMVrFKTNzbmPMQXf1Tcvwt7BSkRhm"
+    },
+    {
+      "test": 8,
+      "label": "register_claim (revoked AGENT)",
+      "tx": "6z4hsT9b9xVoM6aJzUctPymMDvaFhD7LPrgMwoUp1gjP"
+    },
+    {
+      "test": 8,
+      "label": "set_agent (owner)",
+      "tx": "DoRQsryNtTrXkWvgxTeN8mpN7tovvAGNxB5rSbvbGMzE"
+    },
+    {
+      "test": 8,
+      "label": "unpause (owner)",
+      "tx": "67JUJ1Fr6DohTuVsC5gh8PpVi6umyUwFBicJaZdB88px"
+    },
+    {
+      "test": 9,
+      "label": "register_claim railway-2026-12-spoof.eml",
+      "tx": "FQbmoxbXGJ6knCUrMLZqEVHvnWVLk7sNwjneJWagVxNt"
+    },
+    {
+      "test": 10,
+      "label": "register_claim tinylogo-001.eml",
+      "tx": "DSxPSAidi4tcDU4UJ21mjvggtaeCKq8VvQGJ1uy9Q3R1"
+    },
+    {
+      "test": 10,
+      "label": "request_acceptance #17",
+      "tx": "A7V6uhTXu8JAHjaeQfCnnNcyq19eV8PhfVrzH2H8HDnE"
+    },
+    {
+      "test": 10,
+      "label": "register_claim bigagency-001.eml",
+      "tx": "Duduq6Jot6H3FSQYHHfBfSfrsgMo1iDmtuepLJ6uYvYW"
+    },
+    {
+      "test": 10,
+      "label": "request_acceptance #18",
+      "tx": "DswybBRDEa6FV79mhFja1fkq4i4jjy6fEEDJNRQqxGVj"
+    }
+  ]
+}

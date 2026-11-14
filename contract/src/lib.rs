@@ -1,4 +1,4 @@
-//! Takara AI treasury contract (NEAR testnet).
+//! Takara AI treasury contract (NEAR testnet and mainnet).
 //!
 //! The business owns this contract and its funds. Takara (the agent) holds execution authority
 //! only: it can ask the pinned policy engine for a decision and settle what the engine
@@ -16,8 +16,18 @@
 //! attestation for each decision can be verified off-chain by anyone.
 //!
 //! The contract stores hashes, states and sealed blobs, never plaintext amounts, vendor names,
-//! payee addresses or policy contents. It does not redo the reserve arithmetic: it verifies that
-//! the pinned engine asserted `spendable_after >= 0` against the current ledger state hash.
+//! payee addresses or policy contents, with one exception: a NEAR-native settlement (below). It
+//! does not redo the reserve arithmetic: it verifies that the pinned engine asserted
+//! `spendable_after >= 0` against the current ledger state hash.
+//!
+//! Settlement (amendment 2026-11-14). When an authorization's `destination_chain` is `near`,
+//! `settle` transfers the asset itself: the agent supplies the plain amount, payee and salt, the
+//! contract recomputes the engine's salted commitments from them (refusing `opening_mismatch` on
+//! any difference), enforces a hard per-payment ceiling (`max_payout`), lowers `balance` and calls
+//! `ft_transfer` on the asset contract. A failed transfer is reverted by `on_settle_transfer`.
+//! A NEAR payout therefore reveals its amount and payee on chain at payment time; reserves,
+//! policy, the vendor registry and refusal reasons stay sealed. Other destination chains keep
+//! ledger-only settlement (no tokens move here; the payout leg is off-contract).
 
 mod events;
 pub mod types;
@@ -30,7 +40,7 @@ use near_sdk::json_types::{U128, U64};
 use near_sdk::serde_json::{self, json, Value};
 use near_sdk::store::{IterableMap, IterableSet, LookupMap, LookupSet};
 use near_sdk::{
-    env, near, AccountId, BorshStorageKey, Gas, NearToken, PanicOnDefault, Promise, PromiseOrValue,
+    env, near, AccountId, BorshStorageKey, Gas, NearToken, PanicOnDefault, Promise, PromiseError, PromiseOrValue,
 };
 use types::*;
 
@@ -38,6 +48,13 @@ const GAS_FOR_OUTLAYER: Gas = Gas::from_tgas(140);
 const GAS_FOR_ENGINE_CALLBACK: Gas = Gas::from_tgas(60);
 const GAS_FOR_FT_TRANSFER: Gas = Gas::from_tgas(20);
 const GAS_FOR_RECOVER_CALLBACK: Gas = Gas::from_tgas(15);
+const GAS_FOR_SETTLE_CALLBACK: Gas = Gas::from_tgas(20);
+/// Default hard ceiling for one NEAR-native payout: 25 USDC in base units (USDC has 6 decimals).
+/// The contract cannot read the asset's decimals synchronously, so the ceiling is configured in
+/// base units at init (`max_payout`) and adjustable by the owner (`set_max_payout`).
+pub const DEFAULT_MAX_PAYOUT: u128 = 25_000_000;
+/// The destination chain whose payouts this contract transfers itself.
+const NEAR_CHAIN: &str = "near";
 /// Hard cap on authorization lifetime, whatever the engine asks for.
 const MAX_AUTH_TTL_NS: u64 = 30 * 60 * 1_000_000_000;
 const MAX_SEALED_LEN: usize = 24 * 1024;
@@ -47,33 +64,34 @@ const MAX_OPEN: u32 = 200;
 const MAX_ENGINE_OUTPUT: usize = 4 * 1024;
 
 /// Storage prefixes, versioned so a re-initialised deployment never reads an earlier layout's
-/// entries as its own.
+/// entries as its own. v3: the 2026-11-14 layout (adds `max_payout`); bump again whenever a
+/// deployment is re-initialised over live state.
 #[derive(BorshStorageKey)]
 #[near]
 enum StorageKey {
-    V2Owners,
-    V2Proposals,
-    V2Commitments,
-    V2EvidenceIndex,
-    V2VendorChanges,
-    V2Pending,
-    V2Issued,
-    V2UsedNonces,
-    V2Open,
+    V3Owners,
+    V3Proposals,
+    V3Commitments,
+    V3EvidenceIndex,
+    V3VendorChanges,
+    V3Pending,
+    V3Issued,
+    V3UsedNonces,
+    V3Open,
 }
 
 impl StorageKey {
     fn prefix(self) -> Vec<u8> {
         let tag: &[u8] = match self {
-            StorageKey::V2Owners => b"v2o",
-            StorageKey::V2Proposals => b"v2p",
-            StorageKey::V2Commitments => b"v2c",
-            StorageKey::V2EvidenceIndex => b"v2e",
-            StorageKey::V2VendorChanges => b"v2v",
-            StorageKey::V2Pending => b"v2q",
-            StorageKey::V2Issued => b"v2i",
-            StorageKey::V2UsedNonces => b"v2n",
-            StorageKey::V2Open => b"v2s",
+            StorageKey::V3Owners => b"v3o",
+            StorageKey::V3Proposals => b"v3p",
+            StorageKey::V3Commitments => b"v3c",
+            StorageKey::V3EvidenceIndex => b"v3e",
+            StorageKey::V3VendorChanges => b"v3v",
+            StorageKey::V3Pending => b"v3q",
+            StorageKey::V3Issued => b"v3i",
+            StorageKey::V3UsedNonces => b"v3n",
+            StorageKey::V3Open => b"v3s",
         };
         tag.to_vec()
     }
@@ -91,9 +109,12 @@ pub struct Treasury {
     outlayer: AccountId,
     asset: AccountId,
     balance: u128,
-    /// Running total of settled-but-not-withdrawn amounts, sealed by the engine. Testnet
-    /// settlement moves no tokens, so the engine subtracts this from `balance`. Replaced at each
-    /// settlement by the value the engine computed when it issued that authorization.
+    /// Running total of settled-but-not-withdrawn amounts, sealed by the engine, for ledger-only
+    /// settlements (destination chains other than `near`): those move no tokens here, so the
+    /// engine subtracts this from `balance`. Replaced at each such settlement by the value the
+    /// engine computed when it issued that authorization. NEAR-native settlements transfer the
+    /// tokens and lower `balance` instead, so they leave this total unchanged (advancing it too
+    /// would count the payment twice, since spendable = balance - outflow - reserved).
     sealed_outflow: String,
     // Policy
     policy: PolicyHeader,
@@ -115,6 +136,8 @@ pub struct Treasury {
     next_request: u64,
     issued: LookupMap<String, IssuedAuth>,
     used_nonces: LookupSet<String>,
+    /// Hard ceiling, in asset base units, for one NEAR-native payout. Owner-adjustable.
+    max_payout: u128,
 }
 
 // ---------- engine output (compact keys: OutLayer caps stdout at 900 bytes) ----------
@@ -211,6 +234,13 @@ fn now() -> u64 {
     env::block_timestamp()
 }
 
+/// Outcome of the `ft_transfer` promise this callback follows. Only an actual promise failure
+/// counts as "not transferred": a successful transfer whose return value is unexpectedly long
+/// moved the tokens all the same, and treating it as failed would restore a spent balance.
+fn transfer_succeeded() -> bool {
+    !matches!(env::promise_result_checked(0, 256), Err(PromiseError::Failed))
+}
+
 #[near]
 impl Treasury {
     // ======================================================================================
@@ -232,8 +262,10 @@ impl Treasury {
         secrets: Option<SecretsRef>,
         asset: AccountId,
         policy: PolicyHeader,
+        max_payout: Option<U128>,
     ) -> Self {
-        if owners.is_empty() {
+        let max_payout = max_payout.map(|m| m.0).unwrap_or(DEFAULT_MAX_PAYOUT);
+        if owners.is_empty() || max_payout == 0 {
             fail(err::INVALID_ARGUMENT);
         }
         Self::validate_engine(&engine);
@@ -242,7 +274,7 @@ impl Treasury {
             // The agent can never hold policy authority.
             fail(err::INVALID_ARGUMENT);
         }
-        let mut set = IterableSet::new(StorageKey::V2Owners.prefix());
+        let mut set = IterableSet::new(StorageKey::V3Owners.prefix());
         for o in owners {
             if o == agent {
                 fail(err::INVALID_ARGUMENT);
@@ -263,23 +295,24 @@ impl Treasury {
             balance: 0,
             sealed_outflow: String::new(),
             policy,
-            proposals: IterableMap::new(StorageKey::V2Proposals.prefix()),
+            proposals: IterableMap::new(StorageKey::V3Proposals.prefix()),
             next_proposal: 0,
-            commitments: IterableMap::new(StorageKey::V2Commitments.prefix()),
-            evidence_index: LookupMap::new(StorageKey::V2EvidenceIndex.prefix()),
-            open: IterableSet::new(StorageKey::V2Open.prefix()),
+            commitments: IterableMap::new(StorageKey::V3Commitments.prefix()),
+            evidence_index: LookupMap::new(StorageKey::V3EvidenceIndex.prefix()),
+            open: IterableSet::new(StorageKey::V3Open.prefix()),
             next_commitment: 0,
             ledger_state_hash: genesis,
-            vendor_changes: IterableMap::new(StorageKey::V2VendorChanges.prefix()),
+            vendor_changes: IterableMap::new(StorageKey::V3VendorChanges.prefix()),
             next_vendor_change: 0,
-            pending: LookupMap::new(StorageKey::V2Pending.prefix()),
+            pending: LookupMap::new(StorageKey::V3Pending.prefix()),
             next_request: 0,
-            issued: LookupMap::new(StorageKey::V2Issued.prefix()),
-            used_nonces: LookupSet::new(StorageKey::V2UsedNonces.prefix()),
+            issued: LookupMap::new(StorageKey::V3Issued.prefix()),
+            used_nonces: LookupSet::new(StorageKey::V3UsedNonces.prefix()),
+            max_payout,
         };
         emit(
             "treasury_initialized",
-            json!({ "policy_version": me.policy.version, "policy_hash": me.policy.hash, "engine_hash": me.engine.wasm_hash }),
+            json!({ "policy_version": me.policy.version, "policy_hash": me.policy.hash, "engine_hash": me.engine.wasm_hash, "max_payout": U128(max_payout) }),
         );
         me
     }
@@ -352,7 +385,7 @@ impl Treasury {
 
     #[private]
     pub fn on_recover(&mut self, amount: U128, to: AccountId) -> bool {
-        let ok = env::promise_result_checked(0, 256).is_ok();
+        let ok = transfer_succeeded();
         if !ok {
             self.balance += amount.0;
             self.bump("recovery_reverted", 0);
@@ -374,6 +407,19 @@ impl Treasury {
         self.sealed_outflow = sealed_outflow;
         self.bump("outflow_reconciled", 0);
         emit("outflow_reconciled", json!({ "by": env::predecessor_account_id() }));
+    }
+
+    /// Set the hard per-payment ceiling (asset base units) for NEAR-native payouts. Owner only.
+    /// Applies to every later `settle`, including authorizations already issued.
+    #[payable]
+    pub fn set_max_payout(&mut self, max_payout: U128) {
+        self.require_owner();
+        Self::require_one_yocto();
+        if max_payout.0 == 0 {
+            fail(err::INVALID_ARGUMENT);
+        }
+        self.max_payout = max_payout.0;
+        emit("max_payout_set", json!({ "max_payout": max_payout, "by": env::predecessor_account_id() }));
     }
 
     #[payable]
@@ -594,53 +640,93 @@ impl Treasury {
 
     /// Settle with an authorization this contract itself recorded. Checks, in order: nonce not
     /// used, authorization issued here, every field equal, not expired, engine still pinned,
-    /// policy and ledger state current, spendable asserted, commitment accepted.
+    /// policy and ledger state current, spendable asserted, commitment accepted. Then the
+    /// opening: `amount`, `receiver_id` and `salt` must reproduce the engine's salted
+    /// `amount_commit` and `destination_commit` exactly (`opening_mismatch` otherwise), so a
+    /// stolen agent key can only pay the verified payee exactly the authorized amount.
     ///
-    /// Testnet settlement is a state transition (escrow release, receipt, nonce burn, ledger
-    /// hash update) with no plaintext amount or vendor address on-chain. The confidential payout
-    /// is a separate mainnet integration demo that this contract does not enforce.
-    pub fn settle(&mut self, auth: SettlementAuth) -> Decision {
+    /// `destination_chain == "near"`: the opening is required, and the amount must not exceed
+    /// `max_payout` (`payout_over_ceiling`) or the balance (`insufficient_balance`). The commitment
+    /// settles, the nonce burns, `balance` drops by `amount` and the contract calls `ft_transfer`
+    /// (1 yocto) on the asset to `receiver_id`; `on_settle_transfer` reverts the settlement if the
+    /// transfer fails. The amount and payee are public on chain from this point.
+    ///
+    /// Other destination chains: ledger-only, as before (escrow release, receipt, nonce burn,
+    /// ledger hash update, sealed outflow advanced); no tokens move here. The opening is optional
+    /// there and, if given, checked the same way.
+    pub fn settle(
+        &mut self,
+        auth: SettlementAuth,
+        amount: Option<U128>,
+        receiver_id: Option<AccountId>,
+        salt: Option<String>,
+    ) -> PromiseOrValue<Decision> {
         self.require_agent();
         let op = "settle";
         let cid = auth.commitment_id.0;
         let refuse = |r: &str| Decision::refuse(op, r).with_commitment(cid);
 
         if self.paused {
-            return self.refusal(refuse(reason::TREASURY_PAUSED));
+            return self.refused(refuse(reason::TREASURY_PAUSED));
         }
         if self.used_nonces.contains(&auth.nonce) {
-            return self.refusal(refuse(reason::NONCE_USED));
+            return self.refused(refuse(reason::NONCE_USED));
         }
         let Some(issued) = self.issued.get(&auth.nonce).cloned() else {
-            return self.refusal(refuse(reason::UNKNOWN_AUTHORIZATION));
+            return self.refused(refuse(reason::UNKNOWN_AUTHORIZATION));
         };
         if let Some(field) = Self::first_mismatch(&issued.auth, &auth) {
             let mut d = refuse(reason::AUTHORIZATION_MISMATCH);
             d.field = Some(field.to_string());
-            return self.refusal(d);
+            return self.refused(d);
         }
         if now() > issued.auth.expiry.0 {
-            return self.refusal(refuse(reason::AUTHORIZATION_EXPIRED));
+            return self.refused(refuse(reason::AUTHORIZATION_EXPIRED));
         }
         if issued.auth.engine_hash != self.engine.wasm_hash {
-            return self.refusal(refuse(reason::ENGINE_CHANGED));
+            return self.refused(refuse(reason::ENGINE_CHANGED));
         }
         if issued.auth.policy_hash != self.policy.hash {
-            return self.refusal(refuse(reason::POLICY_HASH_STALE));
+            return self.refused(refuse(reason::POLICY_HASH_STALE));
         }
         if now() > self.policy.expires_at.0 {
-            return self.refusal(refuse(reason::POLICY_EXPIRED));
+            return self.refused(refuse(reason::POLICY_EXPIRED));
         }
         if issued.auth.ledger_state_hash != self.ledger_state_hash {
-            return self.refusal(refuse(reason::LEDGER_STATE_STALE));
+            return self.refused(refuse(reason::LEDGER_STATE_STALE));
         }
         if !issued.auth.spendable_after_ok {
-            return self.refusal(refuse(reason::SPENDABLE_NOT_ASSERTED));
+            return self.refused(refuse(reason::SPENDABLE_NOT_ASSERTED));
         }
         match self.commitments.get(&cid) {
             Some(c) if c.state == State::Accepted => {}
-            _ => return self.refusal(refuse(reason::COMMITMENT_NOT_ACCEPTED)),
+            _ => return self.refused(refuse(reason::COMMITMENT_NOT_ACCEPTED)),
         }
+
+        // Opening: the plain amount, payee and salt must reproduce the engine's commitments.
+        let pays_on_near = issued.auth.destination_chain == NEAR_CHAIN;
+        let opening = match (amount, receiver_id, salt) {
+            (Some(a), Some(r), Some(s)) => Some((a.0, r, s)),
+            (None, None, None) if !pays_on_near => None,
+            _ => return self.refused(refuse(reason::OPENING_MISMATCH)),
+        };
+        if let Some((a, r, s)) = &opening {
+            if !self.opening_matches(&issued.auth, *a, r, s) {
+                return self.refused(refuse(reason::OPENING_MISMATCH));
+            }
+        }
+        let payout = match opening {
+            Some((a, r, _)) if pays_on_near => {
+                if a > self.max_payout {
+                    return self.refused(refuse(reason::PAYOUT_OVER_CEILING));
+                }
+                if a == 0 || a > self.balance {
+                    return self.refused(refuse(reason::INSUFFICIENT_BALANCE));
+                }
+                Some((a, r))
+            }
+            _ => None,
+        };
 
         // Execute.
         let c = self.commitments.get_mut(&cid).unwrap();
@@ -652,9 +738,14 @@ impl Treasury {
         }
         self.used_nonces.insert(auth.nonce.clone());
         self.issued.remove(&auth.nonce);
-        // Only one authorization can settle per ledger state (the stale check above), so the
-        // outflow total the engine computed for this one is exactly the new total.
-        self.sealed_outflow = issued.outflow_after;
+        match &payout {
+            // The tokens leave the treasury: the balance drops and the sealed outflow total stays
+            // as it is (the engine computes spendable = balance - outflow - reserved).
+            Some((a, _)) => self.balance -= *a,
+            // Ledger-only: only one authorization can settle per ledger state (the stale check
+            // above), so the outflow total the engine computed for this one is the new total.
+            None => self.sealed_outflow = issued.outflow_after,
+        }
         self.bump("settled", cid);
         let auth_hash = hex(&env::sha256(&serde_json::to_vec(&auth).unwrap()));
         emit(
@@ -669,9 +760,60 @@ impl Treasury {
                 "ledger_state_hash": self.ledger_state_hash,
             }),
         );
-        let mut d = Decision::ok(op).with_commitment(cid);
-        d.auth = Some(auth);
-        d
+        let Some((amount, receiver_id)) = payout else {
+            let mut d = Decision::ok(op).with_commitment(cid);
+            d.auth = Some(auth);
+            return PromiseOrValue::Value(d);
+        };
+        emit(
+            "settlement_transfer_started",
+            json!({ "commitment_id": U64(cid), "nonce": auth.nonce, "receiver_id": receiver_id, "amount": U128(amount), "asset": self.asset }),
+        );
+        PromiseOrValue::Promise(
+            Promise::new(self.asset.clone())
+                .function_call(
+                    "ft_transfer".to_string(),
+                    serde_json::to_vec(&json!({ "receiver_id": receiver_id, "amount": U128(amount), "memo": format!("takara-ai settlement #{cid}") }))
+                        .unwrap(),
+                    NearToken::from_yoctonear(1),
+                    GAS_FOR_FT_TRANSFER,
+                )
+                .then(
+                    Self::ext(env::current_account_id())
+                        .with_static_gas(GAS_FOR_SETTLE_CALLBACK)
+                        .on_settle_transfer(U64(cid), auth.nonce, U128(amount), receiver_id),
+                ),
+        )
+    }
+
+    /// Result of a NEAR-native settlement transfer. On failure the settlement is reverted: the
+    /// balance is restored, the commitment returns to `accepted` (reserving again), the ledger
+    /// hash moves and `settlement_reverted` is emitted. The nonce stays burned: the agent asks
+    /// the engine for a fresh authorization.
+    #[private]
+    pub fn on_settle_transfer(&mut self, commitment_id: U64, nonce: String, amount: U128, receiver_id: AccountId) -> Decision {
+        let cid = commitment_id.0;
+        if transfer_succeeded() {
+            emit(
+                "settlement_transfer_completed",
+                json!({ "commitment_id": commitment_id, "nonce": nonce, "receiver_id": receiver_id, "amount": amount }),
+            );
+            return Decision::ok("settle").with_commitment(cid);
+        }
+        self.balance += amount.0;
+        if let Some(c) = self.commitments.get_mut(&cid) {
+            if c.state == State::Settled && c.settled_nonce.as_deref() == Some(nonce.as_str()) {
+                c.state = State::Accepted;
+                c.settled_nonce = None;
+                self.open.insert(cid);
+            }
+        }
+        self.bump("settlement_reverted", cid);
+        emit(
+            "settlement_reverted",
+            json!({ "commitment_id": commitment_id, "nonce": nonce, "receiver_id": receiver_id, "amount": amount, "ledger_state_hash": self.ledger_state_hash }),
+        );
+        Decision::refuse("settle", reason::SETTLEMENT_REVERTED).with_commitment(cid)
     }
 
     // ======================================================================================
@@ -786,6 +928,7 @@ impl Treasury {
             policy_expires_at: self.policy.expires_at,
             ledger_state_hash: self.ledger_state_hash.clone(),
             commitments: U64(self.next_commitment),
+            max_payout: U128(self.max_payout),
         }
     }
 
@@ -910,6 +1053,10 @@ impl Treasury {
             json!({ "op": d.op, "reason": d.reason, "commitment_id": d.commitment_id, "blocking": d.blocking, "until": d.until, "field": d.field, "original": d.original }),
         );
         d
+    }
+
+    fn refused(&mut self, d: Decision) -> PromiseOrValue<Decision> {
+        PromiseOrValue::Value(self.refusal(d))
     }
 
     fn refusal_with_attestation(&mut self, d: Decision, rq: u64, output_hash: &str) -> Decision {
@@ -1215,6 +1362,20 @@ impl Treasury {
         d.auth = Some(auth);
         d.opening = Some(a.op);
         d
+    }
+
+    /// Recompute the engine's salted commitments from a plain opening (preimages exactly as in
+    /// `engine/src/engine.rs` `op_authorize`: amount in asset base units, decimal, no padding;
+    /// salt as the engine emitted it, 16 lowercase hex chars).
+    fn opening_matches(&self, auth: &SettlementAuth, amount: u128, receiver_id: &AccountId, salt: &str) -> bool {
+        if salt.is_empty() || salt.len() > 64 || !is_hex(salt, salt.len()) {
+            return false;
+        }
+        let amc = hex(&env::sha256(format!("takara-ai:amount:{}:{}:{}", self.asset, amount, salt).as_bytes()));
+        let dsc = hex(&env::sha256(
+            format!("takara-ai:destination:{}:{}:{}", auth.destination_chain, receiver_id, salt).as_bytes(),
+        ));
+        amc == auth.amount_commit && dsc == auth.destination_commit
     }
 
     /// First field where the submitted authorization differs from the one this contract issued.

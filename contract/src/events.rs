@@ -56,4 +56,13 @@ pub mod reason {
     pub const TREASURY_PAUSED: &str = "treasury_paused";
     pub const POLICY_EXPIRED: &str = "policy_expired";
     pub const AGENT_CHANGED: &str = "agent_changed";
+    /// The plain amount, payee or salt given to `settle` does not reproduce the authorization's
+    /// salted commitments.
+    pub const OPENING_MISMATCH: &str = "opening_mismatch";
+    /// A NEAR-native payout above the treasury's hard per-payment ceiling (`max_payout`).
+    pub const PAYOUT_OVER_CEILING: &str = "payout_over_ceiling";
+    /// A NEAR-native payout larger than the treasury's balance.
+    pub const INSUFFICIENT_BALANCE: &str = "insufficient_balance";
+    /// The NEAR-native transfer failed; the settlement was reverted (nonce stays burned).
+    pub const SETTLEMENT_REVERTED: &str = "settlement_reverted";
 }

@@ -44,3 +44,63 @@ disclosed below. The fixed build was redeployed and the ten checks were re-run.
 - **OutLayer secret rule** names one agent account; after `set_agent`, re-run setup to rebind the secret.
 - **Engine key on the CLI.** `setup-testnet.mjs` passes the engine key to `outlayer secrets set` as an argument (visible in the local process list during setup).
 - **Upgradability.** The treasury's own account key can redeploy the contract (and `new` can re-initialise, callable only by the treasury account). A production deployment should remove the treasury account's full-access keys after deploy.
+
+## Stage 2 addendum (2026-11-14): NEAR-native settlement transfers
+
+**What changed.** `settle` now moves the asset for NEAR-native payouts. The design is in `Takara AI implementation contract.md`, under "Amendment 2026-11-14". The engine wasm is unchanged (`bc7a4694…caeb`), so its pinned hash and the OutLayer secret binding still hold.
+
+- **`settle(auth, amount, receiver_id, salt)` and the opening check.** All earlier checks run first, in the same order. The contract then recomputes the engine's `amount_commit` and `destination_commit` from the plain arguments, using the same preimage strings as `engine/src/engine.rs` `op_authorize`, and refuses `opening_mismatch` if either differs.
+- **NEAR destinations (`destination_chain == "near"`).**
+  - The opening is required.
+  - The amount is checked against `max_payout`, refused as `payout_over_ceiling`. The default is 25 USDC (25,000,000 base units); it can be set at init and changed by the owner with `set_max_payout` (1 yocto, owner only).
+  - The amount is checked against the balance, refused as `insufficient_balance`.
+  - The commitment settles, the nonce burns, `balance` drops by the amount and the ledger hash moves. The receipt event is emitted as before, then `ft_transfer` (1 yocto) goes to `receiver_id` on the asset contract.
+  - `sealed_outflow` is not advanced for these payouts. Advancing it would double-count, because the engine computes spendable as balance − outflow − reserved.
+- **`on_settle_transfer` (private callback).** If the transfer fails, it:
+  - restores the balance;
+  - puts the commitment back to `accepted` and back into the engine's open set;
+  - bumps the ledger;
+  - emits `settlement_reverted`.
+
+  The nonce stays burned. Only an actual promise failure counts as a failed transfer. A successful transfer whose return value is unexpectedly long is not reverted, and `on_recover` got the same hardening.
+- **Other destination chains.** Unchanged: ledger-only settlement, and the sealed outflow advances.
+- **Storage prefixes.** Bumped from `v2*` to `v3*`, because the testnet treasury was re-initialised over live state.
+
+**Privacy delta.** A NEAR payout's amount and payee are public on chain at payment time. Reserves, policy, the vendor registry, the commitment records and the private refusal detail stay sealed.
+
+**New tests (contract, 22).** The contract suite now has 61 tests; all pass, including the 39 that existed before. The new tests cover:
+
+- The payout itself:
+  - `near_settlement_sends_the_exact_amount_to_the_exact_payee`: one `ft_transfer` on the asset, with the exact `receiver_id` and `amount` and 1 yocto attached; the balance drops by exactly the amount.
+  - `near_settlement_does_not_advance_outflow`.
+  - `cross_chain_settlement_stays_ledger_only` and `cross_chain_settlement_with_a_wrong_opening_is_refused`.
+- The opening:
+  - `wrong_amount_is_opening_mismatch`, `wrong_payee_is_opening_mismatch`, `wrong_salt_is_opening_mismatch`: each refusal leaves the state untouched, burns no nonce and makes no transfer.
+  - `near_settlement_without_opening_is_refused`.
+  - `existing_checks_run_before_the_opening`.
+  - `opening_preimage_matches_the_engine_format`.
+- The ceiling and the balance:
+  - `ceiling_is_enforced`: 25,000,001 is refused and exactly 25,000,000 pays.
+  - `owner_can_set_the_ceiling`, `init_takes_a_custom_ceiling`.
+  - `agent_cannot_raise_the_ceiling`, `signer_cannot_raise_the_ceiling`, `ceiling_cannot_be_zero`.
+  - `payout_above_balance_is_refused`.
+- The revert:
+  - `failed_transfer_is_reverted`: balance, state, open set and ledger are restored, the event is emitted, the nonce stays burned and a fresh authorization settles.
+  - `oversized_transfer_result_is_not_mistaken_for_a_failure`.
+- Recovery afterwards: `recover_is_still_bounded_after_a_payout`, `recover_cannot_take_the_paid_amount_again`, `recover_is_bounded_after_a_reverted_payout`.
+
+The existing settlement tests now pass a correct opening, so they still exercise the checks they were written for.
+
+**Integration.** No local sandbox: `near-workspaces` does not run on Windows. The end-to-end integration test is the testnet judge run, against the real tUSDC token contract and OutLayer:
+
+- check 2 asserts that the payee's `ft_balance_of` rises by exactly the authorized amount;
+- check 7 also submits a tampered plain amount and expects `opening_mismatch`.
+
+The run is recorded under `docs/runs/`. OutLayer testnet failed several runs that day ("Execution promise failed"), and the contract correctly refused those requests with `engine_error`, applying nothing. The judge therefore retries an engine request up to 3 times on `engine_error`, and checks that an authorization was issued before using it.
+
+**Review.** The diff was reviewed by AI: the implementing agent and a separate AI reviewer. It has not been externally re-audited. The reviewer found no critical or high issue. One medium hardening was applied before deploy: revert only on `PromiseError::Failed`.
+
+Disclosed, not fixed:
+
+- **A callback that cannot run leaves tokens stranded.** If the settlement callback itself ran out of gas after a failed transfer, or a funded contract were re-initialised, `balance` would sit below the tokens actually held. `recover` is capped at `balance`, so the difference would be stranded. There is no owner balance-resync method yet. Never re-initialise a funded mainnet treasury.
+- **Unregistered payees.** A payee that is not storage-registered on the asset makes every attempt revert. Check `storage_balance_of` off-chain before settling.

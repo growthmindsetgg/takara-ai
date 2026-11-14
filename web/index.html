@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Home · Takara AI</title>
 <meta name="takara-token" content="__TAKARA_TOKEN__">
-<meta name="description" content="Takara AI owner app: Banto, your treasury agent, shows what you can spend, what is waiting and on whom, what is due, and what it caught. Fictional fixture treasury on NEAR testnet.">
+<meta name="description" content="Takara AI owner app: Banto, your treasury agent, shows what you can spend, what is waiting and on whom, what is due, and what it caught. Fictional fixture business, live on NEAR.">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230B5D4B'/%3E%3Crect x='8' y='8' width='16' height='16' rx='3' fill='none' stroke='%23fff' stroke-width='2.5'/%3E%3Crect x='13' y='13' width='6' height='6' rx='1' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1010,6 +1010,9 @@ dialog::backdrop { background: var(--scrim); }
 .thm:hover { background: var(--sunken); border-color: var(--line-3); color: var(--ink); }
 .thm:active { transform: scale(.98); }
 .sheet-theme .thm-row { padding: 8px 4px 0; font-size: var(--t-13); color: var(--ink-2); }
+.side-bot .thm-row + .thm-row { margin-top: 6px; }
+.netdot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.netdot.main { background: var(--good, #1a7f5a); }
 .lensnote .linkbtn { margin-left: auto; flex: none; }
 .walblk:empty { display: none; }
 .blocks.shortf { color: var(--ink); font-weight: 500; }
@@ -1118,6 +1121,52 @@ const store = { // every storage access is guarded: the app renders with storage
   set(k, v, area = "local") { try { (area === "session" ? sessionStorage : localStorage).setItem(k, v); } catch { /* storage blocked */ } },
   del(k, area = "local") { try { (area === "session" ? sessionStorage : localStorage).removeItem(k); } catch { /* storage blocked */ } },
 };
+/* ---------- network: testnet or mainnet, from one table. GET /api/network says which are live and the
+   default; the choice is kept in localStorage ("takara.network") or ?network=. Accounts are pinned here,
+   so a changed API response can't redirect a wallet transaction. Switching reloads the page. ---------- */
+const NETS = {
+  testnet: { id: "testnet", label: "Testnet", rpc: "https://rpc.testnet.fastnear.com", explorer: "https://testnet.nearblocks.io", outlayer: "https://testnet-api.outlayer.ai", acct: /\.testnet$/, owner: "takara-ai-hq.testnet", treasury: "treasury.takara-ai-hq.testnet", signer: "signer.takara-ai-hq.testnet", token: "tUSDC" },
+  mainnet: { id: "mainnet", label: "Mainnet", rpc: "https://rpc.mainnet.fastnear.com", explorer: "https://nearblocks.io", outlayer: "https://api.outlayer.ai", acct: /\.near$/, owner: "takara-ai-hq.near", treasury: "treasury.takara-ai-hq.near", signer: "signer.takara-ai-hq.near", token: "USDC" },
+};
+const NET_KEY = "takara.network";
+const NET_Q = (() => { try { const v = new URLSearchParams(location.search).get("network"); return NETS[v] ? v : null; } catch { return null; } })();
+const netPref = () => { const v = NET_Q || store.get(NET_KEY); return NETS[v] ? v : null; };
+let NET = Object.assign({ settleMovesTokens: false }, NETS[netPref() || "testnet"]); // provisional until the server answers
+let NETINFO = null;
+const NET_READY = (async () => {
+  let st = null;
+  try {
+    const init = { cache: "no-store" };
+    if (typeof AbortSignal !== "undefined" && AbortSignal.timeout) init.signal = AbortSignal.timeout(10000);
+    const res = await fetch("/api/network", init);
+    if (res.ok) st = await res.json();
+  } catch { /* older server or offline: testnet, exactly as before */ }
+  NETINFO = st && st.networks ? st : null;
+  const live = (id) => id === "testnet" || !!(NETINFO && NETINFO.networks[id] && NETINFO.networks[id].available);
+  const pref = netPref();
+  const id = pref && live(pref) ? pref : NETINFO && NETS[NETINFO.default] && live(NETINFO.default) ? NETINFO.default : "testnet";
+  const srv = NETINFO && NETINFO.networks[id];
+  // settleMovesTokens: one flag from the server (scripts/lib/networks.mjs or the deployment record) drives every settlement sentence
+  NET = Object.assign({}, NETS[id], { settleMovesTokens: !!(srv && srv.settle_moves_tokens) });
+  return NET;
+})();
+window.TAKARA_NET_READY = NET_READY;
+const netsLive = () => Object.keys(NETS).filter((id) => id === "testnet" || !!(NETINFO && NETINFO.networks[id] && NETINFO.networks[id].available));
+const isMain = () => NET.id === "mainnet";
+const netName = () => `NEAR ${NET.id}`;
+// Settlement wording, all from NET.settleMovesTokens.
+const SETTLED = () => (NET.settleMovesTokens ? "Paid" : "Settled");
+const settleNote = () => (NET.settleMovesTokens ? "Paid out on chain: the payee receives the USDC." : isMain() ? "Marked paid on the ledger. Settlement doesn’t send the USDC yet." : "Testnet: no tokens move.");
+const PRIVACY_NOTE = "Each payout shows its amount and payee on chain when it’s paid; reserves, rules and vendor list stay sealed.";
+function setNetwork(id) {
+  if (!NETS[id] || id === NET.id) return;
+  store.set(NET_KEY, id);
+  const u = new URL(location.href);
+  if (NET_Q || store.get(NET_KEY) !== id) u.searchParams.set("network", id); // storage blocked: carry it in the URL
+  // a fresh page: wallet, data and copy all follow the new network (same URL + hash only would not reload)
+  if (u.toString() === location.href) location.reload(); else location.replace(u.toString());
+}
+
 /* ---------- safe HTML: every interpolation is escaped unless wrapped in raw() ---------- */
 class Raw { constructor(s) { this.s = s; } toString() { return this.s; } }
 const raw = (s) => new Raw(String(s));
@@ -1210,20 +1259,21 @@ const acct = (a) => h`<span class="mono" translate="no">${a}</span>`;
 const copyBtn = (value, what) => h`<button class="copy" type="button" data-act="copy" data-v="${value}" aria-label="Copy ${what}">${IC.copy()}</button>`;
 const hashC = (x, what) => (x ? h`<span class="hashc"><span title="${x}" translate="no">${short(x)}</span>${copyBtn(x, what)}</span>` : "");
 const ext = (href, text, cls = "") => h`<a href="${href}" target="_blank" rel="noopener"${cls ? raw(` class="${esc(cls)}"`) : ""}>${text}<span class="vh"> (opens in a new tab)</span></a>`;
-const TXURL = (tx) => `https://testnet.nearblocks.io/txns/${encodeURIComponent(tx)}`;
+const TXURL = (tx) => `${NET.explorer}/txns/${encodeURIComponent(tx)}`;
+const ADDRURL = (a) => `${NET.explorer}/address/${encodeURIComponent(a)}`;
 const txLink = (tx, text = "View transaction") => ext(TXURL(tx), text);
-const attLink = (n) => ext(`https://testnet-api.outlayer.ai/attestations/by-request/${encodeURIComponent(n)}`, `Request ${n}`);
+const attLink = (n) => ext(`${NET.outlayer}/attestations/by-request/${encodeURIComponent(n)}`, `Request ${n}`);
 const chevA = () => IC.chev(12);
 const dayOfIso = (iso) => Math.floor(Date.parse(iso) / DAY);
 
 /* ================================================================== data */
 const EP = { report: "/api/owner/report", public: "/api/public", decisions: "/api/decisions", policy: "/api/policy/current" };
-const ERR_TITLE = { report: "Couldn’t load the owner report.", public: "Couldn’t read the treasury from NEAR testnet.", decisions: "Couldn’t load recorded decisions.", policy: "Couldn’t load the current policy." };
+const ERR_TITLE = { report: "Couldn’t load the owner report.", get public() { return `Couldn’t read the treasury from ${netName()}.`; }, decisions: "Couldn’t load recorded decisions.", policy: "Couldn’t load the current policy." };
 const S = {}; for (const k in EP) S[k] = { status: "idle", data: null, error: null };
 let M = null; // derived model cache
 let lastUpdated = null;
 async function api(path, body) {
-  const headers = { "x-takara-token": TOKEN };
+  const headers = { "x-takara-token": TOKEN, "x-takara-network": NET.id };
   const init = { headers, cache: "no-store" };
   if (body !== undefined) { headers["content-type"] = "application/json"; init.method = "POST"; init.body = JSON.stringify(body); }
   // signing waits for finality, so it gets longer than reads
@@ -1232,7 +1282,7 @@ async function api(path, body) {
   try { r = await fetch(path, init); }
   catch (err) {
     const timedOut = err && (err.name === "TimeoutError" || err.name === "AbortError");
-    const e = new Error(timedOut ? "The server didn't answer within a minute. NEAR testnet may be slow; try again." : "The request didn't reach the server. Check your connection and try again.");
+    const e = new Error(timedOut ? `The server didn't answer within a minute. ${netName()} may be slow; try again.` : "The request didn't reach the server. Check your connection and try again.");
     e.status = 0; throw e;
   }
   let j = null; try { j = await r.json(); } catch { /* not JSON */ }
@@ -1399,7 +1449,7 @@ function model() {
     else if (c.state === "claimed" && w && w.who === "signer") b.status = readOnlyLens() ? ["Needs a Signer", "wait"] : [Q_LABEL.signer, "wait"];
     else if (c.state === "claimed") b.status = [Q_LABEL.policy, "quiet"];
     else if (c.state === "accepted") b.status = ["Reserved", "good"];
-    else if (c.state === "settled") b.status = ["Settled", "paid"];
+    else if (c.state === "settled") b.status = [SETTLED(), "paid"];
     else if (c.state === "closed") b.status = ["Closed", "quiet"];
     else b.status = ["Recorded", "quiet"];
     return b;
@@ -1557,7 +1607,7 @@ function decisionItem(d, m) {
       }
       case "commitment_accepted":
         return dd.by === "signer" ? out("money", "Approved:", h`${x.bill(cid)}, by ${actorP(dd.signer)}. Money set aside.`) : out("money", "Approved automatically:", h`${x.bill(cid)}, under your limit. Money set aside.`);
-      case "settlement_receipt": return out("money", "Settled:", h`${x.bill(cid)}. Receipt saved.`);
+      case "settlement_receipt": return out("money", `${SETTLED()}:`, h`${x.bill(cid)}. Receipt saved.`);
       case "authorization_issued": return out("admin", "Authorized", h`payment of ${x.bill(cid)}.`);
       case "vendor_change_approved": return out(bb && bb.coolEnded ? "admin" : "held", bb && bb.coolEnded ? "New address approved:" : "Approved, cooling off:", h`${actorP(dd.by)} approved the new destination for ${x.vendor(cid)}. ${bb && bb.coolEnded ? `Payment stayed frozen until the cooling-off ended ${fmtDateTime(bb.coolingUntil)}.` : `Payment stays frozen${bb && bb.coolingUntil ? ` until ${fmtDateTime(bb.coolingUntil)}` : " until the cooling-off period ends"}.`}`);
       case "recovery_started": return out("money", "Recovery started:", h`${actorP(dd.by)} began moving ${fmtBase(dd.amount)} to ${acct(dd.to)}.`);
@@ -1645,7 +1695,7 @@ function actItem(it, m, extra = "") {
   if (it.session) meta.push("From your wallet, this session");
   if (it.count > 1) meta.push(h`<span class="x">${countLabel(it)}</span>`);
   const sentence = h`${it.lead ? h`<b>${it.lead}</b> ` : ""}${it.rest}`;
-  const tx = it.tx ? h`<a class="txg" href="${TXURL(it.tx)}" target="_blank" rel="noopener" aria-label="View transaction on NEAR testnet (opens in a new tab)">${IC.tx()}</a>` : raw("<span></span>");
+  const tx = it.tx ? h`<a class="txg" href="${TXURL(it.tx)}" target="_blank" rel="noopener" aria-label="View transaction on ${netName()} (opens in a new tab)">${IC.tx()}</a>` : raw("<span></span>");
   return h`<li class="act k-${it.kind}${bill ? " click" : ""}"><span class="act-ic">${KIND_IC[it.kind]()}</span><div><p class="act-s">${bill ? h`<a class="stretch" href="#/bills/${it.cid}" data-open="bill-${it.cid}">${sentence}</a>` : sentence}</p><p class="act-m">${join(meta, " · ")}</p>${it.note ? h`<p class="act-note">Reason, saved in this browser: “${it.note}”</p>` : ""}${extra}</div>${tx}</li>`;
 }
 function testGroupItem(g, m, open) {
@@ -1914,6 +1964,12 @@ function themeBtn() {
   return part(h`<button class="thm" type="button" data-act="theme" data-v="${nx[0]}" aria-label="${name}" title="${name}">${IC[ic](14)}<span aria-hidden="true">${l}</span></button>`);
 }
 const themeControl = () => h`<div class="thm-row"><span aria-hidden="true">Theme</span>${raw(themeBtn())}</div>`;
+// Network switch: shown only when more than one network is live. One click reloads on the other one.
+function netControl() {
+  const live = netsLive(); if (live.length < 2) return "";
+  const nx = live[(live.indexOf(NET.id) + 1) % live.length], name = `Network: ${NET.label}. Switch to ${NETS[nx].label}`;
+  return h`<div class="thm-row"><span aria-hidden="true">Network</span><button class="thm" type="button" data-act="network" data-v="${nx}" aria-label="${name}" title="${name}"><span class="netdot${isMain() ? " main" : ""}" aria-hidden="true"></span><span aria-hidden="true">${NET.label}</span></button></div>`;
+}
 const lensControl = () => h`<label class="lens"><span>Viewing as</span><select data-act="lens" data-tour="lens">${Object.entries(LENSES()).map(([k, l]) => h`<option value="${k}"${k === lens() ? raw(" selected") : ""}>${l}</option>`)}</select></label>`;
 const lensNote = () => (lens() === "owner" ? "" : h`<p class="lensnote" role="note"><span class="lenstag">Lens</span><span>What ${LENSES()[lens()].toLowerCase().startsWith("member") ? "Ana" : "this role"} would see. A view, not access control.</span><button class="linkbtn" type="button" data-act="lens-focus">Switch view</button></p>`);
 
@@ -1957,7 +2013,7 @@ function computeAlerts(m) {
     recent.push({ key: `closed-${cid}`, tone: "good", rule: sub ? "Subscription closed" : "Bill closed", s: h`<b>${sub ? "Subscription closed" : "Closed"}:</b> ${nm}${kb ? h`, ${money(kb.amount)}` : ""}. ${kb && kb.state === "claimed" ? "It was never reserved, and it won’t be paid." : `Its envelope is released, so it won’t be paid${sub ? " or renew" : ""}.`}`, amount: kb ? kb.amount : null, deadline: null, at, to: [OWN, MGR], action: ["See activity", "#/reports?filter=admin"] });
   }
   recent.sort((a, b) => (b.at || 0) - (a.at || 0));
-  const settled = m.bills.filter((b) => b.state === "settled").map((b) => ({ key: `paid-${b.sid}`, tone: "good", rule: "Payment settled", s: h`<b>Settled:</b> ${b.name}, ${money(b.amount)}.`, amount: b.amount, deadline: null, to: [["Payee only", b.destination]], action: ["View receipt", `#/reports?tab=receipts&r=${b.sid}`], b }));
+  const settled = m.bills.filter((b) => b.state === "settled").map((b) => ({ key: `paid-${b.sid}`, tone: "good", rule: "Payment settled", s: NET.settleMovesTokens ? h`<b>Paid:</b> ${money(b.amount)} sent to ${b.name}.` : h`<b>Settled:</b> ${b.name}, ${money(b.amount)}.`, amount: b.amount, deadline: null, to: [["Payee only", b.destination]], action: ["View receipt", `#/reports?tab=receipts&r=${b.sid}`], b }));
   const nextRenewal = subs.find((x) => x.due > t + 14) || null;
   return { live: out, settled, nextRenewal, upcoming, recent };
 }
@@ -1980,7 +2036,7 @@ function memberAlerts(m, vid = "member:ana") {
       const b = m.byId[cid], base = { at, tx: d.tx, b };
       if (e.event === "commitment_claimed") out.push(Object.assign({ key: `recv-${cid}`, tone: "quiet", rule: "Claim received", s: h`<b>Claim received:</b> ${what(b)}.` }, base));
       else if (e.event === "commitment_accepted") out.push(Object.assign({ key: `acc-${cid}`, tone: "good", rule: "Claim accepted", s: h`<b>Accepted:</b> ${what(b)}, ${dd.by === "signer" ? "by a Signer" : `by ${AGENT.name}`}. Money set aside for you.` }, base));
-      else if (e.event === "settlement_receipt") out.push(Object.assign({ key: `paid-${cid}`, tone: "good", rule: "Paid (settled)", s: h`<b>Settled:</b> ${what(b)}. Receipt saved.` }, base));
+      else if (e.event === "settlement_receipt") out.push(Object.assign({ key: `paid-${cid}`, tone: "good", rule: "Paid (settled)", s: h`<b>${SETTLED()}:</b> ${what(b)}. Receipt saved.` }, base));
       else if (e.event === "commitment_closed") out.push(Object.assign({ key: `closed-${cid}`, tone: "bad", rule: "Claim refused", s: h`<b>Claim refused:</b> ${what(b)} was closed by a Signer${SAVED_REASONS[d.tx] ? h`. Reason: “${SAVED_REASONS[d.tx]}”` : ""}.` }, base));
     }
     if (v && typeof v === "object" && v.ok === false && v.reason && ids.has(String(v.commitment_id))) {
@@ -2049,7 +2105,7 @@ function billFeed(items, m, max) {
 function heroSk() { return h`<div class="hero-in">${skBar("120px", 12)}${skBar("200px", 44, "margin-top:10px")}${skBar("100%", 40, "margin-top:28px;border-radius:8px")}${skBar("60%", 10, "margin-top:14px")}</div><div style="height:96px;border-top:1px solid var(--line)"></div>`; }
 function heroBody() {
   const m = model(), f = m.fig, neg = m.sp < 0;
-  const rows = [["treasury_balance", "In treasury", "Contract balance on NEAR."], ["settled_outflow", "Settled", "Bills marked paid on the ledger. Testnet: no tokens move."], ["reserved", "Set aside", "Accepted bills not paid yet."], ["spendable", "Free to spend", "In treasury − settled − set aside."], ["daily_recurring_burn", "Recurring bills per day", "Monthly recurring ÷ 30."], ["runway_days", "Runway", "Days of recurring bills you can cover."]];
+  const rows = [["treasury_balance", "In treasury", "Contract balance on NEAR."], ["settled_outflow", SETTLED(), NET.settleMovesTokens ? "Bills paid out from the treasury on chain." : `Bills marked paid on the ledger. ${settleNote()}`], ["reserved", "Set aside", "Accepted bills not paid yet."], ["spendable", "Free to spend", "In treasury − settled − set aside."], ["daily_recurring_burn", "Recurring bills per day", "Monthly recurring ÷ 30."], ["runway_days", "Runway", "Days of recurring bills you can cover."]];
   const rd = f.runway_days == null ? null : Number(f.runway_days), fl = m.pol ? Number(m.pol.min_runway_days) : null;
   const rctx = rd == null ? "No recurring bills" : fl == null ? "" : rd >= fl * 2 ? `Above your ${fl}-day floor` : rd >= fl ? `Close to your ${fl}-day floor` : `Below your ${fl}-day floor`;
   const nEnv = m.bills.filter((b) => b.state === "accepted").length;
@@ -2219,7 +2275,7 @@ function exportCSV(list, label) {
   const q = (v) => { const s = String(v ?? ""); return /[",\n#]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const head = ["id", "kind", "vendor", "amount", "symbol", "due_date", "state", "priority", "flags", "destination", "chain", "proposed_destination"];
   const rows = list.map((b) => [b.sid, b.mkind, b.name, b.amount, symbol(), b.due ? new Date(b.due * DAY).toISOString().slice(0, 10) : "", b.state, b.c.priority, issueList(b.flags).join("; "), b.destination, b.chain, b.proposed || ""].map(q).join(","));
-  const text = [`# Fictional fixture data · NEAR testnet · ${S.public.data ? S.public.data.treasury : ""}`, `# Exported from Takara AI ${new Date().toISOString()} · ${label}`, head.join(","), ...rows].join("\n") + "\n";
+  const text = [`# Fictional fixture business · ${netName()} · ${S.public.data ? S.public.data.treasury : ""}`, `# Exported from Takara AI ${new Date().toISOString()} · ${label}`, head.join(","), ...rows].join("\n") + "\n";
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
   a.download = `takara-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -2254,12 +2310,12 @@ function membersOf(m) {
 }
 function receiptText(m, b) {
   const s = settleInfo(m, b.sid), pc = m.pub && (m.pub.commitments || []).find((x) => String(x.id) === b.sid);
-  return [`Takara receipt (unsigned format)`, `Payee: ${b.name} (${b.destination}, ${(b.chain || "").toUpperCase()})`, `Amount: ${moneyT(b.amount).replace(THIN, " ")}`, s ? `Settled on the ledger: ${DTFULL.format(new Date(s.at))}` : null, `Bill: #${b.sid} (${KIND[b.mkind]})`, pc ? `Commitment hash: ${pc.commitment_hash}` : null, s ? `Settlement transaction: ${TXURL(s.tx)}` : null, pc ? `Attestation: request ${pc.request_no}, output hash ${pc.output_hash}` : null, `Treasury: ${m.pub ? m.pub.treasury : ""} on NEAR testnet`, `Testnet: no tokens move; payouts run through NEAR Intents on mainnet.`, `This receipt shows one line only. Fictional fixture data.`].filter(Boolean).join("\n");
+  return [`Takara receipt (unsigned format)`, `Payee: ${b.name} (${b.destination}, ${(b.chain || "").toUpperCase()})`, `Amount: ${moneyT(b.amount).replace(THIN, " ")}`, s ? `${NET.settleMovesTokens ? "Paid on chain" : "Settled on the ledger"}: ${DTFULL.format(new Date(s.at))}` : null, `Bill: #${b.sid} (${KIND[b.mkind]})`, pc ? `Commitment hash: ${pc.commitment_hash}` : null, s ? `Settlement transaction: ${TXURL(s.tx)}` : null, pc ? `Attestation: request ${pc.request_no}, output hash ${pc.output_hash}` : null, `Treasury: ${m.pub ? m.pub.treasury : ""} on ${netName()}`, `Testnet: no tokens move; payouts run through NEAR Intents on mainnet.`, `This receipt shows one line only. Fictional fixture data.`].filter(Boolean).join("\n");
 }
 
 /* ---------- My pay (Member · Ana lens) ---------- */
 function anaOf(m) { return membersOf(m).find((x) => x.id === "ana") || null; }
-const paidWord = () => "Settled";
+const paidWord = () => SETTLED();
 function myPay() {
   return sec("mypay", ["report"], ["public", "decisions"], () => {
     const m = model(); const me = anaOf(m);
@@ -2267,7 +2323,7 @@ function myPay() {
     const paid = me.bills.filter((b) => b.state === "settled"), open = me.bills.filter((b) => b.state === "claimed" || b.state === "accepted");
     const total = paid.reduce((a, b) => a + b.amount, 0);
     return h`<div class="g12"><section class="panel c8" data-tour="pay"><div class="panel-h"><h2>My payments</h2><span class="muted sm">${moneyT(total)} total</span></div>
-      ${paid.length ? h`<ul class="rows">${paid.map((b) => { const s = settleInfo(m, b.sid); return h`<li><a class="row" href="#/bills/${b.sid}" data-open="bill-${b.sid}"><span class="row-n">${KIND[b.mkind]}</span><span class="row-a">${money(b.amount)}</span><span class="row-m">${st(paidWord(m), "paid")} · ${s ? fmtDateTime(s.at) : "NEAR testnet"}</span></a></li>`; })}</ul>` : h`<p class="empty">No payments yet.</p>`}
+      ${paid.length ? h`<ul class="rows">${paid.map((b) => { const s = settleInfo(m, b.sid); return h`<li><a class="row" href="#/bills/${b.sid}" data-open="bill-${b.sid}"><span class="row-n">${KIND[b.mkind]}</span><span class="row-a">${money(b.amount)}</span><span class="row-m">${st(paidWord(m), "paid")} · ${s ? fmtDateTime(s.at) : netName()}</span></a></li>`; })}</ul>` : h`<p class="empty">No payments yet.</p>`}
       <p class="panel-f sm muted">${open.length ? `${plural(open.length, "claim")} open. ` : "No open claims. "}<a href="#/claims">My claims</a> · <a href="#/receipts">Receipts</a></p></section>
       <aside class="c4 stack"><section class="panel"><div class="panel-h"><h2>Payout address</h2></div><div class="panel-b"><p class="mono" style="overflow-wrap:anywhere">${me.dest}</p><p class="sm muted" style="margin-top:4px">${(me.chain || "").toUpperCase()} · ${symbol()}</p><div class="formfoot">${pvBtn("Change address", "changeAddress", "btn-sm")}</div></div></section></aside></div>`;
   }, () => h`<div class="panel">${skRows(3, 64)}</div>`, "Loading my pay");
@@ -2288,7 +2344,7 @@ VIEWS.receipts = {
   desc: () => "",
   body: () => sec("mrc", ["report"], ["public", "decisions"], () => {
     const m = model(); const me = anaOf(m); const paid = me ? me.bills.filter((b) => b.state === "settled") : [];
-    return h`<section class="panel" aria-label="Receipts">${paid.length ? paid.map((b) => { const s = settleInfo(m, b.sid); return h`<article class="rcpt" id="r-${b.sid}"><div class="rcpt-1"><h3>${KIND[b.mkind]}</h3>${st(paidWord(m), "paid")}${money(b.amount)}</div><p class="sm muted" style="margin-top:4px">${s ? h`${timeEl(s.at, fmtDateTime(s.at))} · ${txLink(s.tx)}` : "NEAR testnet"}</p><div class="formfoot"><button class="btn btn-secondary btn-sm" type="button" data-act="copy-receipt" data-id="${b.sid}">${IC.copy()}Copy receipt</button></div></article>`; }) : h`<p class="empty">No receipts yet. One appears for every payment to you.</p>`}</section>`;
+    return h`<section class="panel" aria-label="Receipts">${paid.length ? paid.map((b) => { const s = settleInfo(m, b.sid); return h`<article class="rcpt" id="r-${b.sid}"><div class="rcpt-1"><h3>${KIND[b.mkind]}</h3>${st(paidWord(m), "paid")}${money(b.amount)}</div><p class="sm muted" style="margin-top:4px">${s ? h`${timeEl(s.at, fmtDateTime(s.at))} · ${txLink(s.tx)}` : netName()}</p><div class="formfoot"><button class="btn btn-secondary btn-sm" type="button" data-act="copy-receipt" data-id="${b.sid}">${IC.copy()}Copy receipt</button></div></article>`; }) : h`<p class="empty">No receipts yet. One appears for every payment to you.</p>`}</section>`;
   }, () => h`<div class="panel">${skRows(2, 64)}</div>`, "Loading receipts"),
 };
 
@@ -2381,7 +2437,7 @@ function reportReceipts() {
   const m = model(); let paid = m.bills.filter((b) => b.state === "settled");
   if (lens() === "auditor") paid = paid.filter((b) => { const s = settleInfo(m, b.sid); return s && Math.floor(s.at / DAY) >= AUD.from && Math.floor(s.at / DAY) <= AUD.to; });
   return h`<section class="panel" aria-label="Receipts">${paid.length ? paid.map((b) => { const s = settleInfo(m, b.sid), pc = m.pub && (m.pub.commitments || []).find((x) => String(x.id) === b.sid); return h`<article class="rcpt" id="r-${b.sid}"><div class="rcpt-1"><h3>${b.name}</h3><span class="kindt">${KIND[b.mkind]}</span>${money(b.amount)}</div>
-      <p class="sm" style="margin-top:8px;color:var(--ink-2)">${s ? h`Settled ${timeEl(s.at, fmtDateTime(s.at))} · ${txLink(s.tx, "Settlement transaction")}` : "Settled on the testnet ledger"}</p>
+      <p class="sm" style="margin-top:8px;color:var(--ink-2)">${s ? (NET.settleMovesTokens ? h`Paid: ${money(b.amount)} sent to ${acct(b.destination)} · ${timeEl(s.at, fmtDateTime(s.at))} · ${txLink(s.tx)}` : h`Settled ${timeEl(s.at, fmtDateTime(s.at))} · ${txLink(s.tx, "Settlement transaction")}`) : `${SETTLED()} on the ${NET.id} ledger`}</p>
       <details class="disc" data-k="rp-${b.sid}"><summary>${IC.chev()}Proof</summary><dl class="ddl" style="margin-top:8px"><dt>Bill</dt><dd class="mono">#${b.sid}</dd><dt>Payee</dt><dd class="mono">${b.destination}</dd>${pc ? h`<dt>Commitment hash</dt><dd>${hashC(pc.commitment_hash, "commitment hash")}</dd><dt>Attestation</dt><dd>${attLink(pc.request_no)} · output ${hashC(pc.output_hash, "output hash")}</dd>` : ""}</dl></details>
       <div class="formfoot"><button class="btn btn-secondary btn-sm" type="button" data-act="copy-receipt" data-id="${b.sid}">${IC.copy()}Copy receipt</button>${readOnlyLens() ? "" : pvBtn("Share with payee", "shareReceipt", "btn-sm")}</div></article>`; }) : h`<p class="empty">No receipts yet.</p>`}
     <div class="panel-b" style="border-top:1px dashed var(--line-2)"><p class="sm muted">Receipts are unsigned. Signed receipts ${pvTag()}</p></div></section>`;
@@ -2448,7 +2504,7 @@ function simBody() {
 function setupSteps() {
   const p = S.public.data, m = S.report.data ? model() : null, decs = decisionsList();
   const steps = [];
-  steps.push({ t: "Treasury created. You own it.", done: !!p, tech: !!p, proof: p ? h`${acct(p.treasury)}` : "Reading the treasury", acts: p ? h`${ext(`https://testnet.nearblocks.io/address/${encodeURIComponent(p.treasury)}`, "View on NEAR testnet")}<button class="linkbtn" type="button" data-act="how" data-how="treasuryDeploy">How this will work</button>` : "" });
+  steps.push({ t: "Treasury created. You own it.", done: !!p, tech: !!p, proof: p ? h`${acct(p.treasury)}` : "Reading the treasury", acts: p ? h`${ext(ADDRURL(p.treasury), `View on ${netName()}`)}<button class="linkbtn" type="button" data-act="how" data-how="treasuryDeploy">How this will work</button>` : "" });
   steps.push({ t: `Policy v${p ? p.policy.version : "1"} signed.`, done: !!(p && p.policy.version >= 1), tech: !!p, proof: p ? h`Policy hash ${hashC(p.policy.hash, "policy hash")}` : "", acts: h`<a class="btn btn-secondary btn-sm" href="#/start/interview">Replay the setup interview</a>` });
   if (m) {
     const vg = vendorGroups(m), reg = vg.filter((v) => v.kind === "vendor" || v.kind === "payroll"), mem = membersOf(m);
@@ -2469,7 +2525,7 @@ function setupSteps() {
     steps.push({ t: `${moneyT(m.sp)} free to spend. Runway ${m.fig.runway_days ?? "n/a"} days.`, done: true, proof: "", acts: h`<a href="#/overview">Home</a>` });
     const firsts = m.bills.filter((b) => b.state === "settled").map((b) => ({ b, s: settleInfo(m, b.sid) })).filter((x) => x.s).sort((a, b) => a.s.at - b.s.at);
     const f = firsts[0];
-    steps.push({ t: f ? `First bill settled on the ledger ${fmtDate(Math.floor(f.s.at / DAY))}: ${f.b.name}, ${moneyT(f.b.amount)}.` : "No bill settled yet.", done: !!f, proof: "", acts: h`${f ? txLink(f.s.tx, "Settlement transaction") : ""}<a href="#/plan">See plans</a>` });
+    steps.push({ t: f ? `First bill ${NET.settleMovesTokens ? "paid on chain" : "settled on the ledger"} ${fmtDate(Math.floor(f.s.at / DAY))}: ${f.b.name}, ${moneyT(f.b.amount)}.` : "No bill settled yet.", done: !!f, proof: "", acts: h`${f ? txLink(f.s.tx, "Settlement transaction") : ""}<a href="#/plan">See plans</a>` });
   }
   return steps;
 }
@@ -2620,7 +2676,7 @@ function neverList() {
   const decs = decisionsList();
   const find = (method, code) => decs.find((d) => d.method === method && d.ok === false && failCode(d.failure) === code);
   const rows = [["Change its own limits", find("propose_policy", "E_NOT_POLICY_SIGNER")], ["Withdraw funds", find("recover", "E_NOT_OWNER")], ["Pay a new payout address without a Signer and a wait", find("approve_vendor_change", "E_NOT_POLICY_SIGNER")], ["Act after an owner revokes it", find("register_claim", "E_AGENT_REVOKED")]];
-  return h`<ul class="never">${rows.map(([t, d]) => h`<li>${IC.slash(16)}<span>${t}</span>${d && d.tx ? txLink(d.tx, "Refused on testnet") : h`<span class="sm muted">Contract rule</span>`}</li>`)}</ul>`;
+  return h`<ul class="never">${rows.map(([t, d]) => h`<li>${IC.slash(16)}<span>${t}</span>${d && d.tx ? txLink(d.tx, `Refused on ${NET.id}`) : h`<span class="sm muted">Contract rule</span>`}</li>`)}</ul>`;
 }
 function policyForm() {
   const p = S.policy.data;
@@ -2644,7 +2700,7 @@ VIEWS.ledger = {
   body: () => sec("ledger", ["public"], [], () => {
     const p = S.public.data, cs = p.commitments || [];
     return h`<div class="stack"><section class="panel" aria-label="Treasury summary"><dl class="sumdl">
-        <div><dt>Balance</dt><dd>${p.balance} tUSDC (test token, no value). Reserved and spendable are sealed.</dd></div>
+        <div><dt>Balance</dt><dd>${p.balance} ${isMain() ? "USDC" : "tUSDC (test token, no value)"}. Reserved and spendable are sealed.</dd></div>
         <div><dt>Agent</dt><dd>${p.agent ? h`${acct(p.agent)} ${st("Active", "good")}` : st("Revoked", "bad")}</dd></div>
         <div><dt>Treasury</dt><dd>${p.paused ? st("Paused", "bad") : st("Running", "good")}</dd></div>
         <div><dt>Policy</dt><dd>v${p.policy.version} ${hashC(p.policy.hash, "policy hash")}</dd></div>
@@ -2654,9 +2710,9 @@ VIEWS.ledger = {
         <div><dt>Ledger state</dt><dd>${hashC(p.ledger_state_hash, "ledger state hash")}</dd></div></dl></section>
       <section aria-labelledby="lg-2"><h2 class="sech" id="lg-2">Public and sealed</h2><div class="vis">
         <div class="see"><h3>${IC.ledger(16)}Public</h3><p>Bill states, flags, hashes, total balance.</p></div>
-        <div class="seal"><h3>${IC.lock(16)}Sealed ${sealedTag()}</h3><p>Names, amounts, payout addresses, policy.</p></div></div></section>
+        <div class="seal"><h3>${IC.lock(16)}Sealed ${sealedTag()}</h3><p>${NET.settleMovesTokens ? "Reserves, the vendor list, policy. A payout’s amount and payee become public when it’s paid." : "Names, amounts, payout addresses, policy."}</p></div></div></section>
       <section aria-labelledby="lg-3"><h2 class="sech" id="lg-3">Commitments</h2>
-        ${cs.length ? h`<div class="tblbox"><div class="panel tblwrap"><table class="tbl"><caption class="vh">Commitments as read from NEAR testnet</caption><colgroup><col style="width:14%"><col style="width:120px"><col style="width:112px"><col><col style="width:190px"><col style="width:130px"></colgroup><thead><tr><th scope="col">Bill</th><th scope="col">Status</th><th scope="col">Priority</th><th scope="col">Flags</th><th scope="col">Commitment hash</th><th scope="col">Attestation</th></tr></thead><tbody>${cs.map((c) => { const [t, tone] = stateWord(c.state); const il = issueList(flagsFromBits(Number(c.flags) || 0)); return h`<tr class="tr"><td><a class="stretch mono" href="#/bills/${c.id}" data-open="bill-${c.id}">#${c.id}</a></td><td>${st(t, tone)}</td><td class="sm">${cap(String(c.priority || ""))}</td><td>${il.length ? h`<span class="iss" style="margin:0">${il.join(" · ")}</span>` : ""}</td><td style="position:relative;z-index:1">${hashC(c.commitment_hash, `commitment hash for bill ${c.id}`)}</td><td style="position:relative;z-index:1">${attLink(c.request_no)}</td></tr>`; })}</tbody></table></div>
+        ${cs.length ? h`<div class="tblbox"><div class="panel tblwrap"><table class="tbl"><caption class="vh">Commitments as read from ${netName()}</caption><colgroup><col style="width:14%"><col style="width:120px"><col style="width:112px"><col><col style="width:190px"><col style="width:130px"></colgroup><thead><tr><th scope="col">Bill</th><th scope="col">Status</th><th scope="col">Priority</th><th scope="col">Flags</th><th scope="col">Commitment hash</th><th scope="col">Attestation</th></tr></thead><tbody>${cs.map((c) => { const [t, tone] = stateWord(c.state); const il = issueList(flagsFromBits(Number(c.flags) || 0)); return h`<tr class="tr"><td><a class="stretch mono" href="#/bills/${c.id}" data-open="bill-${c.id}">#${c.id}</a></td><td>${st(t, tone)}</td><td class="sm">${cap(String(c.priority || ""))}</td><td>${il.length ? h`<span class="iss" style="margin:0">${il.join(" · ")}</span>` : ""}</td><td style="position:relative;z-index:1">${hashC(c.commitment_hash, `commitment hash for bill ${c.id}`)}</td><td style="position:relative;z-index:1">${attLink(c.request_no)}</td></tr>`; })}</tbody></table></div>
         <ul class="panel cards">${cs.map((c) => { const [t, tone] = stateWord(c.state); const il = issueList(flagsFromBits(Number(c.flags) || 0)); return h`<li class="crd"><div class="crd-1"><a class="stretch t-name mono" href="#/bills/${c.id}" data-open="bill-${c.id}">Bill #${c.id}</a>${st(t, tone)}</div>${il.length ? h`<p class="iss">${il.join(" · ")}</p>` : ""}<div class="crd-2"><span class="mono">${short(c.commitment_hash)}</span></div></li>`; })}</ul></div>` : h`<div class="panel empty">No commitments on-chain yet.</div>`}</section>
       ${(p.vendor_changes || []).length ? h`<section aria-labelledby="lg-4"><h2 class="sech" id="lg-4">Payout destination changes</h2><ul class="panel changes">${p.vendor_changes.map((ch) => { const s = ch.settlement_status || ch.status; const hrs = S.policy.data ? Number(S.policy.data.cooling_off_hours) : NaN; const coolDone = s === "approved_cooling_off" && ch.decided_at && Number.isFinite(hrs) && nsToMs(ch.decided_at) + hrs * 3600000 < Date.now(); return h`<li>Bill #${ch.commitment_id} payout change: ${coolDone ? "approved, cooling-off ended" : CHANGE_SENT[s] || humanCode(s || "recorded")}${ch.decided_by ? h`, by <span title="${ch.decided_by}">${roleOf(ch.decided_by)}</span>${ch.decided_at ? `, ${fmtDate(Math.floor(nsToMs(ch.decided_at) / DAY))}` : ""}` : ""}.</li>`; })}</ul></section>` : ""}
       <p class="footnote">Mainnet payouts are a separate run this contract doesn’t enforce.</p></div>`;
@@ -2747,7 +2803,7 @@ function billDrawer(id) {
   if (!b) return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">Bill #${id}</h2></div><p class="dr-sec">This bill isn’t on this treasury. <a href="#/money">See all money</a></p>`;
   if (lens() === "member" && b.vid !== "member:ana") return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">Not visible to members</h2></div><p class="dr-sec">Members see their own payments only. <a href="#/overview">Open My pay</a></p>`;
   const idx = { claimed: 0, accepted: 1, settled: 2, closed: 2 }[b.state] ?? 0;
-  const steps = ["Received", "Reserved", "Settled"].map((t, i) => [t, i <= idx ? "done" : i === idx + 1 ? "now" : ""]);
+  const steps = ["Received", "Reserved", SETTLED()].map((t, i) => [t, i <= idx ? "done" : i === idx + 1 ? "now" : ""]);
   const w = b.waitsOn, il = ISSUES.filter(([k]) => b.flags[k]);
   const pub = m.pub && (m.pub.commitments || []).find((x) => String(x.id) === b.sid);
   const acts = activityItems(m).filter((i) => i.cid != null && String(i.cid) === b.sid);
@@ -2773,7 +2829,7 @@ function billDrawer(id) {
     <section class="dr-sec" aria-labelledby="ds-de"><h3 id="ds-de">Destination</h3>${b.proposed ? compareBoxes(b) : h`<div class="box"><p class="box-t">Registered destination</p><p class="box-v" translate="no">${b.destination}</p><p class="box-c">${(b.chain || "").toUpperCase()} · ${symbol()}</p></div>`}</section>
     <section class="dr-sec" aria-labelledby="ds-dt"><h3 id="ds-dt">Details</h3><dl class="ddl">${details.map(([k, v]) => h`<dt>${k}</dt><dd>${v}</dd>`)}</dl></section>
     ${acts.length ? h`<section class="dr-sec" aria-labelledby="ds-ac"><h3 id="ds-ac">Activity for this bill</h3><ul class="acts" style="padding:0">${groupItems(acts).map((i) => actItem(Object.assign({}, i, { cid: null }), m))}</ul></section>` : ""}
-    ${s ? h`<section class="dr-sec" aria-labelledby="ds-rc"><h3 id="ds-rc">Receipt</h3><p class="sm" style="color:var(--ink-2)">Settled on the ledger ${timeEl(s.at, fmtDateTime(s.at))} · ${txLink(s.tx)}. Receipt saved.</p><div class="formfoot"><button class="btn btn-secondary btn-sm" type="button" data-act="copy-receipt" data-id="${b.sid}">${IC.copy()}Copy receipt</button></div></section>` : b.state === "settled" ? h`<section class="dr-sec" aria-labelledby="ds-rc"><h3 id="ds-rc">Receipt</h3><p class="sm" style="color:var(--ink-2)">Settled on the testnet ledger. Its settlement transaction is in the treasury’s on-chain history${DEMO ? "; this hosted copy’s activity log predates it" : ""}.</p></section>` : ""}
+    ${s ? h`<section class="dr-sec" aria-labelledby="ds-rc"><h3 id="ds-rc">Receipt</h3><p class="sm" style="color:var(--ink-2)">${NET.settleMovesTokens ? h`Paid: ${money(b.amount)} sent to ${acct(b.destination)} on ${timeEl(s.at, fmtDateTime(s.at))} · ${txLink(s.tx)}. Receipt saved.` : h`Settled on the ledger ${timeEl(s.at, fmtDateTime(s.at))} · ${txLink(s.tx)}. Receipt saved.`}</p><div class="formfoot"><button class="btn btn-secondary btn-sm" type="button" data-act="copy-receipt" data-id="${b.sid}">${IC.copy()}Copy receipt</button></div></section>` : b.state === "settled" ? h`<section class="dr-sec" aria-labelledby="ds-rc"><h3 id="ds-rc">Receipt</h3><p class="sm" style="color:var(--ink-2)">${SETTLED()} on the ${NET.id} ledger. Its settlement transaction is in the treasury’s on-chain history${DEMO ? "; this hosted copy’s activity log predates it" : ""}.</p></section>` : ""}
     ${pub ? h`<details class="disc dr-sec" data-k="proof"><summary>${IC.chev()}On-chain proof</summary><dl class="ddl" style="margin-top:8px">
       <dt>Commitment hash</dt><dd>${hashC(pub.commitment_hash, "commitment hash")}</dd><dt>Evidence hash</dt><dd>${hashC(pub.evidence_hash, "evidence hash")}</dd>
       <dt>Attestation</dt><dd>${attLink(pub.request_no)}</dd>${pub.settled_nonce ? h`<dt>Settled nonce</dt><dd>${hashC(pub.settled_nonce, "settled nonce")}</dd>` : ""}</dl></details>` : ""}
@@ -2800,7 +2856,7 @@ function personDrawer(pid) {
   const paid = x.bills.filter((b) => b.state === "settled"), open = x.bills.filter((b) => b.state === "claimed" || b.state === "accepted"), rec = x.bills.filter((b) => b.recur && b.state !== "settled");
   return h`<div class="dr-h"><h2 id="dr-title" tabindex="-1">${x.name}</h2><div class="dr-tags"><span>Member</span><span>Team member</span></div></div>
     <section class="dr-sec"><h3>Payout</h3><div class="box"><p class="box-v" translate="no">${x.dest}${copyBtn(x.dest, "payout address")}</p><p class="box-c">${(x.chain || "").toUpperCase()} · ${symbol()}</p></div></section>
-    <section class="dr-sec"><h3>Payments</h3>${paid.length ? h`<ul class="rows" style="padding:0">${paid.map((b) => { const s = settleInfo(m, b.sid); return h`<li><a class="row" href="#/bills/${b.sid}"><span class="row-n">${KIND[b.mkind]}</span><span class="row-a">${money(b.amount)}</span><span class="row-m">${s ? `Settled ${fmtDateTime(s.at)}` : "Settled"}</span></a></li>`; })}</ul>` : h`<p class="muted">No payments yet.</p>`}</section>
+    <section class="dr-sec"><h3>Payments</h3>${paid.length ? h`<ul class="rows" style="padding:0">${paid.map((b) => { const s = settleInfo(m, b.sid); return h`<li><a class="row" href="#/bills/${b.sid}"><span class="row-n">${KIND[b.mkind]}</span><span class="row-a">${money(b.amount)}</span><span class="row-m">${s ? `${SETTLED()} ${fmtDateTime(s.at)}` : SETTLED()}</span></a></li>`; })}</ul>` : h`<p class="muted">No payments yet.</p>`}</section>
     <section class="dr-sec"><h3>Open</h3><dl class="ddl"><dt>Open claims</dt><dd>${open.length}</dd><dt>Recurring commitments</dt><dd>${rec.length}</dd></dl></section>
     <section class="dr-sec"><h3>Actions</h3><div class="formfoot" style="margin-top:0">${pvBtn("Approve address", "approveAddress", "btn-sm")}${pvBtn("Change address", "changeAddress", "btn-sm")}<button class="btn btn-pv btn-sm" type="button" data-act="offboard" data-id="${x.id}">Offboard<span class="pvtag">Preview</span></button></div></section>
     <p class="dr-sec note">Members’ pay is visible to owners and Signers only. Other members never see it.</p>`;
@@ -2867,7 +2923,7 @@ const HOW = {
   upload: ["Upload a file", "Drop a PDF or image; it becomes one claimed bill.", "The same intake path the email command uses today.", 4],
   form: ["Fill a form", "A manager can enter anything by hand, including things the agent never saw.", "Recording a bill on-chain is agent-only in this contract.", 4],
   invite: ["Invite people", "Invite by email or link. The member sets their own payout chain, token and address, a Signer approves it once, and a small test transfer confirms it.", "The team roster lives inside the signed policy, so adding a teammate today means a Signer signs a new policy version. Ana is already on the roster.", 1],
-  payrollSetup: ["Set up payroll", "Pay each person on their own schedule, weekly or monthly, each to their own address, privately through NEAR Intents.", "Payroll runs today as one aggregate payee in the signed roster, on a monthly cycle, and its bills are accepted and settled within policy on the testnet ledger. Per-person and weekly schedules are not built yet.", 2],
+  payrollSetup: ["Set up payroll", "Pay each person on their own schedule, weekly or monthly, each to their own address, privately through NEAR Intents.", "Payroll runs today as one aggregate payee in the signed roster, on a monthly cycle, and its bills are accepted and settled within policy on the ledger. Per-person and weekly schedules are not built yet.", 2],
   importPeople: ["Import people from CSV", "Upload a CSV; Takara checks it against the registry (duplicate destination, unknown chain, missing token) and shows what would change before anything applies.", "The roster lives inside the signed policy today.", 3],
   importVendors: ["Import vendors from CSV", "Same as people: validated against the registry, shown as a change you approve.", "The sealed vendor registry is live today.", 3],
   addVendor: ["Add a vendor", "Name, payout destination, chain and token. New vendors above the auto limit always land in Approvals first.", "New-vendor checks and the payout-change freeze are live today.", 3],
@@ -2879,9 +2935,9 @@ const HOW = {
   auditorGrant: ["Grant auditor access", "Give an accountant read-only access to a date range.", "The Auditor lens shows exactly what they would see.", 8],
   choosePlan: ["Choose a plan", "Pick 1, 3 or 12 months. Paid from your treasury as a bill you accept, so it shows in Approvals like any other.", "Nothing is charged in this demo. Design partners use Takara free during the pilot, and the lapse simulator on this page runs over your real bills.", 9],
   alertDelivery: ["Alert delivery", "Telegram, email or both, per company and per person. Payroll alerts never include amounts outside the app.", "Alert content is computed live on the Alerts page today.", 6],
-  submitClaim: ["Submit a claim", "A member forwards a receipt and is paid back on their own chain, privately.", "Ana’s reimbursements were recorded from forwarded receipts and settled on the testnet ledger.", 1],
+  submitClaim: ["Submit a claim", "A member forwards a receipt and is paid back on their own chain, privately.", "Ana’s reimbursements were recorded from forwarded receipts and settled on the ledger.", 1],
   treasuryDeploy: ["Create a treasury", "In the product, setup runs before any contract exists; the treasury is deployed at your first payout.", "This treasury was deployed from the command line (about 3.6 NEAR of storage).", 1],
-  addFunds: ["Add funds", "Send USDC from your business account to the treasury. Once it lands, there is enough to cover the bill and Takara can set its money aside.", "On testnet the treasury is topped up with test tokens (tUSDC) from the command line. Nothing moves from this page.", 4],
+  addFunds: ["Add funds", "Send USDC from your business account to the treasury. Once it lands, there is enough to cover the bill and Takara can set its money aside.", "The treasury is topped up from the command line (test tokens on testnet, real USDC in small amounts on mainnet). Nothing moves from this page.", 4],
   registry: ["Shared vendor registry", "Keyed hashes inside the enclave let one business warn another about a changed destination. A warning signal only, never auto-verification.", "Each treasury already keeps a sealed, signed registry of its own.", 10],
 };
 const howDlg = $("#how"); let howOpener = null;
@@ -2979,7 +3035,7 @@ function paintNav() {
     $('[data-slot="sidenav"]').innerHTML = part(navFor().map(([g, items], gi) => g === "More"
       ? h`<details class="navg navmore" data-navg="more"><summary><span>More</span>${IC.chev(12)}</summary>${items.map(nvA)}</details>`
       : h`<div class="navg" role="group" aria-labelledby="ng-${gi}" data-navg="${items[0][0] === "start" ? "start" : "main"}"><h2 id="ng-${gi}"${g === "Everyday" ? raw(' class="vh"') : ""}>${g}</h2>${items.map(nvA)}</div>`));
-    $('[data-slot="sidebot"]').innerHTML = part(h`${lensControl()}${themeControl()}${liveLine("sideline")}`);
+    $('[data-slot="sidebot"]').innerHTML = part(h`${lensControl()}${themeControl()}${netControl()}${liveLine("sideline")}`);
     const tabItems = tabs.map((v) => flat.find((x) => x[0] === v)).filter(Boolean);
     const tb = $('[data-slot="tabbar"]');
     tb.style.gridTemplateColumns = `repeat(${tabItems.length + 2}, minmax(0, 1fr))`;
@@ -3012,7 +3068,7 @@ function paintStateBar() {
 function paintStrip() { // fiction is marked once, here: 32px, dismissible for the session
   const dismissed = store.get("takara.strip", "session") === "dismissed";
   const el = $('[data-slot="strip"]');
-  el.innerHTML = dismissed ? "" : part(h`<div class="strip" role="note" aria-label="About this treasury"><p><span class="strip-l">Demo on NEAR testnet</span><span class="strip-s">Testnet demo</span> · fictional data</p><button class="scopebtn" type="button" data-act="scope" aria-haspopup="dialog">What’s live</button><button type="button" data-act="dismiss-strip" aria-label="Hide this notice for this visit">${IC.close(16)}</button></div>`);
+  el.innerHTML = dismissed ? "" : part(h`<div class="strip" role="note" aria-label="About this treasury">${isMain() ? h`<p><span class="strip-l">Live on NEAR mainnet · real USDC, small demo amounts</span><span class="strip-s">Real USDC</span> · fictional business</p>` : h`<p><span class="strip-l">Demo on NEAR testnet</span><span class="strip-s">Testnet demo</span> · fictional data</p>`}<button class="scopebtn" type="button" data-act="scope" aria-haspopup="dialog">What’s live</button><button type="button" data-act="dismiss-strip" aria-label="Hide this notice for this visit">${IC.close(16)}</button></div>`);
   document.documentElement.style.setProperty("--strip-top", dismissed ? "0px" : "var(--strip-h)");
 }
 function paintSheet() {
@@ -3023,7 +3079,7 @@ function paintSheet() {
   $('[data-slot="sheet"]').innerHTML = part(h`<div class="sheet-h"><h2 id="more-title">More</h2><button class="iconbtn" type="button" data-act="close-more" aria-label="Close menu">${IC.close()}</button></div>
     ${items.length ? h`<nav aria-label="More pages">${items.map(([v, label, ic]) => h`<a class="si" href="#/${v}"${curV === v ? raw(' aria-current="page"') : ""}${v === "alerts" && al ? raw(` aria-label="Alerts, ${al} live"`) : ""}>${IC[ic]()}<span style="flex:1">${label}</span>${v === "alerts" && al ? h`<span class="nv-b hot" aria-hidden="true">${al}</span>` : ""}</a>`)}</nav><hr>` : ""}
     <div class="sheet-lens">${lensControl()}</div>
-    <div class="sheet-theme">${themeControl()}</div><hr>
+    <div class="sheet-theme">${themeControl()}${netControl()}</div><hr>
     ${WALLET.accountId || !readOnlyLens() ? h`<section class="walblk" aria-label="Wallet">${walletBlock()}</section><hr>` : ""}
     <button class="si" type="button" data-act="scope" style="width:100%;border:0;background:none;font:inherit;cursor:pointer;text-align:left">Demo scope</button>
     <a class="si" href="${PRODUCT}"${DEMO ? "" : raw(' target="_blank" rel="noopener"')}>Product page</a><a class="si" href="${GITHUB}" target="_blank" rel="noopener">GitHub<span class="vh"> (opens in a new tab)</span></a>`);
@@ -3032,12 +3088,12 @@ function paintSheet() {
 const scopeDlg = $("#scope"); let scopeOpener = null;
 function openScope(from) {
   const ok = IC.check(14), pv = IC.dot(14);
-  const LIVE = ["The treasury contract, read live from NEAR testnet", "Set aside, spendable and runway, from the engine", "Approve, reject, payout changes: signed in a wallet", "Policy changes, hash-checked and wallet-signed", "Owner controls: pause, revoke Banto, recover funds", "Ask Banto, read-only", "Activity, unsigned receipts, CSV export", "The public view, as anyone reads it", "Security test runs (judge checks): Reports › Security tests"];
-  const PREVIEW = ["Adding bills by form, upload or email", "Invites, CSV import, offboarding (today: a Signer signs a new policy)", "Per-person and weekly payroll (today: one monthly payee)", "A due-date scheduler (settlement runs as a backend command)", "Token movement (testnet records settlement only; mainnet pays via NEAR Intents)", "Alert delivery to Telegram and email", "Buying a plan, and billing", "Auditor access, QuickBooks and Xero export", "Signed receipts, member claims, escalation, routing", "A vendor registry shared across businesses"];
-  $("#scope-body").innerHTML = part(h`<h2 id="scope-title" tabindex="-1">Demo scope</h2><p class="lead">A fictional company on NEAR testnet. tUSDC is a test token with no value.</p>
+  const LIVE = [`The treasury contract, read live from ${netName()}`, "Set aside, spendable and runway, from the engine", "Approve, reject, payout changes: signed in a wallet", "Policy changes, hash-checked and wallet-signed", "Owner controls: pause, revoke Banto, recover funds", "Ask Banto, read-only", "Activity, unsigned receipts, CSV export", "The public view, as anyone reads it", "Security test runs (judge checks): Reports › Security tests"];
+  const PREVIEW = ["Adding bills by form, upload or email", "Invites, CSV import, offboarding (today: a Signer signs a new policy)", "Per-person and weekly payroll (today: one monthly payee)", "A due-date scheduler (settlement runs as a backend command)", ...(NET.settleMovesTokens ? [] : [`Token movement (${NET.id} records settlement only; payouts via NEAR Intents)`]), "Alert delivery to Telegram and email", "Buying a plan, and billing", "Auditor access, QuickBooks and Xero export", "Signed receipts, member claims, escalation, routing", "A vendor registry shared across businesses"];
+  $("#scope-body").innerHTML = part(h`<h2 id="scope-title" tabindex="-1">Demo scope</h2><p class="lead">${isMain() ? "A fictional company on NEAR mainnet. The USDC is real, in small demo amounts." : "A fictional company on NEAR testnet. tUSDC is a test token with no value."}${NET.settleMovesTokens ? " Settled bills are paid out on chain." : ""}</p>
     <h3>Live in this demo</h3><ul>${LIVE.map((x) => h`<li>${ok}<span>${x}</span></li>`)}</ul>
     <h3>Preview, marked ${pvTag()} on the page</h3><ul class="pvl">${PREVIEW.map((x) => h`<li>${pv}<span>${x}</span></li>`)}</ul>
-    <p class="sm muted" style="margin-top:12px">Preview items use sample data and never read or change the treasury. “Viewing as” is a view, not access control.</p>
+    ${NET.settleMovesTokens ? h`<p class="sm" style="margin-top:12px">${PRIVACY_NOTE}</p>` : ""}<p class="sm muted" style="margin-top:12px">Preview items use sample data and never read or change the treasury. “Viewing as” is a view, not access control.</p>
     <div class="dfoot"><button class="btn btn-primary" type="button" data-act="scope-close">Close</button></div>`);
   scopeOpener = from; scopeDlg.showModal(); $("#scope-title").focus();
 }
@@ -3045,7 +3101,7 @@ scopeDlg.addEventListener("close", () => { if (scopeOpener && scopeOpener.isConn
 scopeDlg.addEventListener("click", (e) => { if (e.target === scopeDlg) scopeDlg.close(); });
 const moreSheet = $("#moresheet");
 moreSheet.addEventListener("click", (e) => { if (e.target === moreSheet) moreSheet.close(); });
-function stampText() { return lastUpdated ? `Live from NEAR testnet · updated ${relTime(lastUpdated)}` : "Reading NEAR testnet"; }
+function stampText() { return lastUpdated ? `Live from ${netName()} · updated ${relTime(lastUpdated)}` : `Reading ${netName()}`; }
 function paintStamp() { $$(".stamp").forEach((s) => (s.textContent = stampText())); }
 setInterval(paintStamp, 30000);
 function announce(msg) { const a = $("#announce"); a.textContent = ""; setTimeout(() => (a.textContent = msg), 60); }
@@ -3125,7 +3181,7 @@ function policyFooter(d, changed, signing) {
   if (WALLET.status === "absent") return h`<div class="dfoot">${close("Close")}${keychain}</div><p class="dfoot-note">Wallets are unavailable on this page. A Signer (${sigs}) can still sign with the NEAR CLI.</p>`;
   if (!WALLET.accountId) return h`<div class="dfoot">${close("Close")}${keychain}<button class="btn btn-primary" type="button" data-act="wallet-connect" data-need="signer"${WALLET.status === "loading" ? raw(" disabled") : ""}>${IC.wallet()}Connect the Signer’s wallet</button></div><p class="dfoot-note">The dialog closes while your wallet opens. Your edits stay.</p>`;
   if (isSigner()) return h`<div class="dfoot">${close("Cancel")}${keychain}<button class="btn btn-primary" type="button" data-act="pd-wallet"${signing ? raw(" disabled") : ""}>Sign with wallet</button></div><p class="dfoot-note">Before your wallet opens, this page checks that the hash matches the policy text and that only your edits changed.</p>`;
-  return h`<div class="dfoot">${close("Close")}${keychain}<button class="btn btn-primary" type="button" disabled aria-describedby="pd-why">Sign with wallet</button></div><p class="dfoot-note" id="pd-why">Signer only (${sigs}). You’re connected as ${acct(WALLET.accountId)}.${walletUsable() ? h` <button class="linkbtn" type="button" data-act="pd-try" title="Sends a real testnet transaction. The contract will refuse it, which is the point. It costs a little testnet gas.">Try anyway</button>` : ""}</p>`;
+  return h`<div class="dfoot">${close("Close")}${keychain}<button class="btn btn-primary" type="button" disabled aria-describedby="pd-why">Sign with wallet</button></div><p class="dfoot-note" id="pd-why">Signer only (${sigs}). You’re connected as ${acct(WALLET.accountId)}.${walletUsable() ? h` <button class="linkbtn" type="button" data-act="pd-try" title="Sends a real ${NET.id} transaction. The contract will refuse it, which is the point. It costs a little gas.">Try anyway</button>` : ""}</p>`;
 }
 async function openDiff(body, btn) { // the interview's finish card reuses the exact diff, hash check and wallet flow
   if (btn) btn.disabled = true;
@@ -3176,7 +3232,7 @@ pdlg.addEventListener("close", () => { if (pdOpener && pdOpener.isConnected) pdO
 /* ================================================================== wallet */
 // The page never holds a key. A connected wallet signs one function call to the treasury; the
 // contract checks who signed. The role below only decides which buttons are enabled.
-const TREASURY_ID = "treasury.takara-ai-hq.testnet"; // hardcoded: a changed API response can't redirect receiverId
+const TREASURY_ID = () => NETS[NET.id].treasury; // pinned in NETS: a changed API response can't redirect receiverId
 const TG = (n) => String(n) + "000000000000"; // Tgas -> gas units
 // One table drives buttons, wallet calls and labels. Nothing outside it is ever sent.
 const TREASURY_ACTIONS = {
@@ -3227,15 +3283,16 @@ function walletRoles() {
   return r; // empty set = viewer
 }
 function roleKey() { const r = walletRoles(); return r.has("agent") ? "agent" : r.has("owner") && r.has("signer") ? "both" : r.has("owner") ? "owner" : r.has("signer") ? "signer" : "viewer"; }
-// May this account send anything at all? (testnet account that exists, not the agent)
+// May this account send anything at all? (an existing account on this page's network, not the agent)
 const walletUsable = () => !!WALLET.accountId && WALLET.check === "ok" && !walletRoles().has("agent");
 const isSigner = () => walletUsable() && walletRoles().has("signer");
 const isOwner = () => walletUsable() && walletRoles().has("owner");
 const allowed = (who) => who.split("|").some((w) => (w === "signer" ? isSigner() : w === "owner" ? isOwner() : false));
 
 async function checkAccount(id) {
-  if (/\.near$/.test(id)) return "mainnet";
-  if (!/\.testnet$/.test(id) && !/^[0-9a-f]{64}$/.test(id)) return "network";
+  const other = Object.values(NETS).find((n) => n.id !== NET.id && n.acct.test(id));
+  if (other) return other.id;
+  if (!NET.acct.test(id) && !/^[0-9a-f]{64}$/.test(id)) return "network";
   try { return (await window.TW.accountExists(id)) ? "ok" : "missing"; }
   catch { return "ok"; } // RPC hiccup: let the contract decide
 }
@@ -3280,12 +3337,12 @@ function closeDialogs() { // the wallet chooser sits under the top layer: close 
 function openPreSheet(need, from) {
   if (!window.TW) return toast("Wallets are unavailable on this page. A Signer can still use the NEAR CLI.");
   const p = S.public.data || {};
-  const sigA = (p.signers || [])[0] || "signer.takara-ai-hq.testnet", ownA = (p.owners || [])[0] || "takara-ai-hq.testnet";
+  const sigA = (p.signers || [])[0] || NET.signer, ownA = (p.owners || [])[0] || NET.owner;
   const mgr = h`<li${need !== "owner" ? raw(' class="need"') : ""}><span class="r">For approvals: the Signer</span><span class="mono" translate="no">${sigA}</span><span class="w">Approve or reject bills and payout changes, sign policy changes.</span></li>`;
   const own = h`<li${need === "owner" ? raw(' class="need"') : ""}><span class="r">For owner actions: the owner</span><span class="mono" translate="no">${ownA}</span><span class="w">Pause or resume, revoke ${AGENT.name}, recover funds, release a reservation.</span></li>`;
-  $("#pre-body").innerHTML = part(h`<h2 id="pre-title" tabindex="-1">Connect a wallet</h2><p class="lead">${need === "owner" ? h`Owner actions need ${acct(ownA)} on NEAR testnet.` : h`Approvals need ${acct(sigA)} on NEAR testnet.`}</p>
+  $("#pre-body").innerHTML = part(h`<h2 id="pre-title" tabindex="-1">Connect a wallet</h2><p class="lead">${need === "owner" ? h`Owner actions need ${acct(ownA)} on ${netName()}.` : h`Approvals need ${acct(sigA)} on ${netName()}.`}</p>
     <ul class="pre-accts">${need === "owner" ? h`${own}${mgr}` : h`${mgr}${own}`}</ul>
-    <p class="sm" style="margin-top:12px;color:var(--ink-2)">Works on testnet with Meteor, MyNearWallet or Intear in the browser, or the NEAR CLI if the key lives in your terminal keychain.</p>
+    <p class="sm" style="margin-top:12px;color:var(--ink-2)">Works on ${NET.id} with Meteor, MyNearWallet or Intear in the browser, or the NEAR CLI if the key lives in your terminal keychain.</p>
     <p class="sm muted" style="margin-top:8px">Any other account can connect to look around; the contract refuses its actions. Signing in adds no key, so every action asks your wallet first.</p>
     <div class="dfoot"><button class="btn btn-secondary" type="button" data-act="pre-close">Not now</button><button class="btn btn-primary" type="button" data-act="pre-go">${IC.wallet()}Choose wallet</button></div>`);
   preDlg._from = from || document.activeElement;
@@ -3308,9 +3365,9 @@ const walIcon = (s = 16) => IC.wallet(s);
 function walletNotice() {
   const c = WALLET.check, a = WALLET.accountId;
   if (!a) return "";
-  if (c === "mainnet") return h`<p class="walnote">That’s a mainnet account. This treasury is on NEAR testnet.</p>`;
-  if (c === "network") return h`<p class="walnote">This account isn’t on NEAR testnet.</p>`;
-  if (c === "missing") return h`<p class="walnote t-warn">This account doesn’t exist on testnet yet.</p>`;
+  if (NETS[c]) return h`<p class="walnote">That’s a ${c} account. This treasury is on ${netName()}.${netsLive().includes(c) ? h` <button class="linkbtn" type="button" data-act="network" data-v="${c}">Switch to ${NETS[c].label}</button>` : ""}</p>`;
+  if (c === "network") return h`<p class="walnote">This account isn’t on ${netName()}.</p>`;
+  if (c === "missing") return h`<p class="walnote t-warn">This account doesn’t exist on ${NET.id} yet.</p>`;
   if (c === "ok" && walletRoles().has("agent")) return h`<p class="walnote">This is ${AGENT.name}’s own account. Its key belongs on the server, not in a browser wallet. Every action is off.</p>`;
   return "";
 }
@@ -3319,7 +3376,7 @@ function walletBlock() {
   if (!WALLET.accountId) return h`<button class="btn btn-secondary btn-sm walconnect" type="button" data-act="wallet-connect"${WALLET.status === "loading" ? raw(" disabled") : ""}>${walIcon()}${WALLET.status === "loading" ? "Loading wallets" : "Connect wallet"}</button>`;
   const [label, , sentence] = ROLE_INFO[roleKey()];
   return h`<div class="walacct"><span class="waldot${walletUsable() ? " on" : ""}" aria-hidden="true"></span><span class="mono" translate="no" title="${WALLET.accountId}${WALLET.walletName ? ` (${WALLET.walletName})` : ""}">${WALLET.accountId}</span>${copyBtn(WALLET.accountId, "connected account")}</div>
-    <p class="walrole">${WALLET.check === "checking" ? "Checking the account on testnet" : h`<b>${label}</b> · ${sentence}`}</p>${walletNotice()}
+    <p class="walrole">${WALLET.check === "checking" ? `Checking the account on ${NET.id}` : h`<b>${label}</b> · ${sentence}`}</p>${walletNotice()}
     <div class="walmenu"><button class="linkbtn" type="button" data-act="wallet-connect">Switch wallet</button><span aria-hidden="true">·</span><button class="linkbtn" type="button" data-act="wallet-disconnect">Disconnect</button></div>`;
 }
 const shortAcct = (a) => { a = String(a || ""); const head = a.split(".")[0]; return head.length > 12 ? head.slice(0, 10) + "…" : head; };
@@ -3351,7 +3408,7 @@ function actionArea(slot, acts, opts = {}) {
   const who = opts.need === "owner" ? h`Owner only (${join(((S.public.data && S.public.data.owners) || []).map(acct), ", ")})` : h`Only a Signer can do this`;
   let why = "";
   if (!connected) why = opts.quiet ? "" : h`<p class="txnote" id="why-${slot}">Only ${whoWord} can do this; the contract refuses anyone else.</p>`;
-  else if (!ok) why = h`<p class="txnote" id="why-${slot}">${who}.${usable ? h` You’re connected as ${acct(WALLET.accountId)}.` : WALLET.check === "checking" ? " Checking your account." : " The connected account can’t act on this treasury (see the wallet panel)."}${usable && opts.tryIdx != null ? h` <button class="linkbtn" type="button" data-act="tx-start" data-try="1" data-slot="${slot}" data-i="${opts.tryIdx}" title="Sends a real testnet transaction. The contract will refuse it, which is the point. It costs a little testnet gas.">Try anyway as ${shortAcct(WALLET.accountId)}</button>` : ""}</p>`;
+  else if (!ok) why = h`<p class="txnote" id="why-${slot}">${who}.${usable ? h` You’re connected as ${acct(WALLET.accountId)}.` : WALLET.check === "checking" ? " Checking your account." : " The connected account can’t act on this treasury (see the wallet panel)."}${usable && opts.tryIdx != null ? h` <button class="linkbtn" type="button" data-act="tx-start" data-try="1" data-slot="${slot}" data-i="${opts.tryIdx}" title="Sends a real ${NET.id} transaction. The contract will refuse it, which is the point. It costs a little gas.">Try anyway as ${shortAcct(WALLET.accountId)}</button>` : ""}</p>`;
   const oob = opts.oob && connected && ok ? h`<label class="chk"><input type="checkbox" data-oob="${slot}"${st && st.oob ? raw(" checked") : ""}><span>I confirmed the new destination with the vendor through a known phone number or contact, not from this invoice.</span></label>` : "";
   return wrap(h`${typeof opts.fields === "function" ? opts.fields() : opts.fields || ""}${oob}<div class="txrow">${opts.lead || ""}${btns}</div>${why}${resultLine(st)}`);
 }
@@ -3366,8 +3423,8 @@ function confirmBox(slot, st) {
   const spec = TREASURY_ACTIONS[st.method];
   const gas = Number(BigInt(spec.gas) / 1000000000000n);
   return h`<div class="txconfirm" role="group" aria-label="Confirm transaction">
-    ${st.tryAnyway ? h`<p class="txwarn">This sends a real testnet transaction that the contract is expected to refuse. It costs a little testnet gas.</p>` : ""}
-    <p>You’re about to call <b translate="no">${st.method}</b> on ${acct(TREASURY_ID)} as ${acct(WALLET.accountId)}. Gas ${gas} Tgas, ${spec.deposit === "1" ? "deposit 1 yoctoNEAR" : "no deposit"}. Your wallet will show the same.</p>
+    ${st.tryAnyway ? h`<p class="txwarn">This sends a real ${NET.id} transaction that the contract is expected to refuse. It costs a little ${isMain() ? "NEAR" : "testnet NEAR"} for gas.</p>` : ""}
+    <p>You’re about to call <b translate="no">${st.method}</b> on ${acct(TREASURY_ID())} as ${acct(WALLET.accountId)}. Gas ${gas} Tgas, ${spec.deposit === "1" ? "deposit 1 yoctoNEAR" : "no deposit"}. Your wallet will show the same.</p>
     ${st.reason ? h`<p>Reason, saved in this browser: <span class="rsn">“${st.reason}”</span></p>` : ""}
     <pre class="txargs" translate="no">${JSON.stringify(st.args)}</pre>
     <div class="txrow"><button class="btn btn-primary" type="button" data-act="tx-go" data-slot="${slot}">Continue in wallet</button><button class="btn btn-ghost" type="button" data-act="tx-cancel" data-slot="${slot}">Cancel</button></div></div>`;
@@ -3420,7 +3477,7 @@ async function runTx(slot) {
   const st = TX[slot]; if (!st || st.phase !== "confirm") return;
   const spec = TREASURY_ACTIONS[st.method];
   if (!spec || !window.TW || !WALLET.accountId) return;
-  if (!S.public.data || S.public.data.treasury !== TREASURY_ID || window.TW.TREASURY !== TREASURY_ID) { delete TX[slot]; paintTxSlot(slot); return toast("Treasury mismatch. Nothing was sent."); }
+  if (!S.public.data || S.public.data.treasury !== TREASURY_ID() || window.TW.TREASURY !== TREASURY_ID()) { delete TX[slot]; paintTxSlot(slot); return toast("Treasury mismatch. Nothing was sent."); }
   const billId = st.args && st.args.commitment_id;
   closeDialogs();
   st.phase = "wallet"; paintTxSlot(slot); announce("Confirm in your wallet…");
@@ -3428,7 +3485,7 @@ async function runTx(slot) {
   st.phase = r.kind; st.result = r;
   if (r.kind === "cancelled" || r.kind === "error") { st.phase = "idle"; }
   paintTxSlot(slot);
-  const link = r.hash ? { href: `https://testnet.nearblocks.io/txns/${r.hash}`, text: "View transaction" } : null;
+  const link = r.hash ? { href: TXURL(r.hash), text: "View transaction" } : null;
   if (r.kind === "done") toast(spec.ok, link, billId != null && st.from === "drawer" ? { href: `#/bills/${billId}`, text: "View bill" } : null);
   else if (r.kind === "refused") { announce(`The contract refused: ${r.code}. Nothing changed.`); if (!$(`[data-txslot="${CSS.escape(slot)}"]`)) toast(`The contract refused (${r.code}). Nothing changed.`, link); }
   else if (r.kind === "cancelled") announce("You cancelled in the wallet. Nothing was sent.");
@@ -3449,7 +3506,7 @@ async function sendTx(method, args, onHash) {
   r.signer = signer;
   if (r.hash && (r.kind === "done" || r.kind === "refused")) {
     if (note) { SAVED_REASONS[r.hash] = note; store.set("takara.reasons", JSON.stringify(SAVED_REASONS), "session"); }
-    SESSION_TX.unshift({ at: new Date().toISOString(), tx: r.hash, signer, contract: TREASURY_ID, method, ok: r.kind === "done", failure: r.kind === "refused" ? r.code : null, value: r.value || null, events: (r.events || []).filter((e) => e.standard === "takara-ai"), session: true, note, bill });
+    SESSION_TX.unshift({ at: new Date().toISOString(), tx: r.hash, signer, contract: TREASURY_ID(), method, ok: r.kind === "done", failure: r.kind === "refused" ? r.code : null, value: r.value || null, events: (r.events || []).filter((e) => e.standard === "takara-ai"), session: true, note, bill });
     if (!DEMO) api("/api/decisions/record", { tx: r.hash, signer }).then(() => load("decisions", { quiet: true })).catch(() => { /* the session list still shows it */ });
     M = null;
   }
@@ -3487,11 +3544,11 @@ async function signPolicyWithWallet(tryAnyway) {
   let args;
   try { args = await verifyProposal(pending.d); }
   catch (e) { pending.state = { error: `checked before signing: ${e.message}` }; return paintPolicyDialog(pending.d, pending.state); }
-  if (!S.public.data || S.public.data.treasury !== TREASURY_ID) return toast("Treasury mismatch. Nothing was sent.");
+  if (!S.public.data || S.public.data.treasury !== TREASURY_ID()) return toast("Treasury mismatch. Nothing was sent.");
   pdOpener = null; pdlg.close(); // 3.7: the wallet can't be used under a modal
   toast("Checked: the hash matches the policy text. Confirm the policy change in your wallet…");
   const r = await sendTx("propose_policy", args);
-  const link = r.hash ? { href: `https://testnet.nearblocks.io/txns/${r.hash}`, text: "View transaction" } : null;
+  const link = r.hash ? { href: TXURL(r.hash), text: "View transaction" } : null;
   const reopen = (state) => { pending.state = state; paintPolicyDialog(pending.d, state); pdlg.showModal(); $("#pd-title").focus(); };
   if (r.kind === "done") {
     PF.edits = null; pending = null;
@@ -3530,16 +3587,16 @@ function ownerControls() {
     ${WALLET.accountId || WALLET.status === "absent" ? "" : h`<div class="connectrow"><span>Needs the owner’s wallet (${acct(owner)}).</span><button class="btn btn-secondary btn-sm" type="button" data-act="wallet-connect" data-need="owner"${WALLET.status === "loading" ? raw(" disabled") : ""}>${walIcon()}Connect the owner’s wallet</button></div>`}
     <div class="ocrow"><div class="oc-t"><h3>${p.paused ? "Resume the treasury" : "Pause the treasury"}</h3><p>${p.paused ? "Payments can settle again within policy." : "Stops every payment from settling until an owner resumes it."}</p></div>${actionArea("own-pause", [pauseAct], Object.assign({ tryIdx: p.paused ? null : 0 }, q))}</div>
     <div class="ocrow"><div class="oc-t"><h3>${p.agent ? `Revoke ${AGENT.name}` : `Restore ${AGENT.name}`}</h3><p>${p.agent ? h`Stops ${acct(p.agent)} from recording or paying bills. Owners can restore it later.` : "After changing the agent, re-run setup to re-bind the engine secret, or the agent’s requests will fail."}</p></div>${actionArea("own-agent", [agentAct], Object.assign({ fields: p.agent ? "" : () => fld("oc-agent", "Agent account", parent ? "agent." + parent : "") }, q))}</div>
-    <div class="ocrow"><div class="oc-t"><h3>Recover funds</h3><p>Move tUSDC out of the treasury yourself.</p></div>${actionArea("own-recover", [recAct], Object.assign({ fields: () => h`<div class="ocgrid">${fld("oc-amt", "Amount (USDC)", "", ' inputmode="decimal"')}${fld("oc-amt2", "Type the amount again", "", ' inputmode="decimal"')}${fld("oc-to", "Send to", owner)}</div>` }, q))}</div>`;
+    <div class="ocrow"><div class="oc-t"><h3>Recover funds</h3><p>Move ${isMain() ? "USDC" : "tUSDC"} out of the treasury yourself.</p></div>${actionArea("own-recover", [recAct], Object.assign({ fields: () => h`<div class="ocgrid">${fld("oc-amt", "Amount (USDC)", "", ' inputmode="decimal"')}${fld("oc-amt2", "Type the amount again", "", ' inputmode="decimal"')}${fld("oc-to", "Send to", owner)}</div>` }, q))}</div>`;
 }
 /* ---------- legacy redirect returns and lost requests ---------- */
 function walletBoot() {
   const q = new URLSearchParams(location.search);
   if (["transactionHashes", "errorCode", "errorMessage", "account_id", "all_keys"].some((k) => q.has(k))) {
     const hash = (q.get("transactionHashes") || "").split(",")[0];
-    if (hash && /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(hash)) toast("Your wallet sent a transaction.", { href: `https://testnet.nearblocks.io/txns/${hash}`, text: "View transaction" });
+    if (hash && /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(hash)) toast("Your wallet sent a transaction.", { href: TXURL(hash), text: "View transaction" });
     else if (q.get("errorCode")) toast(q.get("errorCode") === "userRejected" ? "You cancelled in the wallet. Nothing was sent." : "The wallet reported an error. Nothing was sent unless your wallet shows a transaction.");
-    history.replaceState(null, "", location.pathname + location.hash);
+    history.replaceState(null, "", location.pathname + (NET_Q ? `?network=${NET_Q}` : "") + location.hash);
     try { sessionStorage.removeItem("takara.pendingTx"); } catch { /* storage blocked */ }
   }
   let p = null; try { p = JSON.parse(sessionStorage.getItem("takara.pendingTx") || "null"); sessionStorage.removeItem("takara.pendingTx"); } catch { /* storage blocked */ }
@@ -3582,6 +3639,7 @@ document.addEventListener("click", async (e) => {
   else if (act === "how-close") howDlg.close();
   else if (act === "scope") { if (moreSheet.open) moreSheet.close(); openScope(t); }
   else if (act === "scope-close") scopeDlg.close();
+  else if (act === "network") setNetwork(t.dataset.v);
   else if (act === "theme") { const inSheet = !!t.closest(".sheet"); setTheme(t.dataset.v); const nb = $(`${inSheet ? ".sheet" : ".side"} [data-act="theme"]`); if (nb) nb.focus(); }
   else if (act === "offboard") openOffboard(t.dataset.id, t);
   else if (act === "off-close") offdlg.close();
@@ -3667,7 +3725,7 @@ window.addEventListener("beforeunload", (e) => { if (policyDirty()) { e.preventD
      anchor  Element, CSS selector, or () => Element. Waits up to ~2s for it to appear and be visible;
              gives up silently (not marked seen) if it never does. Inside an open <dialog> it renders
              inside that dialog so it stays above it and clickable.
-     text    one short plain sentence (escaped). Honest copy: never imply testnet tokens move.
+     text    one short plain sentence (escaped). Honest copy: settlement wording follows NET.settleMovesTokens.
      opts    { title?: string, place?: "bottom" | "top" | "right" | "left", delay?: ms (default 250) }
    At most one hint per screen view (a route render, a drawer open or the Ask dock opening counts as one); never while the tour,
    the welcome card, or a sheet/dialog that doesn't contain the anchor is open. One click anywhere dismisses it.
@@ -3739,7 +3797,7 @@ function tourDefs() {
     { sel: TOUR_LENS, t: "Viewing as", x: "Switch back to Owner any time. It’s a view, not access control." },
   ];
   if (g === "auditor" || g === "public") return [
-    { sel: '[data-tour="needs"]', t: g === "auditor" ? "Read-only records" : "Public view", x: g === "auditor" ? "You see one month of records. Nothing here can be changed." : "This is what anyone can check on NEAR testnet." },
+    { sel: '[data-tour="needs"]', t: g === "auditor" ? "Read-only records" : "Public view", x: g === "auditor" ? "You see one month of records. Nothing here can be changed." : `This is what anyone can check on ${netName()}.` },
     { sel: '[data-nav="reports"]', t: "Reports & receipts", x: "Activity, receipts and exports for the granted range." },
     { sel: TOUR_ASK, t: `Ask ${AGENT.name}`, x: `Ask about the records in plain words. ${AGENT.name} only reads.` },
     { sel: TOUR_LENS, t: "Viewing as", x: "Switch back to Owner any time. It’s a view, not access control." },
@@ -3913,7 +3971,7 @@ function tourOnView(r) {
   if (r.view === "vendors") hint("vendors", ".tblbox", `A payout address can’t change without a Signer and a ${hrs != null ? plural(hrs, "hour") : "safety"} wait.`, { title: "Payout addresses" });
   if (r.view === "alerts" && lens() !== "member") hint("alerts", "#al-live", `What ${AGENT.name} would send right now. Telegram and email delivery is a Preview.`, { title: "Alerts" });
   if (r.view === "people") hint("people", ".roles", "Owner and Signer powers are enforced by the treasury contract, not by this app.", { title: "Roles" });
-  if (r.view === "ledger") hint("ledger", "#h1", "Exactly what anyone can read on NEAR testnet. Names, amounts and payout addresses stay sealed.", { title: "Public view" });
+  if (r.view === "ledger") hint("ledger", "#h1", `Exactly what anyone can read on ${netName()}. ${NET.settleMovesTokens ? PRIVACY_NOTE : "Names, amounts and payout addresses stay sealed."}`, { title: "Public view" });
   const g = tourGroup();
   if ((g === "main" || g === "member") && r.view === lensHome() && !seenK(TOUR_KEY(g)) && !TOUR.offered[g] && !TOUR.pop && !TOUR.welcome) {
     setTimeout(() => { if (!TOUR.welcome && !TOUR.pop && !TOUR.offered[g] && cur && cur.view === lensHome() && tourGroup() === g && !document.querySelector("dialog[open]")) welcomeOpen(); }, 700);
@@ -3921,7 +3979,7 @@ function tourOnView(r) {
 }
 function tourOnDrawer(kind) {
   VIEW_N++;
-  if (kind === "bills") hint("bill", "#drawer .tl", "Every bill moves from Received to Reserved to Settled. Settled means marked paid on the ledger.", { title: "How a bill moves", delay: 320 });
+  if (kind === "bills") hint("bill", "#drawer .tl", NET.settleMovesTokens ? "Every bill moves from Received to Reserved to Paid. Paid means the USDC was sent on chain." : "Every bill moves from Received to Reserved to Settled. Settled means marked paid on the ledger.", { title: "How a bill moves", delay: 320 });
 }
 function tourOnDock() {
   VIEW_N++;
@@ -3974,7 +4032,12 @@ paintAgent();
 paintWallet();
 walletBoot();
 onRoute();
-loadAll();
+NET_READY.then(() => {
+  // the provisional network may differ from the resolved one: repaint everything that names it
+  navBuilt = null; paintStrip(); paintNav(); paintStamp();
+  if (cur) renderView(cur.r);
+  loadAll();
+});
 </script>
 <script type="module">
 /* Wallet module. Optional: if the CDN is blocked this never runs, window.TW never appears and the
@@ -3983,13 +4046,15 @@ loadAll();
    on 2026-11-13). The wallet list is pinned below and never fetched from upstream. */
 import { NearConnector } from "https://cdn.jsdelivr.net/npm/@hot-labs/near-connect@0.12.0/+esm";
 
-const NETWORK = "testnet";
-const RPC = "https://rpc.testnet.fastnear.com";
-const TREASURY = "treasury.takara-ai-hq.testnet";
+// The page's network (testnet / mainnet), resolved once by the main script from its pinned NETS table.
+const NET = await window.TAKARA_NET_READY;
+const NETWORK = NET.id;
+const RPC = NET.rpc;
+const TREASURY = NET.treasury;
 // Filtered copy of hot-dao/near-selector@b8207d0b303914f264c50be5ac849d5fe028f069 repository/manifest.json.
 // Executors pinned to commits where one exists (Meteor and Intear can't be). Bump -takara.N when an executor URL changes.
 // Shortlist 2026-11-13 (docs/wallet-connect-plan.md): only wallets that sign in and sign function calls on NEAR
-// testnet and suit a recorded browser demo, recommended first. Nightly (extension only, blank without it) and
+// (tested on testnet) and suit a recorded browser demo, recommended first. Nightly (extension only, blank without it) and
 // Ledger (hardware) were removed. NEAR CLI stays last, for an operator whose key lives in the terminal keychain.
 const WALLET_MANIFEST = { version: "takara-2", wallets: [
   {"id":"meteor-wallet","name":"Meteor Wallet","icon":"https://raw.githubusercontent.com/Meteor-Wallet/meteor_wallet_sdk/main/assets/meteor-logo-svg.svg","description":"The most simple and secure wallet to manage your crypto, access DeFi, and explore Web3","website":"https://meteorwallet.app/","version":"1.1.1-takara.1","executor":"https://raw.githubusercontent.com/Meteor-Wallet/meteor_wallet_sdk/data-storage/storage/meteor-near-connect-latest.js","type":"sandbox","features":{"signMessage":true,"signInWithoutAddKey":true,"signInAndSignMessage":true,"signAndSendTransaction":true,"signAndSendTransactions":true,"signInWithFunctionCallKey":true,"signDelegateActions":true,"mainnet":true,"testnet":true},"platform":{"web":"https://wallet.meteorwallet.app","chrome":"https://chromewebstore.google.com/detail/meteor-wallet/pcndjhkinnkaohffealmlmhaepkpmgkb","android":"https://play.google.com/store/apps/details?id=app.meteorwallet.v2","ios":"https://apps.apple.com/us/app/meteor-wallet/id6739558223"},"permissions":{"storage":true,"allowsOpen":["https://chromewebstore.google.com","https://wallet.meteorwallet.app","https://meteorwallet.app","meteorwallet://","meteorwalletdev://"],"external":["meteorCom","meteorComV2"]}},
@@ -4004,11 +4069,13 @@ window.addEventListener("message", (e) => {
 }, true);
 
 // Guard 2: localStorage minus the library's persistent "debug-wallets" hook, so a one-time XSS
-// can't plant a permanent fake wallet.
+// can't plant a permanent fake wallet. Mainnet sessions live under their own prefix, so a testnet
+// connection never shows up on mainnet (testnet keys keep their old names).
+const NS = NETWORK === "testnet" ? "" : NETWORK + ":";
 const storage = {
-  async get(k) { if (k === "debug-wallets") return null; try { return localStorage.getItem(k); } catch { return null; } },
-  async set(k, v) { if (k === "debug-wallets") return; try { localStorage.setItem(k, v); } catch { /* storage blocked */ } },
-  async remove(k) { try { localStorage.removeItem(k); } catch { /* storage blocked */ } },
+  async get(k) { if (k === "debug-wallets") return null; try { return localStorage.getItem(NS + k); } catch { return null; } },
+  async set(k, v) { if (k === "debug-wallets") return; try { localStorage.setItem(NS + k, v); } catch { /* storage blocked */ } },
+  async remove(k) { try { localStorage.removeItem(NS + k); } catch { /* storage blocked */ } },
 };
 
 // No signIn / addFunctionCallKey option: sign-in adds no access key, so every action needs an
@@ -4017,7 +4084,7 @@ const connector = new NearConnector({
   network: NETWORK,
   manifest: WALLET_MANIFEST,
   features: { signAndSendTransaction: true },
-  providers: { testnet: [RPC] },
+  providers: { [NETWORK]: [RPC] },
   autoConnect: false,
   footerBranding: null,
   storage,

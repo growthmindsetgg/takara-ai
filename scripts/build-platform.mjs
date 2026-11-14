@@ -1,7 +1,7 @@
 // Assemble platform/ (the hosted Vercel app): product page at /, owner dashboard at /app,
 // serverless API under /api. Copies the engine wasm, public deployment record, judge run and
 // the decision log (rebuilt from on-chain outcomes; contains no secrets).
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +11,13 @@ mkdirSync(join(P, "data"), { recursive: true });
 mkdirSync(join(P, "app"), { recursive: true });
 copyFileSync(join(ROOT, "dist", "takara-engine.wasm"), join(P, "data", "takara-engine.wasm"));
 copyFileSync(join(ROOT, "fixtures", "deployment.json"), join(P, "data", "deployment.json"));
+// Mainnet: bundled only once its public record exists. Without it the API and pages stay on testnet,
+// and a stale copy from an earlier build is removed so nothing claims mainnet by accident.
+for (const dir of [join(P, "data"), P, join(ROOT, "site")]) { // API data, product page (hosted), product page (site/)
+  const src = join(ROOT, "fixtures", "deployment.mainnet.json"), dst = join(dir, "deployment.mainnet.json");
+  if (existsSync(src)) copyFileSync(src, dst); else if (existsSync(dst)) rmSync(dst);
+}
+console.log(existsSync(join(ROOT, "fixtures", "deployment.mainnet.json")) ? "mainnet record: bundled" : "mainnet record: none (testnet only)");
 // The hosted app has no write path, so its activity feed is this file as of the build. Every build
 // refreshes it from the latest local log; the app labels the feed "Activity as of <latest entry>".
 const dec = join(ROOT, ".data", "decisions.jsonl");
@@ -22,6 +29,8 @@ if (existsSync(dec)) {
 } else console.warn("warning: .data/decisions.jsonl not found; the hosted activity feed keeps its previous copy");
 // shared read-only chat intents (the local server imports the same file from scripts/lib)
 copyFileSync(join(ROOT, "scripts", "lib", "chat.mjs"), join(P, "lib", "chat.mjs"));
+// the one network table (testnet / mainnet), shared the same way
+copyFileSync(join(ROOT, "scripts", "lib", "networks.mjs"), join(P, "lib", "networks.mjs"));
 // product page + its static data
 for (const f of ["architecture.svg", "deployment.json", "judge-run.json", "owner-snapshot.json"]) copyFileSync(join(ROOT, "site", f), join(P, f));
 let site = readFileSync(join(ROOT, "site", "index.html"), "utf8");

@@ -16,5 +16,6 @@
   },
   "agent_payout_public_key": "e347cb685719d989e289d1a27912a2eff3de93d32950d3cab819c15c7e0c023c",
   "policy_hash": "68ea8f18e117a0286ca0da99c57a4966035ee107049dcd471efbaa03d4eb5281",
-  "secret_rule": "agent-via-treasury"
+  "secret_rule": "agent-via-treasury",
+  "settle_moves_tokens": true
 }

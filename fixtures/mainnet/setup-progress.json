@@ -1,0 +1,176 @@
+{
+  "network": "mainnet",
+  "profile": "min",
+  "owner": "takara-ai-hq.near",
+  "funder": "ba7d4784f723099055e3d61cca98519912bd4d9b7b1437d56e2263279d327364",
+  "accounts": {
+    "treasury": "treasury.takara-ai-hq.near",
+    "agent": "agent.takara-ai-hq.near",
+    "signer": "signer.takara-ai-hq.near"
+  },
+  "payees": {
+    "payroll": "payroll.takara-ai-hq.near",
+    "ana": "ana.takara-ai-hq.near"
+  },
+  "asset": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+  "txs": [
+    {
+      "at": "2026-11-14T14:50:53.932Z",
+      "step": "create takara-ai-hq.near",
+      "tx": "34o1Xd5zd6MMKFFPP3soVRGLGhqrsaf1ejwMET3hg6Dj",
+      "url": "https://nearblocks.io/txns/34o1Xd5zd6MMKFFPP3soVRGLGhqrsaf1ejwMET3hg6Dj"
+    },
+    {
+      "at": "2026-11-14T14:51:14.404Z",
+      "step": "create agent.takara-ai-hq.near",
+      "tx": "GFSywNZAJY4WsporfdZUVce15dnhXMBoUvveLsULPQWa",
+      "url": "https://nearblocks.io/txns/GFSywNZAJY4WsporfdZUVce15dnhXMBoUvveLsULPQWa"
+    },
+    {
+      "at": "2026-11-14T14:51:23.341Z",
+      "step": "create signer.takara-ai-hq.near",
+      "tx": "J2NV1FM5e9sRHCb8m2xveVTAcGQ4kChZabwfKMiKtS5m",
+      "url": "https://nearblocks.io/txns/J2NV1FM5e9sRHCb8m2xveVTAcGQ4kChZabwfKMiKtS5m"
+    },
+    {
+      "at": "2026-11-14T14:51:31.539Z",
+      "step": "create payroll.takara-ai-hq.near",
+      "tx": "2w9SysLTQiXCrgNc5E5aV5jefND2tDHTPiWS1ZRuTZyc",
+      "url": "https://nearblocks.io/txns/2w9SysLTQiXCrgNc5E5aV5jefND2tDHTPiWS1ZRuTZyc"
+    },
+    {
+      "at": "2026-11-14T14:51:40.273Z",
+      "step": "create ana.takara-ai-hq.near",
+      "tx": "HchkyczKQHimsS9pUyAbuPccDz8TQg6JA4DPVcxDqgbr",
+      "url": "https://nearblocks.io/txns/HchkyczKQHimsS9pUyAbuPccDz8TQg6JA4DPVcxDqgbr"
+    },
+    {
+      "at": "2026-11-14T14:51:49.648Z",
+      "step": "USDC storage_deposit takara-ai-hq.near",
+      "tx": "6CMiMvEhixKRTJLVYeU2cPoitxqrvQ6jUXgfGWRBYT3v",
+      "url": "https://nearblocks.io/txns/6CMiMvEhixKRTJLVYeU2cPoitxqrvQ6jUXgfGWRBYT3v"
+    },
+    {
+      "at": "2026-11-14T14:51:57.419Z",
+      "step": "USDC storage_deposit payroll.takara-ai-hq.near",
+      "tx": "CtkBYPKYTZbN7FdptEdbpdnv1j8RnXUFzLHxueHsgnFk",
+      "url": "https://nearblocks.io/txns/CtkBYPKYTZbN7FdptEdbpdnv1j8RnXUFzLHxueHsgnFk"
+    },
+    {
+      "at": "2026-11-14T14:52:06.108Z",
+      "step": "USDC storage_deposit ana.takara-ai-hq.near",
+      "tx": "EEt52PTszRtXwJDABMgqgEKUfetD8RkYQqNNYBX6WAxf",
+      "url": "https://nearblocks.io/txns/EEt52PTszRtXwJDABMgqgEKUfetD8RkYQqNNYBX6WAxf"
+    },
+    {
+      "at": "2026-11-14T14:52:39.394Z",
+      "step": "FastFS upload (fails by design: gas 1, the indexer reads the args)",
+      "tx": "9M1F4vijuzpHQCeMtMX22TFniNmiFpASzYwHihxM5n91",
+      "url": "https://nearblocks.io/txns/9M1F4vijuzpHQCeMtMX22TFniNmiFpASzYwHihxM5n91"
+    },
+    {
+      "at": "2026-11-14T14:53:52.219Z",
+      "step": "smoke secret-read-direct",
+      "tx": "EnbrVG85S7bWJNxFTaFeydEEfqbLjYXvTokoyK1AkmBz",
+      "url": "https://nearblocks.io/txns/EnbrVG85S7bWJNxFTaFeydEEfqbLjYXvTokoyK1AkmBz",
+      "pass": true
+    },
+    {
+      "at": "2026-11-14T14:54:07.245Z",
+      "step": "smoke via-treasury-enforced",
+      "tx": "81cf1LRbmf3qTAYXcSwdo1tWBs7T6JYLqzkb4r5M3rAm",
+      "url": "https://nearblocks.io/txns/81cf1LRbmf3qTAYXcSwdo1tWBs7T6JYLqzkb4r5M3rAm",
+      "pass": true
+    },
+    {
+      "at": null,
+      "step": "outlayer store_secrets profile smoke (throwaway key, whitelist agent)",
+      "tx": "9GrpzDyuftetT2BrKbMkNR8ocZmgHrPTmzDXX6xLtxyZ",
+      "url": "https://nearblocks.io/txns/9GrpzDyuftetT2BrKbMkNR8ocZmgHrPTmzDXX6xLtxyZ"
+    },
+    {
+      "at": null,
+      "step": "outlayer store_secrets profile default (engine key, whitelist agent AND via treasury)",
+      "tx": "FyMm3srHmrWHusL1J3aq25RBQxNrYzJtiooabR3W4cdW",
+      "url": "https://nearblocks.io/txns/FyMm3srHmrWHusL1J3aq25RBQxNrYzJtiooabR3W4cdW"
+    },
+    {
+      "at": "2026-11-14T15:09:39.257Z",
+      "step": "create treasury.takara-ai-hq.near",
+      "tx": "EToLqskEXY2afqYvzCT31Mkxg1VS2zKFwr7qFtPZikbu",
+      "url": "https://nearblocks.io/txns/EToLqskEXY2afqYvzCT31Mkxg1VS2zKFwr7qFtPZikbu"
+    },
+    {
+      "at": "2026-11-14T15:09:47.978Z",
+      "step": "USDC storage_deposit treasury.takara-ai-hq.near",
+      "tx": "CYjfwEanKwPqb9vdbYM3GZ8k3gdWDWvzByqrUVo9KWAe",
+      "url": "https://nearblocks.io/txns/CYjfwEanKwPqb9vdbYM3GZ8k3gdWDWvzByqrUVo9KWAe"
+    },
+    {
+      "at": "2026-11-14T15:09:55.288Z",
+      "step": "deploy + init treasury",
+      "tx": "DiRpCGnWR7J6Vx6iUkXF5icZgpY6YnnBeneVNU61ArA6",
+      "url": "https://nearblocks.io/txns/DiRpCGnWR7J6Vx6iUkXF5icZgpY6YnnBeneVNU61ArA6"
+    }
+  ],
+  "owner_funded_near": 5.95,
+  "engine": {
+    "wasm_hash": "bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb",
+    "build_target": "wasm32-wasip1",
+    "bytes": 299998,
+    "upload_tx": "9M1F4vijuzpHQCeMtMX22TFniNmiFpASzYwHihxM5n91",
+    "wasm_url": "https://main.fastfs.io/takara-ai-hq.near/outlayer.near/bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb.wasm",
+    "public_key": "2ee6860b4b109484e50dd84ce3ee4e6479f1aff85bbbdadb3c7bbb1b38c17511"
+  },
+  "agent_payout_public_key": "e4f609babecd969452dec97b40b1dbc68d6bfdbdfbefa92f970656c752c8320d",
+  "secrets": {
+    "smoke": "bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb",
+    "default": "bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb",
+    "rule": "agent-via-treasury",
+    "list": [
+      "PROFILE         ACCESSOR                       ACCESS         ",
+      "smoke           WasmHash(bc7a4694...)          whitelist:agent.takara-ai-hq.near",
+      "default         WasmHash(bc7a4694...)          (whitelist:agent.takara-ai-hq.near and from:treasury.takara-ai-hq.near)"
+    ]
+  },
+  "smoke": {
+    "secret-read-direct": {
+      "tx": "EnbrVG85S7bWJNxFTaFeydEEfqbLjYXvTokoyK1AkmBz",
+      "url": "https://nearblocks.io/txns/EnbrVG85S7bWJNxFTaFeydEEfqbLjYXvTokoyK1AkmBz",
+      "request_id": "3580",
+      "pass": true,
+      "expected": "engine reads the secret",
+      "value": "{\"ok\":true,\"op\":\"pubkey\",\"pk\":\"ab3d2f94b392307133efe0a54bd91a49f63fbc29cdb73dcc6abc3b413daf4426\",\"v\":1}",
+      "failure": null,
+      "logs": [
+        "EVENT_JSON:{\"standard\":\"near-outlayer\",\"version\":\"1.0.0\",\"event\":\"execution_requested\",\"data\":[{\"request_data\":\"{\\\"request_id\\\":3580,\\\"sender_id\\\":\\\"agent.takara-ai-hq.near\\\",\\\"predecessor_id\\\":\\\"agent.takara-ai-hq.near\\\",\\\"code_source\\\":{\\\"WasmUrl\\\":{\\\"url\\\":\\\"https://main.fastfs.io/takara-ai-hq.ne",
+        "[[yNEAR charged: \"1161200300000000000000\"]]",
+        "EVENT_JSON:{\"standard\":\"near-outlayer\",\"version\":\"1.0.0\",\"event\":\"execution_completed\",\"data\":[{\"sender_id\":\"agent.takara-ai-hq.near\",\"code_source\":{\"WasmUrl\":{\"url\":\"https://main.fastfs.io/takara-ai-hq.near/outlayer.near/bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb.wasm\",\"hash\":",
+        "Execution completed successfully. Output: Text(103 bytes), Resources: { instructions: 3791787, time_ms: 808 }, Cost: 1161200300000000000000 yoctoNEAR, Refund: 8838799700000000000000 yoctoNEAR, Freshly compiled"
+      ],
+      "input": "{\"v\":1,\"op\":\"pubkey\"}",
+      "attestation": "NEAR_NETWORK=mainnet node scripts/verify-attestation.mjs 3580 ...: 6/6 PASS (worker.outlayer.near approved, Intel DCAP TCB UpToDate)"
+    },
+    "via-treasury-enforced": {
+      "tx": "81cf1LRbmf3qTAYXcSwdo1tWBs7T6JYLqzkb4r5M3rAm",
+      "url": "https://nearblocks.io/txns/81cf1LRbmf3qTAYXcSwdo1tWBs7T6JYLqzkb4r5M3rAm",
+      "request_id": "3581",
+      "pass": true,
+      "expected": "secret withheld (no treasury in the call path)",
+      "value": null,
+      "failure": null,
+      "logs": [
+        "EVENT_JSON:{\"standard\":\"near-outlayer\",\"version\":\"1.0.0\",\"event\":\"execution_requested\",\"data\":[{\"request_data\":\"{\\\"request_id\\\":3581,\\\"sender_id\\\":\\\"agent.takara-ai-hq.near\\\",\\\"predecessor_id\\\":\\\"agent.takara-ai-hq.near\\\",\\\"code_source\\\":{\\\"WasmUrl\\\":{\\\"url\\\":\\\"https://main.fastfs.io/takara-ai-hq.ne",
+        "[[yNEAR charged: \"1000000000000000000000\"]]",
+        "EVENT_JSON:{\"standard\":\"near-outlayer\",\"version\":\"1.0.0\",\"event\":\"execution_completed\",\"data\":[{\"sender_id\":\"agent.takara-ai-hq.near\",\"code_source\":{\"WasmUrl\":{\"url\":\"https://main.fastfs.io/takara-ai-hq.near/outlayer.near/bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb.wasm\",\"hash\":",
+        "Execution failed: \"Access denied by access condition — signer agent.takara-ai-hq.near, called from agent.takara-ai-hq.near. Check the access conditions configured by the secret owner.\". Resources: { instructions: 0, time_ms: 0 }. Refunded 9000000000000000000000 yoctoNEAR"
+      ],
+      "input": "{\"v\":1,\"op\":\"pubkey\"}"
+    }
+  },
+  "contract": {
+    "wasm": "dist/takara_treasury.wasm",
+    "wasm_sha256": "3f90a8e3c50e97454fa0905f0e0656cb89a45b74ffecaf2130162e322140745d",
+    "settle_moves_tokens": true
+  }
+}

@@ -23,6 +23,12 @@ const SECRETS = join(ROOT, ".secrets");
 const DEPLOY = join(ROOT, "fixtures", "deployment.json");
 const redeploy = process.argv.includes("--redeploy-treasury");
 const log = (...a) => console.log("•", ...a);
+// NEAR-native settlement transfers (2026-11-14): the contract's per-payment ceiling defaults to
+// 25 USDC; the testnet fixtures pay 400 and 120 tUSDC (valueless), so testnet sets 1,000 tUSDC.
+const MAX_PAYOUT = process.env.TAKARA_MAX_PAYOUT ?? "1000000000";
+// Fixture payees must be registered on tUSDC for the treasury's ft_transfer to succeed. These
+// names are not created as NEAR accounts; tUSDC is a mock token with no value.
+const PAYEES = ["payroll.fixtureco.testnet", "railway-pay.testnet", "railway-new-bank.testnet", "inkwell-pay.testnet", "ana.fixtureco.testnet", "tinylogo.testnet", "bigagency.testnet"];
 const artifact = (built, name) => (existsSync(join(ROOT, built)) ? join(ROOT, built) : join(ROOT, "dist", name));
 
 // 1. Keys (owner-side, never committed). The engine key is the business's ledger key: the
@@ -98,6 +104,7 @@ if (!treasuryReady || redeploy) {
     secrets: { profile: "default", account_id: OWNER },
     asset: A.tusdc,
     policy: { version: 1, hash: sealedPolicy.hash, signers: [A.signer], threshold: 1, expires_at: String(BigInt(Date.now() + 365 * 86400_000) * 1_000_000n), sealed: sealedPolicy.sealed },
+    max_payout: MAX_PAYOUT,
   };
   const args = ["contract", "deploy", A.treasury, "use-file", artifact("contract/target/near/takara_treasury.wasm", "takara_treasury.wasm")];
   if (!treasuryReady || process.argv.includes("--reinit")) args.push("with-init-call", "new", "json-args", JSON.stringify(init), "prepaid-gas", "100.0 Tgas", "attached-deposit", "0 NEAR");
@@ -120,6 +127,11 @@ if (BigInt((await view(A.treasury, "get_config")).balance) === 0n) {
   log("funded treasury with 1,000 tUSDC", r.ok ? "ok" : r.failure);
 }
 
+// 8b. Fixture payees registered on tUSDC (idempotent), so NEAR-native settlements can transfer.
+for (const id of PAYEES) {
+  if (!(await view(A.tusdc, "storage_balance_of", { account_id: id }))) await call(OWNER, A.tusdc, "register", { account_id: id }, { gas: "30.0 Tgas" });
+}
+
 // 9. Public deployment record (no secrets).
 Object.assign(deployment, {
   network: NETWORK,
@@ -128,6 +140,9 @@ Object.assign(deployment, {
   engine: { wasm_url: wasmUrl, wasm_hash: wasmHash, build_target: "wasm32-wasip1", public_key: enginePk },
   agent_payout_public_key: agentPayoutPk,
   policy_hash: (await view(A.treasury, "get_config")).policy_hash,
+  treasury_wasm_hash: createHash("sha256").update(readFileSync(artifact("contract/target/near/takara_treasury.wasm", "takara_treasury.wasm"))).digest("hex"),
+  max_payout: (await view(A.treasury, "get_config")).max_payout ?? null,
+  payees_registered: PAYEES,
 });
 writeFileSync(DEPLOY, JSON.stringify(deployment, null, 2) + "\n");
 const final = await view(A.treasury, "get_config");

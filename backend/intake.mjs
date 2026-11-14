@@ -59,7 +59,7 @@ export function offlineParse(body, subject) {
     amount: amountLine,
     currency: /USDC/i.test(amountLine) ? "USDC" : /USD|\$/.test(amountLine) ? "USD" : "",
     due_date: line(/^(?:Due date|Due|Pay date)\s*:\s*(\d{4}-\d{2}-\d{2})/im),
-    destination: line(/(?:Pay to|Remit to|Payout account)[^:\n]*\(NEAR\)\s*:\s*([a-z0-9._-]+)/im) || line(/(?:Pay to|Remit to|Payout account)[^:\n]*:\s*([a-z0-9._-]+\.testnet)/im),
+    destination: line(/(?:Pay to|Remit to|Payout account)[^:\n]*\(NEAR\)\s*:\s*([a-z0-9._-]+)/im) || line(/(?:Pay to|Remit to|Payout account)[^:\n]*:\s*([a-z0-9._-]+\.(?:testnet|near))/im),
     destination_chain: "near",
     recurrence: line(/^(?:Recurring|Billing|Billed)\s*:?\s*(monthly|weekly)/im),
     memo: line(/^(?:Notes|Memo)\s*:\s*(.+)$/im),

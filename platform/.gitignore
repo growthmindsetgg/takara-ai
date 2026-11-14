@@ -6,5 +6,6 @@ app/
 index.html
 architecture.svg
 deployment.json
+deployment.mainnet.json
 judge-run.json
 owner-snapshot.json

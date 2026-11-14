@@ -1,5 +1,6 @@
 // Independently verify an OutLayer execution attestation.
 // Usage: node scripts/verify-attestation.mjs <request_id> <pinned_wasm_sha256> '<exact input>' '<exact stdout>'
+//        NEAR_NETWORK=mainnet node scripts/verify-attestation.mjs ...   (api.outlayer.ai, worker.outlayer.near)
 //
 // Checks, without trusting the API's own claims:
 //   1. the executed wasm sha256 equals the hash our contract pinned
@@ -8,13 +9,14 @@
 //   4. the task hash we recompute from those fields equals the 32 bytes that the
 //      Intel TDX quote carries in REPORTDATA (quote offset 568), i.e. the hardware
 //      quote commits to exactly this code, input and output
-//   5. the worker measurement is approved on-chain by worker.outlayer.testnet
+//   5. the worker measurement is approved on-chain by worker.outlayer.testnet (mainnet: worker.outlayer.near)
 // Quote signature-chain verification to Intel's root (DCAP) is a separate step; see README.
 import { createHash } from "node:crypto";
 
-const API = process.env.OUTLAYER_API ?? "https://testnet-api.outlayer.ai";
-const RPC = process.env.NEAR_RPC ?? "https://rpc.testnet.fastnear.com";
-const WORKER_CONTRACT = process.env.OUTLAYER_WORKER ?? "worker.outlayer.testnet";
+const MAINNET = process.env.NEAR_NETWORK === "mainnet";
+const API = process.env.OUTLAYER_API ?? (MAINNET ? "https://api.outlayer.ai" : "https://testnet-api.outlayer.ai");
+const RPC = process.env.NEAR_RPC ?? (MAINNET ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com");
+const WORKER_CONTRACT = process.env.OUTLAYER_WORKER ?? (MAINNET ? "worker.outlayer.near" : "worker.outlayer.testnet");
 
 const [requestId, pinned, input, stdout] = process.argv.slice(2);
 if (!requestId || !pinned || input === undefined || stdout === undefined) {

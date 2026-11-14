@@ -8,8 +8,8 @@
 //
 //   spendable = treasury balance − settled (settled_outflow) − reserved
 //
-// "Settled" is honest testnet language: settlement releases the escrow, burns the nonce and emits a
-// receipt on the ledger, but no tokens move on testnet. Real payouts are the mainnet 1Click run.
+// "Settled" wording follows deps.settleMovesTokens (one flag, scripts/lib/networks.mjs): when false,
+// settlement releases the escrow, burns the nonce and emits a receipt, but no tokens move.
 
 const NF = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const n = (x) => { const v = Number(String(x).replace(/,/g, "")); return (v < 0 ? "−" : "") + NF.format(Math.abs(v)); };
@@ -42,7 +42,10 @@ function billPhrase(c, sym) {
   return `${nm}’s ${amt} invoice`;
 }
 const STATE_WORD = { claimed: "not reserved yet", accepted: "reserved", settled: "settled on the ledger", closed: "closed" };
-const TESTNET_NOTE = "On testnet no tokens move; payouts run through NEAR Intents on mainnet.";
+/** One honest line about what settlement does on this network. */
+const settleNote = (deps) => deps.settleMovesTokens ? "Each settlement sends the USDC from the treasury to the payee on chain."
+  : deps.network === "mainnet" ? "On mainnet settlement records the payment; it doesn’t send the USDC yet."
+  : "On testnet no tokens move; payouts run through NEAR Intents on mainnet.";
 
 /** One entry per transaction, oldest first. The first copy keeps its original time (a backfill re-records later). */
 export function dedupeDecisions(list) {
@@ -77,6 +80,7 @@ const REFUSAL_PLAIN = {
  *   policy(): { max_auto_pay (in USDC), cooling_off_hours, min_runway_days } or null
  *   explorer(tx): explorer URL
  *   agentName: the agent's display name
+ *   network: "testnet" | "mainnet"; settleMovesTokens: whether settle sends tokens (copy only)
  */
 export async function answer(q, deps) {
   const text = String(q ?? "").toLowerCase().slice(0, 500);
@@ -110,7 +114,7 @@ export async function answer(q, deps) {
     const line = (c) => { const s0 = settledAt[String(c.id)]; return `${n(c.amount)} ${sym}${c.due_day > 0 ? ` for the ${day(c.due_day)} cycle` : ""}${s0 ? ` (settled ${new Date(s0.at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })})` : ""}`; };
     const parts = [];
     const yes = /^(was|were|has|have|did|is|are)\b/.test(text.trim()) ? "Yes. " : "";
-    if (paid.length) parts.push(`${yes}${nm} was ${verb} ${paid.length === 1 ? "once" : paid.length === 2 ? "twice" : `${paid.length} times`}, ${n(total)} ${sym} in total: ${list(paid.map(line))}. ${paid.length === 1 ? "It is" : "Each is"} settled on the ledger, with the escrow released and a receipt on-chain. ${TESTNET_NOTE}`);
+    if (paid.length) parts.push(`${yes}${nm} was ${verb} ${paid.length === 1 ? "once" : paid.length === 2 ? "twice" : `${paid.length} times`}, ${n(total)} ${sym} in total: ${list(paid.map(line))}. ${paid.length === 1 ? "It is" : "Each is"} settled on the ledger, with the escrow released and a receipt on-chain. ${settleNote(deps)}`);
     else parts.push(`Not yet. Nothing to ${nm} has settled.`);
     const groups = new Map(); for (const c of open) { const k = `${c.amount}|${c.due_day}|${c.state}|${c.injection_flagged}|${c.new_vendor_over_limit}`; groups.set(k, [...(groups.get(k) || []), c]); }
     if (open.length) parts.push(`Still open: ${[...groups.values()].map((g) => { const c = g[0];
@@ -225,7 +229,7 @@ export async function answer(q, deps) {
   // ---------- what is spendable
   if (/spend|balance|runway|how much|available|cash/.test(text)) {
     const floor = pol ? Number(pol.min_runway_days) : null;
-    return { answer: `${n(sp)} ${sym} is spendable: ${equation(f, sym)}. “Settled” means recorded as paid on the ledger: escrow released and a receipt on-chain. It counts against the balance until payouts are reconciled. ${TESTNET_NOTE} Runway is ${f.runway_days ?? "n/a"} days${floor != null ? ` against your ${floor}-day minimum` : ""}.`, figures: f, queries: rep.queries, sources: engine };
+    return { answer: `${n(sp)} ${sym} is spendable: ${equation(f, sym)}. “Settled” means recorded as paid on the ledger: escrow released and a receipt on-chain. ${deps.settleMovesTokens ? "" : "It counts against the balance until payouts are reconciled. "}${settleNote(deps)} Runway is ${f.runway_days ?? "n/a"} days${floor != null ? ` against your ${floor}-day minimum` : ""}.`, figures: f, queries: rep.queries, sources: engine };
   }
 
   // ---------- payout changes

@@ -16,5 +16,17 @@
   },
   "agent_payout_public_key": "e347cb685719d989e289d1a27912a2eff3de93d32950d3cab819c15c7e0c023c",
   "policy_hash": "68ea8f18e117a0286ca0da99c57a4966035ee107049dcd471efbaa03d4eb5281",
-  "secret_rule": "agent-via-treasury"
+  "secret_rule": "agent-via-treasury",
+  "treasury_wasm_hash": "3f90a8e3c50e97454fa0905f0e0656cb89a45b74ffecaf2130162e322140745d",
+  "max_payout": "1000000000",
+  "payees_registered": [
+    "payroll.fixtureco.testnet",
+    "railway-pay.testnet",
+    "railway-new-bank.testnet",
+    "inkwell-pay.testnet",
+    "ana.fixtureco.testnet",
+    "tinylogo.testnet",
+    "bigagency.testnet"
+  ],
+  "settle_moves_tokens": true
 }

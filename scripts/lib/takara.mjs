@@ -2,12 +2,17 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { call, view } from "./near.mjs";
+import { call, view, NETWORK } from "./near.mjs";
 import { runEngine } from "./engine.mjs";
 import { intakeDocument } from "../../backend/intake.mjs";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-export const D = JSON.parse(readFileSync(join(ROOT, "fixtures", "deployment.json"), "utf8"));
+// NEAR_NETWORK=mainnet reads the mainnet record, mainnet keys and the mainnet fixture copies
+// (scaled amounts, founder-owned payees). Testnet paths are unchanged.
+const MAINNET = NETWORK === "mainnet";
+export const D = JSON.parse(readFileSync(join(ROOT, "fixtures", MAINNET ? "deployment.mainnet.json" : "deployment.json"), "utf8"));
+const KEYS = MAINNET ? join(ROOT, ".secrets", "mainnet", "keys.json") : join(ROOT, ".secrets", "keys.json");
+const INVOICES = MAINNET ? join(ROOT, D.fixtures_dir ?? "fixtures/mainnet", "invoices") : join(ROOT, "fixtures", "invoices");
 export const T = D.accounts.treasury;
 export const AGENT = D.accounts.agent;
 export const SIGNER = D.accounts.signer;
@@ -15,11 +20,10 @@ export const OWNER = D.owner;
 const ENGINE_DEPOSIT = "0.01 NEAR";
 
 export function ownerKeys() {
-  const p = join(ROOT, ".secrets", "keys.json");
-  return existsSync(p) ? JSON.parse(readFileSync(p, "utf8")) : null;
+  return existsSync(KEYS) ? JSON.parse(readFileSync(KEYS, "utf8")) : null;
 }
 
-export const invoice = (name) => readFileSync(join(ROOT, "fixtures", "invoices", name));
+export const invoice = (name) => readFileSync(join(INVOICES, name));
 
 export async function submitDocument(name, as = AGENT) {
   const intake = await intakeDocument(invoice(name), { enginePk: D.engine.public_key });
@@ -29,7 +33,8 @@ export async function submitDocument(name, as = AGENT) {
 
 export const requestAcceptance = (id, as = AGENT) => call(as, T, "request_acceptance", { commitment_id: String(id) }, { deposit: ENGINE_DEPOSIT }).then((r) => ({ ...r, decision: r.value }));
 export const requestAuthorization = (id, as = AGENT) => call(as, T, "request_authorization", { commitment_id: String(id) }, { deposit: ENGINE_DEPOSIT }).then((r) => ({ ...r, decision: r.value }));
-export const settle = (auth, as = AGENT) => call(as, T, "settle", { auth }, { gas: "50.0 Tgas" }).then((r) => ({ ...r, decision: r.value }));
+// `plain` = { amount, receiver_id, salt } from the opened authorization (required for NEAR payouts).
+export const settle = (auth, as = AGENT, plain = {}) => call(as, T, "settle", { auth, ...plain }, { gas: "100.0 Tgas" }).then((r) => ({ ...r, decision: r.value }));
 export const signerAccept = (id, as = SIGNER) => call(as, T, "accept_commitment", { commitment_id: String(id) }, { gas: "30.0 Tgas" });
 export const approveVendorChange = (id, as = SIGNER) => call(as, T, "approve_vendor_change", { change_id: String(id) }, { gas: "30.0 Tgas" });
 

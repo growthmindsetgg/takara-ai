@@ -1,7 +1,9 @@
-// Takara AI: the ten judge checks, end to end on NEAR testnet.
-// Usage: node scripts/judge.mjs            (needs the deployment from scripts/setup-testnet.mjs)
+// Takara AI: the ten judge checks, end to end on NEAR (testnet by default).
+// Usage: node scripts/judge.mjs                       (testnet; deployment from scripts/setup-testnet.mjs)
+//        NEAR_NETWORK=mainnet node scripts/judge.mjs  (mainnet; scripts/setup-mainnet.mjs, amounts scaled
+//                                                      by the profile: 1/100 or 1/1000; moves real USDC)
 //
-// Every check is a real transaction against treasury.<owner>.testnet. Engine decisions run in
+// Every check is a real transaction against the deployment's treasury. Engine decisions run in
 // OutLayer (Intel TDX) on the pinned wasm; figures come from the owner-side deterministic report
 // (same engine binary, run locally with the owner's ledger key).
 import { createHash, randomBytes } from "node:crypto";
@@ -11,6 +13,7 @@ import { call, view, explorer } from "./lib/near.mjs";
 import { runEngine, openOpening } from "./lib/engine.mjs";
 import { intakeDocument } from "../backend/intake.mjs";
 import * as K from "./lib/takara.mjs";
+import { ASSET, OUTLAYER, NETWORK, MAINNET, units, show, minus, payee, RUN_PREFIX, UNIT } from "./lib/judge-net.mjs";
 
 const { T, AGENT, SIGNER, OWNER, D } = K;
 const RUN = randomBytes(4).toString("hex");
@@ -46,16 +49,35 @@ function doc(name) {
   // detection keys on vendor + invoice number) and added as a header (documents without one).
   return Buffer.from(raw.replace(/\n/, `\nX-Takara-Run: ${RUN}\n`).replace(/^((?:Invoice number:|Invoice)\s*)([A-Z]{2,4}-[\w-]+)/m, `$1$2-${RUN}`));
 }
-async function submit(name, as = AGENT) {
-  const intake = await intakeDocument(doc(name), { enginePk: D.engine.public_key });
-  return tx(`register_claim ${name}`, await call(as, T, "register_claim", { sealed_claim: intake.sealed }, { deposit: "0.01 NEAR" }));
+// OutLayer occasionally fails a run ("Execution promise failed"); the contract then refuses with
+// engine_error and applies nothing, so the same request is safe to repeat. Up to 3 attempts.
+async function withEngineRetry(fn) {
+  let r;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    r = await fn();
+    if (r.value?.reason !== "engine_error") return r;
+    if (attempt < 3) { console.log(`         (OutLayer engine_error, retrying ${attempt}/2)`); await new Promise((ok) => setTimeout(ok, 3000)); }
+  }
+  return r;
 }
-const engineCall = async (method, id) => tx(`${method} #${id}`, await call(AGENT, T, method, { commitment_id: String(id) }, { deposit: "0.01 NEAR" }));
+async function submit(name, as = AGENT) {
+  return withEngineRetry(async () => {
+    const intake = await intakeDocument(doc(name), { enginePk: D.engine.public_key });
+    return tx(`register_claim ${name}`, await call(as, T, "register_claim", { sealed_claim: intake.sealed }, { deposit: "0.01 NEAR" }));
+  });
+}
+const engineCall = async (method, id) => withEngineRetry(async () => tx(`${method} #${id}`, await call(AGENT, T, method, { commitment_id: String(id) }, { deposit: "0.01 NEAR" })));
 const signer = async (method, args) => tx(`${method} (signer)`, await call(SIGNER, T, method, args, { gas: "30.0 Tgas" }));
 const owner = async (method, args, deposit = "0 NEAR") => tx(`${method} (owner)`, await call(OWNER, T, method, args, { deposit, gas: "60.0 Tgas" }));
-const fund = async (amount) => tx(`fund ${amount}`, await call(OWNER, D.accounts.tusdc, "ft_transfer_call", { receiver_id: T, amount, msg: "" }, { deposit: "1 yoctoNEAR", gas: "100.0 Tgas" }));
+const fund = async (amount) => tx(`fund ${amount}`, await call(OWNER, ASSET, "ft_transfer_call", { receiver_id: T, amount, msg: "" }, { deposit: "1 yoctoNEAR", gas: "100.0 Tgas" }));
 const figures = async () => (await K.report()).figures;
 const commitment = (id) => view(T, "get_commitment", { commitment_id: String(id) });
+// NEAR-native settlement (amendment 2026-11-14): settle takes the plain opening (amount, payee,
+// salt) from the authorization's sealed opening; the contract recomputes the commitments from it,
+// then transfers the asset to the payee.
+const plain = async (z) => { const o = (await openOpening(K.ownerKeys().agent_payout_sk, z.value.opening)).opening; return { amount: o.a, receiver_id: o.x, salt: o.s }; };
+const settleTx = async (label, auth, p) => tx(label, await call(AGENT, T, "settle", { auth, ...p }, { gas: "100.0 Tgas" }));
+const ftBalance = async (id) => BigInt(await view(ASSET, "ft_balance_of", { account_id: id }));
 
 async function reset() {
   console.log(`Run ${RUN}: resetting the fixture treasury (owner + signer only)`);
@@ -71,41 +93,48 @@ async function reset() {
     if (page.length < 100) break;
   }
   const bal = (await view(T, "get_config")).balance;
-  if (BigInt(bal) > 0n) await owner("recover", { amount: bal, to: OWNER }, "1 yoctoNEAR");
+  // A fresh mainnet treasury the owner already funded with exactly the opening balance is used as is.
+  const fresh = MAINNET && bal === units(1000) && (await view(T, "list_commitments", { from: "0", limit: 1 })).length === 0;
+  if (BigInt(bal) > 0n && !fresh) await owner("recover", { amount: bal, to: OWNER }, "1 yoctoNEAR");
   const zero = await runEngine({ v: 1, op: "seal_local", sk: K.ownerKeys().engine_sk, pt: JSON.stringify({ o: "0" }) });
   await owner("reconcile_outflow", { sealed_outflow: zero.sealed }, "1 yoctoNEAR");
-  await fund("1000000000");
-  console.log(`   treasury balance ${(await figures()).treasury_balance} tUSDC, spendable ${(await figures()).spendable}`);
+  if (!fresh) await fund(units(1000));
+  console.log(`   treasury balance ${(await figures()).treasury_balance} ${UNIT}, spendable ${(await figures()).spendable}`);
 }
 
 const ids = {};
 await reset();
 
-await test(1, "Reserve protection: 400 refused while payroll 600 and Railway 120 are reserved", async () => {
+await test(1, `Reserve protection: ${show(400)} refused while payroll ${show(600)} and Railway ${show(120)} are reserved`, async () => {
   ids.payroll = (await submit("payroll-2026-12.eml")).value.commitment_id;
   await signer("accept_commitment", { commitment_id: ids.payroll });
   ids.railway = (await submit("railway-2026-11.eml")).value.commitment_id;
   await signer("accept_commitment", { commitment_id: ids.railway });
-  check("spendable reads 280", (await figures()).spendable === "280", `spendable ${(await figures()).spendable}`);
+  check(`spendable reads ${show(280)}`, (await figures()).spendable === show(280), `spendable ${(await figures()).spendable}`);
   ids.ana = (await submit("ana-request-offsite.eml")).value.commitment_id;
   const r = await engineCall("request_acceptance", ids.ana);
   const d = r.value;
   check("refused with would_break_commitments", d?.ok === false && d.reason === "would_break_commitments", d?.reason);
   check("names both blocking commitments", JSON.stringify(d?.blocking) === JSON.stringify([ids.payroll, ids.railway]), `blocking ${JSON.stringify(d?.blocking)}`);
   const detail = d?.detail ? await K.openSealed(d.detail) : null;
-  check("shortfall is 120 (sealed to owner)", detail?.shortfall === "120", `shortfall ${detail?.shortfall}`);
-  check("spendable still 280", (await figures()).spendable === "280");
+  check(`shortfall is ${show(120)} (sealed to owner)`, detail?.shortfall === show(120), `shortfall ${detail?.shortfall}`);
+  check(`spendable still ${show(280)}`, (await figures()).spendable === show(280));
 });
 
-await test(2, "Release after funding: same payment clears after a 500 top-up", async () => {
-  await fund("500000000");
+await test(2, `Release after funding: same payment clears after a ${show(500)} top-up`, async () => {
+  await fund(units(500));
   const a = await engineCall("request_acceptance", ids.ana);
   check("accepted under policy", a.value?.ok === true, a.value?.reason ?? "ok");
   const z = await engineCall("request_authorization", ids.ana);
   check("authorization issued", z.value?.ok === true && !!z.value.auth, z.value?.reason ?? "ok");
-  const s = tx("settle", await call(AGENT, T, "settle", { auth: z.value.auth }, { gas: "50.0 Tgas" }));
+  if (!z.value?.ok) return;
+  const p = await plain(z);
+  const before = await ftBalance(p.receiver_id);
+  const s = await settleTx("settle", z.value.auth, p);
   check("settled", s.value?.ok === true && (await commitment(ids.ana)).state === "settled", s.value?.reason ?? "ok");
-  check("spendable recomputed to 380", (await figures()).spendable === "380", `spendable ${(await figures()).spendable}`);
+  const got = (await ftBalance(p.receiver_id)) - before;
+  check(`payee's ft_balance_of rises by exactly ${show(400)}`, p.receiver_id === payee("ana.fixtureco.testnet") && p.amount === units(400) && got === BigInt(p.amount), `+${got} base units to ${p.receiver_id}`);
+  check(`spendable recomputed to ${show(380)}`, (await figures()).spendable === show(380), `spendable ${(await figures()).spendable}`);
 });
 
 await test(3, "Claimed is not accepted", async () => {
@@ -115,7 +144,7 @@ await test(3, "Claimed is not accepted", async () => {
   check("spendable unchanged", (await figures()).spendable === before, `${before} -> ${(await figures()).spendable}`);
   await signer("accept_commitment", { commitment_id: ids.inkwell });
   check("accepted by a policy signer", (await commitment(ids.inkwell)).state === "accepted");
-  check("spendable drops by 45", (await figures()).spendable === String(Number(before) - 45), `${before} -> ${(await figures()).spendable}`);
+  check(`spendable drops by ${show(45)}`, (await figures()).spendable === minus(before, show(45)), `${before} -> ${(await figures()).spendable}`);
 });
 
 await test(4, "Duplicate rejection", async () => {
@@ -133,7 +162,7 @@ await test(5, "Destination change on a verified vendor: suspended, agent cannot 
   const vc = await view(T, "get_vendor_change", { change_id: c.vendor_change });
   check("commitment stays claimed; change record suspended", c.state === "claimed" && vc.settlement_status === "suspended_destination_mismatch", vc?.settlement_status);
   const rep = (await K.report()).commitments.find((x) => String(x.id) === ids.swapped);
-  check("both destinations shown to the owner", rep?.destination === "railway-pay.testnet" && rep?.proposed_destination === "railway-new-bank.testnet", `${rep?.destination} vs ${rep?.proposed_destination}`);
+  check("both destinations shown to the owner", rep?.destination === payee("railway-pay.testnet") && rep?.proposed_destination === payee("railway-new-bank.testnet"), `${rep?.destination} vs ${rep?.proposed_destination}`);
   check("vendor record unchanged (policy hash same)", (await view(T, "get_config")).policy_hash === phBefore);
   const agentTry = tx("approve_vendor_change (AGENT key)", await call(AGENT, T, "approve_vendor_change", { change_id: c.vendor_change }, { gas: "30.0 Tgas" }));
   check("agent key rejected: E_NOT_POLICY_SIGNER", agentTry.failure === "E_NOT_POLICY_SIGNER", agentTry.failure);
@@ -157,27 +186,34 @@ await test(6, "Prompt injection: the invoice text changes nothing", async () => 
 
 await test(7, "Replay and field tampering", async () => {
   const z = await engineCall("request_authorization", ids.railway);
+  check("authorization issued", z.value?.ok === true, z.value?.reason ?? "ok");
+  if (!z.value?.ok) return;
   const auth = z.value.auth;
-  const s1 = tx("settle (first)", await call(AGENT, T, "settle", { auth }, { gas: "50.0 Tgas" }));
+  const p1 = await plain(z);
+  const s1 = await settleTx("settle (first)", auth, p1);
   check("first settlement succeeds", s1.value?.ok === true, s1.value?.reason ?? "ok");
-  const s2 = tx("settle (replay)", await call(AGENT, T, "settle", { auth }, { gas: "50.0 Tgas" }));
+  const s2 = await settleTx("settle (replay)", auth, p1);
   check("replay rejected: nonce_used", s2.value?.reason === "nonce_used", s2.value?.reason);
   // A fresh, unused authorization for another payment, with the amount altered by one unit.
   const z2 = await engineCall("request_authorization", ids.payroll);
+  check("fresh authorization issued", z2.value?.ok === true, z2.value?.reason ?? "ok");
+  if (!z2.value?.ok) return;
   const fresh = z2.value.auth;
   const opening = (await openOpening(K.ownerKeys().agent_payout_sk, z2.value.opening)).opening;
   const commit = (amount) => createHash("sha256").update(`takara-ai:amount:${fresh.asset_id}:${amount}:${opening.s}`).digest("hex");
   check("opening matches the authorization's amount commitment", commit(opening.a) === fresh.amount_commit, `amount ${opening.a}`);
   const tampered = { ...fresh, amount_commit: commit((BigInt(opening.a) + 1n).toString()) };
-  const s3 = tx("settle (amount +1 unit)", await call(AGENT, T, "settle", { auth: tampered }, { gas: "50.0 Tgas" }));
+  const s3 = await settleTx("settle (amount +1 unit)", tampered, { amount: opening.a, receiver_id: opening.x, salt: opening.s });
   check("rejected: authorization_mismatch on amount_commit", s3.value?.reason === "authorization_mismatch" && s3.value?.field === "amount_commit", `${s3.value?.reason} ${s3.value?.field}`);
+  const s4 = await settleTx("settle (plain amount +1 unit)", fresh, { amount: (BigInt(opening.a) + 1n).toString(), receiver_id: opening.x, salt: opening.s });
+  check("tampered plain amount rejected: opening_mismatch", s4.value?.reason === "opening_mismatch", s4.value?.reason);
 });
 
 await test(8, "Non-custodial proof: owner recovers with the agent offline; agent key refused", async () => {
   // No agent process, no engine call: these are plain owner transactions.
   await owner("pause", {});
   await owner("revoke_agent", {});
-  const rec = await owner("recover", { amount: "100000000", to: OWNER }, "1 yoctoNEAR");
+  const rec = await owner("recover", { amount: units(100), to: OWNER }, "1 yoctoNEAR");
   const touchedOutLayer = rec.logs.some((l) => l.includes("near-outlayer"));
   check("owner recovery moved funds", rec.ok && rec.events.some((e) => e.event === "recovery_completed" && e.data[0].ok), rec.failure ?? "ok");
   check("recovery never touched OutLayer or the agent", !touchedOutLayer);
@@ -185,7 +221,7 @@ await test(8, "Non-custodial proof: owner recovers with the agent offline; agent
   check("agent withdrawal rejected: E_NOT_OWNER", w.failure === "E_NOT_OWNER", w.failure);
   const p = tx("propose_policy (AGENT key)", await call(AGENT, T, "propose_policy", { version: 99, hash: "f".repeat(64), expires_at: "4000000000000000000", sealed: "AA==", diff_hash: "e".repeat(64) }, { gas: "30.0 Tgas" }));
   check("agent policy rewrite rejected: E_NOT_POLICY_SIGNER", p.failure === "E_NOT_POLICY_SIGNER", p.failure);
-  const reinit = tx("new (AGENT tries to re-initialise)", await call(AGENT, T, "new", { owners: [AGENT], agent: AGENT, outlayer: "outlayer.testnet", engine: { wasm_url: "https://x.example/a.wasm", wasm_hash: "f".repeat(64), build_target: "wasm32-wasip1" }, secrets: null, asset: D.accounts.tusdc, policy: { version: 9, hash: "f".repeat(64), signers: [AGENT], threshold: 1, expires_at: "4000000000000000000", sealed: "AA==" } }, { gas: "30.0 Tgas" }));
+  const reinit = tx("new (AGENT tries to re-initialise)", await call(AGENT, T, "new", { owners: [AGENT], agent: AGENT, outlayer: OUTLAYER, engine: { wasm_url: "https://x.example/a.wasm", wasm_hash: "f".repeat(64), build_target: "wasm32-wasip1" }, secrets: null, asset: ASSET, policy: { version: 9, hash: "f".repeat(64), signers: [AGENT], threshold: 1, expires_at: "4000000000000000000", sealed: "AA==" } }, { gas: "30.0 Tgas" }));
   check("agent cannot re-initialise the contract", !reinit.ok && /private/i.test(reinit.failure ?? ""), reinit.failure);
   const g = tx("register_claim (revoked AGENT)", await call(AGENT, T, "register_claim", { sealed_claim: "AA==" }, { deposit: "0.01 NEAR" }));
   check("revoked agent cannot act: E_AGENT_REVOKED", g.failure === "E_AGENT_REVOKED", g.failure);
@@ -203,20 +239,20 @@ await test(9, "Field-level spoofing: memo asks to become payroll/critical", asyn
 
 await test(10, "Tiered friction", async () => {
   const small = (await submit("tinylogo-001.eml")).value.commitment_id;
-  check("new $40 vendor flagged provisional", ((await commitment(small)).flags & 1) === 1);
+  check(`new $${show(40)} vendor flagged provisional`, ((await commitment(small)).flags & 1) === 1);
   const a = await engineCall("request_acceptance", small);
   const c = await commitment(small);
   check("accepted with no signature, no wait", a.value?.ok === true && c.state === "accepted" && c.accepted_by === "policy", a.value?.reason ?? JSON.stringify(c.accepted_by));
   const big = (await submit("bigagency-001.eml")).value.commitment_id;
   const b = await engineCall("request_acceptance", big);
-  check("new $900 vendor held for one signer acceptance", b.value?.reason === "needs_signer_acceptance", b.value?.reason);
+  check(`new $${show(900)} vendor held for one signer acceptance`, b.value?.reason === "needs_signer_acceptance", b.value?.reason);
   check("verified vendor destination change hits the full freeze (test 5)", results.find((x) => x.n === 5)?.ok === true);
 });
 
 const passed = results.filter((r) => r.ok).length;
 console.log(`\n${passed}/${results.length} checks passed  (run ${RUN})`);
 mkdirSync(join(K.ROOT, "docs", "runs"), { recursive: true });
-const out = join(K.ROOT, "docs", "runs", `judge-${new Date().toISOString().slice(0, 10)}-${RUN}.json`);
-writeFileSync(out, JSON.stringify({ run: RUN, at: new Date().toISOString(), treasury: T, engine: D.engine.wasm_hash, passed, total: results.length, results, txs }, null, 2));
+const out = join(K.ROOT, "docs", "runs", `${RUN_PREFIX}-${new Date().toISOString().slice(0, 10)}-${RUN}.json`);
+writeFileSync(out, JSON.stringify({ run: RUN, at: new Date().toISOString(), network: NETWORK, treasury: T, engine: D.engine.wasm_hash, passed, total: results.length, results, txs }, null, 2));
 console.log(`results: ${out}`);
 process.exit(passed === results.length ? 0 : 1);

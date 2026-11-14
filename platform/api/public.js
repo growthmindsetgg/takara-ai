@@ -1,2 +1,2 @@
 import { handler, publicLedger } from "../lib/core.mjs";
-export default handler(() => publicLedger());
+export default handler((b, req, ctx) => publicLedger(ctx));

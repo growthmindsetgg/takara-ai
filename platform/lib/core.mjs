@@ -1,10 +1,13 @@
 // Takara AI hosted platform core (Vercel serverless). Same logic as backend/server.mjs, for a
-// public demo of the fictional fixture treasury on NEAR testnet.
+// public demo of the fictional fixture business on NEAR testnet and, once its deployment record is
+// bundled (data/deployment.mainnet.json), NEAR mainnet. Each request picks its network with
+// ?network= or the x-takara-network header (allow-list in lib/networks.mjs); without one it gets
+// the default from networkStatus().
 //
 // - Reads chain state over JSON-RPC; runs the same engine wasm (committed in dist/) with WASI.
-// - The owner view uses TAKARA_ENGINE_SK, the FIXTURE treasury's ledger key, stored as an
-//   encrypted Vercel environment variable. A real business would never put its key on a server;
-//   this demo exposes only fictional data.
+// - The owner view uses TAKARA_ENGINE_SK (testnet) or TAKARA_ENGINE_SK_MAINNET (mainnet), the
+//   FIXTURE business's ledger key, stored as an encrypted Vercel environment variable. A real
+//   business would never put its key on a server; this demo exposes only fictional business data.
 // - Signing never happens here: no signer, owner or agent key exists on this server. A policy
 //   signer or owner signs in their own browser wallet; /api/policy/diff only prepares the
 //   propose_policy arguments, which the browser re-checks before the wallet opens.
@@ -15,28 +18,25 @@ import { fileURLToPath } from "node:url";
 import { WASI } from "node:wasi";
 import { randomBytes, createHash } from "node:crypto";
 import { answer, dedupeDecisions } from "./chat.mjs";
+import { netContext, networkStatus as status, requestedNetwork, ownerReport, publicLedger as ledger, belongsTo } from "./networks.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
-export const D = JSON.parse(readFileSync(join(ROOT, "data", "deployment.json"), "utf8"));
-export const T = D.accounts.treasury;
-const RPC = process.env.NEAR_RPC ?? "https://rpc.testnet.fastnear.com";
-export const explorer = (tx) => `https://testnet.nearblocks.io/txns/${tx}`;
-const fmt6 = (s) => (Number(s) / 1e6).toLocaleString("en-US", { maximumFractionDigits: 6 });
+const DATA = join(ROOT, "data");
+const SK_ENV = { testnet: "TAKARA_ENGINE_SK", mainnet: "TAKARA_ENGINE_SK_MAINNET" };
 
-export async function view(contract, method, args = {}) {
-  for (let i = 0; ; i++) {
-    const r = await fetch(RPC, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "call_function", finality: "optimistic", account_id: contract, method_name: method, args_base64: Buffer.from(JSON.stringify(args)).toString("base64") } }) });
-    const j = await r.json().catch(() => ({}));
-    if (j.result) return JSON.parse(Buffer.from(j.result.result).toString() || "null");
-    if (i >= 2) throw new Error(`rpc ${method}: ${JSON.stringify(j.error ?? j).slice(0, 200)}`);
-    await new Promise((ok) => setTimeout(ok, 600 * (i + 1)));
-  }
+/** Which networks are live, and the default. Public: says only whether an owner key is configured. */
+export const networkStatus = () => status(DATA, (id) => !!process.env[SK_ENV[id]]);
+
+/** The request's network context: the asked-for network (validated), else the default. */
+export async function contextFor(req) {
+  const id = requestedNetwork(req) ?? (await networkStatus()).default;
+  return netContext(DATA, id);
 }
 
 let compiled;
 async function runEngine(input) {
-  compiled ??= await WebAssembly.compile(readFileSync(join(ROOT, "data", "takara-engine.wasm")));
+  compiled ??= await WebAssembly.compile(readFileSync(join(DATA, "takara-engine.wasm")));
   const dir = mkdtempSync(join(tmpdir(), "takara-"));
   try {
     const inPath = join(dir, "in");
@@ -58,77 +58,59 @@ async function runEngine(input) {
   }
 }
 
-function ownerKey() {
-  const k = process.env.TAKARA_ENGINE_SK;
-  if (!k) throw new Error("owner view not configured on this deployment");
+function ownerKey(ctx) {
+  const k = process.env[SK_ENV[ctx.id]];
+  if (!k) throw new Error(`The owner view for NEAR ${ctx.id} isn't set up on this deployment.`);
   return k;
 }
 
-export async function publicLedger() {
-  const cfg = await view(T, "get_config");
-  const commitments = await view(T, "list_commitments", { from: "0", limit: 100 });
-  const changes = await view(T, "list_vendor_changes");
-  return {
-    treasury: T, network: "testnet", balance: fmt6(cfg.balance), paused: cfg.paused, agent: cfg.agent, owners: cfg.owners, signers: cfg.signers,
-    threshold: cfg.threshold, policy_expires_at: cfg.policy_expires_at,
-    policy: { version: cfg.policy_version, hash: cfg.policy_hash }, engine: cfg.engine, ledger_state_hash: cfg.ledger_state_hash,
-    commitments: commitments.map((c) => ({ id: c.id, state: c.state, priority: c.priority, flags: c.flags, evidence_hash: c.evidence_hash, commitment_hash: c.commitment_hash, vendor_ref: c.vendor_ref, request_no: c.attestation.request_no, output_hash: c.attestation.output_hash, settled_nonce: c.settled_nonce })),
-    vendor_changes: changes,
-    note: "Public state holds commitments, hashes and attestations only. Amounts, vendors and payees are sealed.",
-  };
-}
+export const publicLedger = (ctx) => ledger(ctx);
 
 /** Owner report: same engine binary, over every non-closed commitment. */
-export async function report() {
-  const input = JSON.parse(await view(T, "preview_engine_input", { op: "claim", commitment_id: null }));
-  const all = await view(T, "list_commitments", { from: "0", limit: 100 });
-  const changes = Object.fromEntries((await view(T, "list_vendor_changes")).map((v) => [v.id, v]));
-  input.cs = all.filter((c) => c.state !== "closed").map((c) => {
-    const vc = c.vendor_change != null ? changes[c.vendor_change] : null;
-    const acc = c.accepted_by === "policy" ? "p" : c.accepted_by ? "s" : "";
-    return [Number(c.id), c.state, c.priority, c.flags, acc, c.sealed, vc?.settlement_status ?? null, vc?.decided_at ? Number(vc.decided_at) : null];
-  });
-  const r = await runEngine({ ...input, op: "report", sk: ownerKey() });
-  // The engine's label predates the audit fix (M6): the burn counts accepted recurrences only.
-  if (r.queries) r.queries.daily_recurring_burn = "sum(monthly-equivalent amount) where state == accepted and recurring, / 30";
-
-  return { ...r, hosted_demo: true, note: "Owner view of the fictional fixture treasury (hosted demo)." };
+export async function report(ctx) {
+  const r = await ownerReport(ctx, runEngine, ownerKey(ctx));
+  return { ...r, hosted_demo: true, network: ctx.id, note: "Owner view of the fictional fixture business (hosted demo)." };
 }
 
-async function openSealed(sealed) {
-  const r = await runEngine({ v: 1, op: "open_local", sk: ownerKey(), sealed });
+async function openSealed(ctx, sealed) {
+  const r = await runEngine({ v: 1, op: "open_local", sk: ownerKey(ctx), sealed });
   return r.ok ? r.plaintext : null;
 }
 
-export function decisions() {
-  const p = join(ROOT, "data", "decisions.jsonl");
+/** The bundled decision log (one file for both networks), filtered to this network's deployment. */
+export function decisions(ctx) {
+  const p = join(DATA, "decisions.jsonl");
   if (!existsSync(p)) return [];
-  return dedupeDecisions(readFileSync(p, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l)));
+  return dedupeDecisions(readFileSync(p, "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l)).filter(belongsTo(ctx)));
 }
 
 /** Read-only chat: the shared plain-language intents (scripts/lib/chat.mjs, copied here at build). */
-export async function chat(q) {
-  return answer(q, { report, decisions, openSealed, vendorChanges: () => view(T, "list_vendor_changes"), policy: policyCurrent, explorer });
+export async function chat(ctx, q) {
+  return answer(q, {
+    report: () => report(ctx), decisions: () => decisions(ctx), openSealed: (s) => openSealed(ctx, s),
+    vendorChanges: () => ctx.view(ctx.T, "list_vendor_changes"), policy: () => policyCurrent(ctx), explorer: ctx.explorer,
+    network: ctx.id, settleMovesTokens: ctx.settleMovesTokens,
+  });
 }
 
 // ------------------------------------------------------------------ policy (preview only)
 const CONTROLS = ["max_auto_pay", "cooling_off_hours", "min_runway_days"];
 
-async function currentPolicy() {
-  const cfg = await view(T, "get_config");
-  const header = await view(T, "get_policy");
-  const policy = await openSealed(header.sealed);
+async function currentPolicy(ctx) {
+  const cfg = await ctx.view(ctx.T, "get_config");
+  const header = await ctx.view(ctx.T, "get_policy");
+  const policy = await openSealed(ctx, header.sealed);
   if (!policy) throw new Error("policy unreadable");
   return { policy, cfg };
 }
 
-export async function policyCurrent() {
-  const { policy, cfg } = await currentPolicy();
+export async function policyCurrent(ctx) {
+  const { policy, cfg } = await currentPolicy(ctx);
   return { version: cfg.policy_version, hash: cfg.policy_hash, max_auto_pay: Number(policy.max_auto_pay) / 10 ** policy.decimals, cooling_off_hours: policy.cooling_off_hours, min_runway_days: policy.min_runway_days };
 }
 
-export async function policyDiff(body = {}) {
-  const { policy, cfg } = await currentPolicy();
+export async function policyDiff(ctx, body = {}) {
+  const { policy, cfg } = await currentPolicy(ctx);
   const next = { ...policy, version: cfg.policy_version + 1 };
   const diff = {};
   for (const k of CONTROLS) {
@@ -140,10 +122,10 @@ export async function policyDiff(body = {}) {
   }
   diff.version = { from: policy.version, to: next.version };
   const nextPt = JSON.stringify(next);
-  const sealed = await runEngine({ v: 1, op: "seal_policy_local", pt: nextPt, eph: randomBytes(32).toString("hex"), sk: ownerKey() });
+  const sealed = await runEngine({ v: 1, op: "seal_policy_local", pt: nextPt, eph: randomBytes(32).toString("hex"), sk: ownerKey(ctx) });
   const sha256 = (s) => createHash("sha256").update(s).digest("hex");
   return {
-    diff, next_hash: sealed.hash, signer: D.accounts.signer, signers: cfg.signers, threshold: cfg.threshold, current_hash: cfg.policy_hash, hosted_demo: true,
+    diff, next_hash: sealed.hash, signer: ctx.D.accounts.signer, signers: cfg.signers, threshold: cfg.threshold, current_hash: cfg.policy_hash, hosted_demo: true, network: ctx.id,
     // Fictional fixture data only. A production build returns the plaintext from the owner's
     // local server only. The browser hashes it to check `propose.hash` before signing.
     next_pt: nextPt,
@@ -158,16 +140,18 @@ export async function policyDiff(body = {}) {
   };
 }
 
-export function signDisabled() {
+export function signDisabled(ctx) {
+  const { T, D } = ctx;
   return {
     ok: false,
     failure: "Server-side signing is disabled on the hosted demo",
-    error: `This server never signs: a public website must never hold a policy signer's key. A policy signer signs the proposal in their own wallet from the app (Connect wallet), or from their machine (local dashboard, or: near contract call-function as-transaction ${T} propose_policy ... sign-as ${D.accounts.signer}). The contract rejects anyone else with E_NOT_POLICY_SIGNER.`,
+    error: `This server never signs: a public website must never hold a policy signer's key. A policy signer signs the proposal in their own wallet from the app (Connect wallet), or from their machine (local dashboard, or: near contract call-function as-transaction ${T} propose_policy ... sign-as ${D.accounts.signer} network-config ${ctx.id}). The contract rejects anyone else with E_NOT_POLICY_SIGNER.`,
   };
 }
 
-/** Small JSON handler wrapper for Vercel Node functions. */
-export function handler(fn, { methods = ["GET"] } = {}) {
+/** Small JSON handler wrapper for Vercel Node functions. fn(body, req, ctx): ctx is the request's
+ *  network context ({ net: false } for routes that don't need one). */
+export function handler(fn, { methods = ["GET"], net = true } = {}) {
   return async (req, res) => {
     res.setHeader("cache-control", "no-store");
     res.setHeader("content-type", "application/json");
@@ -178,11 +162,13 @@ export function handler(fn, { methods = ["GET"] } = {}) {
     try {
       let body = req.body;
       if (typeof body === "string") body = JSON.parse(body || "{}");
-      const out = await fn(body ?? {}, req);
+      const ctx = net ? await contextFor(req) : null;
+      if (ctx) res.setHeader("x-takara-network", ctx.id);
+      const out = await fn(body ?? {}, req, ctx);
       res.statusCode = out?.status ?? 200;
       res.end(JSON.stringify(out));
     } catch (e) {
-      res.statusCode = 500;
+      res.statusCode = e.status === 400 || e.status === 404 ? e.status : 500;
       res.end(JSON.stringify({ error: e.message }));
     }
   };

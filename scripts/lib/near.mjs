@@ -103,4 +103,6 @@ function extractFailure(f) {
   return code ? code[0] : s.slice(0, 300);
 }
 
-export const explorer = (tx) => `https://testnet.nearblocks.io/txns/${tx}`;
+export const EXPLORER = NETWORK === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io";
+export const OUTLAYER = NETWORK === "mainnet" ? "outlayer.near" : "outlayer.testnet";
+export const explorer = (tx) => `${EXPLORER}/txns/${tx}`;

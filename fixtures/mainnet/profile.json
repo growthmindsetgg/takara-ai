@@ -1,0 +1,21 @@
+{
+  "amount_scale_divisor": 100,
+  "payees_created": {
+    "payroll": "payroll.takara-ai-hq.near",
+    "railway": "railway-pay.takara-ai-hq.near",
+    "inkwell": "inkwell-pay.takara-ai-hq.near",
+    "ana": "ana.takara-ai-hq.near",
+    "tinylogo": "tinylogo.takara-ai-hq.near"
+  },
+  "payee_map": {
+    "payroll.fixtureco.testnet": "payroll.takara-ai-hq.near",
+    "railway-pay.testnet": "railway-pay.takara-ai-hq.near",
+    "inkwell-pay.testnet": "inkwell-pay.takara-ai-hq.near",
+    "ana.fixtureco.testnet": "ana.takara-ai-hq.near",
+    "tinylogo.testnet": "tinylogo.takara-ai-hq.near",
+    "bigagency.testnet": "bigagency.takara-ai-hq.near",
+    "railway-new-bank.testnet": "railway-new-bank.takara-ai-hq.near",
+    "attacker-wallet.testnet": "attacker-wallet.takara-ai-hq.near"
+  },
+  "note": "Amounts are 1/100 of the testnet fixtures. Payees in payees_created are founder-owned mainnet accounts; railway-new-bank and attacker-wallet are deliberately never created."
+}

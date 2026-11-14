@@ -7,7 +7,10 @@ We built Takara AI at #NEARHackathon so that can't happen:
 - The business owns the treasury. The AI agent can only act inside a policy the owner signs, and the owner can revoke it with the agent offline.
 - Bills you've accepted reserve money, so payroll never gets spent twice.
 - A changed payout address freezes payment until a human approves and a cooling-off passes.
-- Amounts, vendors and payees stay sealed in a TEE on @NEARProtocol (OutLayer + NEAR AI Cloud).
+- Your reserves, rules and vendor list stay sealed in a TEE on @NEARProtocol (OutLayer), with an attestation for every decision.
+- Payouts are real USDC on chain; each one shows its amount and payee when it's paid, and nothing else.
+
+Live on NEAR mainnet with tiny real-USDC amounts: treasury.takara-ai-hq.near
 
 10/10 checks pass live on NEAR testnet, including the agent trying to rewrite its own limits and the contract refusing it.
 

@@ -159,6 +159,8 @@
   .sec-head .lede { margin-top: 16px; }
 
   /* live source line + the one loop */
+  .mainnet-live { margin-top: 12px; font-size: 15px; color: var(--ink); }
+  .mainnet-live a { color: inherit; }
   .source { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
   .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex: none; }
   @media (prefers-reduced-motion: no-preference) { .live-dot { animation: breathe 2.4s ease-in-out infinite; } }
@@ -430,7 +432,7 @@
 
 <div class="demo" id="demo">
   <div class="wrap">
-    <p>Demo treasury on NEAR testnet · fictional data</p>
+    <p id="demo-t">Demo treasury on NEAR testnet · fictional data</p>
     <button type="button" id="demo-x" aria-label="Hide this notice for this session"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
   </div>
 </div>
@@ -559,12 +561,12 @@
         </a></li>
         <li><a href="how-it-works.html#step-5">
           <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
-          <span class="n">5</span><span class="t">Paid, with a receipt</span><span class="d">Recorded on chain, where anyone can check it.</span>
+          <span class="n">5</span><span class="t" id="s5-t">Paid, with a receipt</span><span class="d" id="s5-d">Recorded on chain, where anyone can check it.</span>
         </a></li>
       </ol>
       <div class="flow-foot">
         <a class="btn btn-quiet" href="how-it-works.html">See how it works in detail <span aria-hidden="true">→</span></a>
-        <p class="meta">On testnet a payment is recorded on chain, but no tokens move. Real payouts through NEAR Intents are planned for mainnet.</p>
+        <p class="meta" id="settle-note">On testnet a payment is recorded on chain, but no tokens move. Real payouts through NEAR Intents are planned for mainnet.</p>
       </div>
     </div>
   </section>
@@ -599,7 +601,7 @@
         </article>
         <article aria-labelledby="g4">
           <h3 class="h3" id="g4">Your books stay sealed</h3>
-          <p class="body2">Amounts, vendors and payees are sealed inside a TEE policy engine. Anyone can see the chain. Only you can read the books.</p>
+          <p class="body2" id="g4-p">Amounts, vendors and payees are sealed inside a TEE policy engine. Anyone can see the chain. Only you can read the books.</p>
           <div class="vis" id="v-sealed"><p class="wait">Reading the treasury</p></div>
           <p class="proofref"><a href="#books">See all nine bills, both ways</a></p>
         </article>
@@ -614,6 +616,7 @@
         <div class="c8">
           <h2 class="h2" id="h-proof">Proof on NEAR testnet</h2>
           <p class="lede">Ten checks ran as real transactions against this treasury. Each one links to the explorer, and the panels below read the chain from your browser.</p>
+          <p class="mainnet-live" id="mainnet-live" hidden></p>
         </div>
         <div class="c4" style="align-self:end;justify-self:end">
           <p class="source" id="source"><span class="live-dot" aria-hidden="true"></span><span id="source-t">Reading NEAR testnet</span></p>
@@ -752,7 +755,8 @@ const usdc2 = (v) => `<span class="num">${esc(n2(v))} USDC</span>`;
 const usdc = (v) => `<span class="num">${esc(n0(v))} USDC</span>`;
 // /api/* exists only on the hosted copy (takara-ai.vercel.app); a local static preview skips it instead of logging 404s
 const HOSTED = location.protocol.startsWith("http") && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const api = (path) => (HOSTED ? getJSON(path) : Promise.reject(new Error("local preview")));
+// pinned to testnet: the proof below is the testnet treasury, whatever network the API defaults to
+const api = (path) => (HOSTED ? getJSON(`${path}${path.includes("?") ? "&" : "?"}network=testnet`) : Promise.reject(new Error("local preview")));
 const store = { get(k) { try { return sessionStorage.getItem(k); } catch { return null; } }, set(k, v) { try { sessionStorage.setItem(k, v); } catch {} } };
 async function getJSON(url) { const r = await fetch(url, { headers: { accept: "application/json" } }); if (!r.ok) throw new Error(`${url}: ${r.status}`); const ct = r.headers.get("content-type") || ""; if (!ct.includes("json")) throw new Error(`${url}: not JSON`); return r.json(); }
 async function view(contract, method, args = {}) {
@@ -895,9 +899,55 @@ function renderSealed(pubList, rep) {
   </dl>`;
 }
 
+/* ---------- NEAR mainnet: shown only when its public record loads and the treasury exists on chain ---------- */
+const MAINNET_RPC = "https://rpc.mainnet.fastnear.com";
+async function mainnetRpc(method, params) {
+  const r = await fetch(MAINNET_RPC, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+  const j = await r.json(); if (!j.result) throw new Error("mainnet rpc"); return j.result;
+}
+async function liveNetworks() {
+  // Hosted: GET /api/network already checked the record and the account, and carries settle_moves_tokens
+  // (scripts/lib/networks.mjs, or a record's own field). A local preview reads deployment.mainnet.json itself.
+  let net = null; if (HOSTED) try { net = await getJSON("/api/network"); if (!net.networks) net = null; } catch {}
+  let main = null;
+  if (net) {
+    const m = net.networks.mainnet;
+    if (m && m.available && m.accounts) main = { T: m.accounts.treasury, moves: !!m.settle_moves_tokens, balance: null };
+  } else {
+    let M = null; try { M = await getJSON("deployment.mainnet.json"); } catch {}
+    if (M && M.accounts && M.accounts.treasury) {
+      try { await mainnetRpc("query", { request_type: "view_account", finality: "final", account_id: M.accounts.treasury }); main = { T: M.accounts.treasury, moves: M.settle_moves_tokens === true, balance: null }; } catch { main = null; }
+    }
+  }
+  if (main) {
+      try { const c = await mainnetRpc("query", { request_type: "call_function", finality: "optimistic", account_id: main.T, method_name: "get_config", args_base64: btoa("{}") }); const b = Number(JSON.parse(new TextDecoder().decode(new Uint8Array(c.result))).balance) / 1e6; if (Number.isFinite(b)) main.balance = b; } catch {}
+  }
+  return { main, testMoves: !!(net && net.networks.testnet && net.networks.testnet.settle_moves_tokens) };
+}
+function paintNetworks(D, nets) {
+  const m = nets.main, testMoves = nets.testMoves || D.settle_moves_tokens === true;
+  if (m) {
+    const el = $("#mainnet-live");
+    el.innerHTML = `<b>Live on NEAR mainnet</b> · real USDC, small demo amounts${m.balance != null ? ` · the treasury holds ${usdc2(m.balance)}` : ""} · <a href="https://nearblocks.io/address/${encodeURIComponent(m.T)}" target="_blank" rel="noopener">${esc(m.T)} on NearBlocks</a>. The ten checks below ran on testnet.`;
+    el.hidden = false;
+    $("#demo-t").textContent = "Live on NEAR mainnet · real USDC, small demo amounts · fictional business";
+  }
+  const note = $("#settle-note");
+  if (m && m.moves) note.textContent = `On mainnet each payment sends real USDC to the payee on chain, in small demo amounts.${testMoves ? " Testnet pays out test tokens the same way." : " On testnet a payment is recorded, but no tokens move."}`;
+  else if (testMoves) note.textContent = "Each payment sends the tokens to the payee on chain: test tokens on testnet.";
+  else if (m) note.textContent = "A payment is recorded on chain. The contract doesn’t send the tokens yet, on testnet or mainnet.";
+  if ((m && m.moves) || testMoves) {
+    // token-moving settle: step 5 pays the payee, and each payout's amount and payee are public when paid
+    $("#s5-t").textContent = m && m.moves ? "Paid: USDC sent to the payee" : "Paid: tokens sent to the payee";
+    $("#s5-d").textContent = "With a receipt on chain, where anyone can check it.";
+    $("#g4-p").textContent = "Reserves, rules and the vendor list are sealed inside a TEE policy engine. Each payout shows its amount and payee on chain when it’s paid. Only you can read the books.";
+  }
+}
+
 /* ---------- main load ---------- */
 (async () => {
   const D = await getJSON("deployment.json");
+  liveNetworks().then((nets) => paintNetworks(D, nets)).catch(() => {});
   const T = D.accounts.treasury;
   let pub = null, pubList = null;
   try {
@@ -925,7 +975,7 @@ function renderSealed(pubList, rep) {
     const f = rep.figures;
     live.innerHTML = `<p class="meta">Treasury balance, public</p>
       <p class="bal">${esc(n0(pub.balance))}<span class="unit"> USDC</span></p>
-      <div class="ownerline" style="display:block"><p class="meta" style="color:var(--text2);margin-bottom:8px">The owner also sees, with the ledger key <span class="sealed">SEALED · TEE</span></p><p class="eq"><span><b>${esc(n2(f.treasury_balance))}</b> in treasury</span>${Number(f.settled_outflow) ? `<span class="op">−</span><span><b>${esc(n2(f.settled_outflow))}</b> settled</span>` : ""}<span class="op">−</span><span><b>${esc(n2(f.reserved))}</b> set aside</span><span class="op">=</span><span class="res"><b>${esc(n2(f.spendable))}</b> free to spend USDC</span></p><p class="meta" style="margin-top:8px">Settled: recorded as paid on the ledger, with a receipt on-chain. Testnet: no tokens move; payouts run through NEAR Intents on mainnet. Runway <span class="num">${esc(f.runway_days)}</span> days.</p></div>
+      <div class="ownerline" style="display:block"><p class="meta" style="color:var(--text2);margin-bottom:8px">The owner also sees, with the ledger key <span class="sealed">SEALED · TEE</span></p><p class="eq"><span><b>${esc(n2(f.treasury_balance))}</b> in treasury</span>${Number(f.settled_outflow) ? `<span class="op">−</span><span><b>${esc(n2(f.settled_outflow))}</b> settled</span>` : ""}<span class="op">−</span><span><b>${esc(n2(f.reserved))}</b> set aside</span><span class="op">=</span><span class="res"><b>${esc(n2(f.spendable))}</b> free to spend USDC</span></p><p class="meta" style="margin-top:8px">${D.settle_moves_tokens === true ? "Settled: paid out to the payee in test tokens, with a receipt on chain." : "Settled: recorded as paid on the ledger, with a receipt on-chain. Testnet: no tokens move."} Runway <span class="num">${esc(f.runway_days)}</span> days.</p></div>
       <dl class="facts">
         <dt>Banto, the agent</dt><dd><span class="st"><span class="dot ${pub.agent ? "green" : "red"}" aria-hidden="true"></span>${pub.agent ? "Active" : "Switched off"}</span> <code>${esc(pub.agent || "")}</code></dd>
         <dt>Treasury paused</dt><dd>${pub.paused ? "Yes" : "No"}</dd>

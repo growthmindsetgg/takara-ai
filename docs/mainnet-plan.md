@@ -23,7 +23,7 @@ does not enforce it.
 | OutLayer engine + secrets | `outlayer.near`, `worker.outlayer.near` (both exist, measured), FastFS `main.fastfs.io`, API `api.outlayer.ai`. Secret binding (`--wasm-hash`, `--access whitelist:`, `--via`) documented without a network restriction; behaviour on mainnet not yet tested. Pricing identical to testnet (measured). |
 | NEAR AI Cloud | Single endpoint (`cloud-api.near.ai/v1`); no change. |
 | 1Click | Mainnet only. Confidential quotes require authentication (401 without, measured). NEAR USDC → NEAR USDC is not quotable (measured), so NEAR-native payees would be a plain `ft_transfer`. |
-| Tooling | Parametrize the testnet values in `scripts/verify-attestation.mjs`, `scripts/lib/near.mjs`, `backend/server.mjs`, `backend/intake.mjs`, `web/index.html`. |
+| Tooling | Parametrize the testnet values in `scripts/verify-attestation.mjs`, `scripts/lib/near.mjs`, `backend/server.mjs`, `backend/intake.mjs`, `web/index.html`. Done for the app, local server and hosted API (2026-11-14): one table in `scripts/lib/networks.mjs`, `GET /api/network`, `?network=` / `x-takara-network`, and a Network switch in the app. |
 
 ## Enforcing the payout from the contract (proposed design)
 

@@ -367,7 +367,7 @@
           </a></li>
           <li><a href="#step-5">
             <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
-            <span class="n">5</span><span class="t">Paid, with a receipt</span><span class="d">Recorded on chain, where anyone can check it.</span>
+            <span class="n">5</span><span class="t" id="s5-t">Paid, with a receipt</span><span class="d" id="s5-d">Recorded on chain, where anyone can check it.</span>
           </a></li>
         </ol>
         <p class="more"><span>Also on this page</span><a href="#roles">Who can do what</a><a href="#privacy">Your books stay sealed</a><a href="#status">Live today, planned next</a><a href="#verify">Check it on chain</a></p>
@@ -520,16 +520,16 @@ runway     = (balance - settled_outflow) / daily_burn   <span class="c"># report
     <div class="wrap g12">
       <div class="c4 sec-h"><span class="no" aria-hidden="true">5</span><h2 class="h2" id="h-s5">Paid, with a receipt</h2></div>
       <div class="c8 body">
-        <p>To pay a reserved bill, Banto asks the sealed computer for a one-time payment permit tied to that exact bill, amount and address. The treasury contract checks the permit, marks the bill paid, releases its reserve and writes a receipt on chain.</p>
-        <p>The receipt proves the payment happened exactly as permitted, without publishing who was paid or how much. A permit used twice, or edited by even one unit, is refused.</p>
-        <p class="note"><b>On testnet no tokens move.</b> “Settled” means recorded on the ledger: the reserve is released and the receipt is written. Real payouts through NEAR Intents (1Click) are planned for mainnet.</p>
+        <p id="s5-p">To pay a reserved bill, Banto asks the sealed computer for a one-time payment permit tied to that exact bill, amount and address. The treasury contract checks the permit, marks the bill paid, releases its reserve and writes a receipt on chain.</p>
+        <p id="receipt-p">The receipt proves the payment happened exactly as permitted, without publishing who was paid or how much. A permit used twice, or edited by even one unit, is refused.</p>
+        <p class="note" id="settle-note"><b>On testnet no tokens move.</b> “Settled” means recorded on the ledger: the reserve is released and the receipt is written. Real payouts through NEAR Intents (1Click) are planned for mainnet.</p>
         <details class="dev">
           <summary><span>For developers</span><svg class="chev" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
           <div class="in">
             <ul>
               <li><code>request_authorization</code> returns a <code>SettlementAuth</code> binding treasury, commitment, asset, route, salted amount, destination and fee commitments, policy hash, ledger state, engine, a contract-generated nonce and an expiry. The opening is sealed to the agent payout key.</li>
               <li><code>settle</code> compares field by field against the authorization the contract recorded from its own callback. A reused nonce is refused <code>nonce_used</code>; a changed field is refused <code>authorization_mismatch</code> (judge check 7).</li>
-              <li>The receipt holds the nonce, <code>auth_hash</code>, <code>amount_commit</code>, <code>destination_commit</code> and <code>destination_chain</code>. No vendor address or plaintext amount is published.</li>
+              <li id="s5-dev">The receipt holds the nonce, <code>auth_hash</code>, <code>amount_commit</code>, <code>destination_commit</code> and <code>destination_chain</code>. No vendor address or plaintext amount is published.</li>
               <li><code>backend/payout.mjs</code> drives the 1Click quote, deposit and status flow on mainnet and checks the quote against the opening. Dry quotes are verified; confidential quotes need a 1Click partner key. The testnet contract does not enforce the mainnet payout. Design and costs: <a href="https://github.com/growthmindsetgg/takara-ai/blob/main/docs/mainnet-plan.md" target="_blank" rel="noopener">mainnet plan</a>.</li>
             </ul>
           </div>
@@ -682,7 +682,8 @@ runway     = (balance - settled_outflow) / daily_burn   <span class="c"># report
     <div class="wrap g12">
       <div class="c4 sec-h"><span class="tag">Status</span><h2 class="h2" id="h-status">Live today, planned next</h2></div>
       <div class="c8 body">
-        <h3 class="h3" style="margin-top:0">Live on NEAR testnet</h3>
+        <div id="mainnet-status" hidden></div>
+        <h3 class="h3" style="margin-top:0" id="h-live-testnet">Live on NEAR testnet</h3>
         <ul class="ticks">
           <li>The treasury contract: reserves, refusals with a reason, the payout-change freeze and hold.</li>
           <li>The policy engine in sealed hardware, with a public proof for every decision.</li>
@@ -699,7 +700,7 @@ runway     = (balance - settled_outflow) / daily_burn   <span class="c"># report
         </ul>
         <h3 class="h3">Planned</h3>
         <ul class="ticks later">
-          <li>Mainnet, with real payouts through NEAR Intents enforced by the contract.</li>
+          <li id="plan-mainnet">Mainnet, with real payouts through NEAR Intents enforced by the contract.</li>
           <li>Member and Auditor roles, and at least two owners per company.</li>
           <li>One approvals queue, alerts by Telegram or email, and a setup interview that writes your policy.</li>
           <li>Pricing: free until your first payout, then a flat plan. No billing during the hackathon.</li>
@@ -730,6 +731,7 @@ runway     = (balance - settled_outflow) / daily_burn   <span class="c"># report
           <dt>Treasury contract</dt><dd><code>treasury.takara-ai-hq.testnet</code></dd>
           <dt>Explorer</dt><dd><a href="https://testnet.nearblocks.io/address/treasury.takara-ai-hq.testnet" target="_blank" rel="noopener">Open it on NearBlocks</a></dd>
           <dt>Pinned engine build</dt><dd><code>bc7a4694…caeb</code></dd>
+          <dt class="mn" hidden>Mainnet treasury</dt><dd class="mn" hidden><code id="mn-t"></code> · <a id="mn-a" href="https://nearblocks.io" target="_blank" rel="noopener">Open it on NearBlocks</a></dd>
         </dl>
         <p>On NearBlocks you can see every transaction the ten checks made, including the refusals. The product page lists each check with its explorer link, and reads the treasury live from your browser.</p>
         <div class="ctas">
@@ -761,5 +763,52 @@ node -e 'import("./scripts/lib/near.mjs").then(async m=&gt;console.log(await m.v
     </ul>
   </div>
 </footer>
+<script>
+/* NEAR mainnet: these lines appear only when deployment.mainnet.json loads and its treasury exists on
+   chain. Settlement wording follows settle_moves_tokens (the hosted API's flag, else the record's own). */
+(function () {
+  var HOSTED = location.protocol.indexOf("http") === 0 && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var json = function (u) { return fetch(u, { headers: { accept: "application/json" } }).then(function (r) { if (!r.ok || (r.headers.get("content-type") || "").indexOf("json") < 0) throw new Error(u); return r.json(); }); };
+  var rpc = function (method, params) { return fetch("https://rpc.mainnet.fastnear.com", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: method, params: params }) }).then(function (r) { return r.json(); }).then(function (j) { if (!j.result) throw new Error("rpc"); return j.result; }); };
+  // Hosted: GET /api/network already checked the record and the account. A local preview reads the records itself.
+  (HOSTED ? json("/api/network").then(function (n) { return n.networks ? n : null; }).catch(function () { return null; }) : Promise.resolve(null)).then(function (net) {
+    return Promise.all([net, json("deployment.json").catch(function () { return null; }),
+      net ? (net.networks.mainnet && net.networks.mainnet.available ? { accounts: net.networks.mainnet.accounts } : null) : json("deployment.mainnet.json").catch(function () { return null; })]);
+  }).then(function (a) {
+    var net = a[0], TD = a[1], M = a[2];
+    var flag = function (D, id) { return net && net.networks[id] ? !!net.networks[id].settle_moves_tokens : !!(D && D.settle_moves_tokens === true); };
+    var testMoves = flag(TD, "testnet");
+    var paint = function (m) {
+      var moves = m ? flag(M, "mainnet") : testMoves;
+      if (moves) {
+        $("#s5-t").textContent = m ? "Paid: USDC sent to the payee" : "Paid: tokens sent to the payee";
+        $("#s5-d").textContent = "With a receipt on chain, where anyone can check it.";
+        $("#h-s5").textContent = m ? "Paid: USDC sent to the payee, with a receipt on chain" : "Paid: tokens sent to the payee, with a receipt on chain";
+        $("#s5-p").textContent = "To pay a reserved bill, Banto asks the sealed computer for a one-time payment permit tied to that exact bill, amount and address. The treasury contract checks the permit, sends the " + (m ? "USDC" : "tokens") + " to the payee, marks the bill paid, releases its reserve and writes a receipt on chain.";
+        $("#s5-dev").innerHTML = "The receipt holds the nonce, <code>auth_hash</code>, <code>amount_commit</code>, <code>destination_commit</code> and <code>destination_chain</code>. <code>settle</code> then calls <code>ft_transfer</code> to the payee, so that transfer shows the payee and amount, as any token transfer does. Reserves, the signed policy, the vendor registry and refusal reasons stay sealed.";
+        $("#receipt-p").textContent = "The receipt proves the payment happened exactly as permitted. Each payout shows its amount and payee on chain when it’s paid; reserves, rules and the vendor list stay sealed. A permit used twice, or edited by even one unit, is refused.";
+        $("#settle-note").innerHTML = m ? "<b>On mainnet each payment sends real USDC to the payee,</b> in small demo amounts." + (testMoves ? " Testnet pays out test tokens the same way." : "") : "<b>Each payment sends the tokens to the payee on chain</b> (test tokens on testnet).";
+      } else if (m) $("#settle-note").innerHTML = "<b>Settlement doesn’t move tokens yet,</b> on testnet or mainnet. “Settled” means recorded on the ledger: the reserve is released and the receipt is written.";
+      if (!m) return;
+      var href = "https://nearblocks.io/address/" + encodeURIComponent(m.T);
+      $("#mainnet-status").innerHTML = '<h3 class="h3" style="margin-top:0">Live on NEAR mainnet</h3><ul class="ticks"><li>The same treasury contract and policy engine, holding real USDC in small demo amounts' + (m.balance != null ? " (" + esc(m.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 })) + " USDC now)" : "") + ': <a href="' + href + '" target="_blank" rel="noopener">' + esc(m.T) + "</a>.</li><li>" + (moves ? "Each settled bill is paid out in USDC on chain." : "Settlement records the payment; it doesn’t send the USDC yet.") + "</li><li>The business is still the fictional fixture company.</li></ul>";
+      $("#mainnet-status").hidden = false;
+      if (moves) $("#plan-mainnet").textContent = "Private payouts through NEAR Intents 1Click, so a payout’s payee and amount stay off the public chain. The code is built; it needs a 1Click partner key.";
+      $("#h-live-testnet").style.marginTop = "";
+      $("#mn-t").textContent = m.T; $("#mn-a").href = href;
+      document.querySelectorAll(".mn").forEach(function (e) { e.hidden = false; });
+    };
+    if (!M || !M.accounts || !M.accounts.treasury) return paint(null);
+    var T = M.accounts.treasury;
+    rpc("query", { request_type: "view_account", finality: "final", account_id: T }).then(function () {
+      return rpc("query", { request_type: "call_function", finality: "optimistic", account_id: T, method_name: "get_config", args_base64: btoa("{}") })
+        .then(function (c) { return Number(JSON.parse(new TextDecoder().decode(new Uint8Array(c.result))).balance) / 1e6; }).catch(function () { return null; })
+        .then(function (balance) { paint({ T: T, balance: Number.isFinite(balance) ? balance : null }); });
+    }, function () { paint(null); });
+  });
+})();
+</script>
 </body>
 </html>

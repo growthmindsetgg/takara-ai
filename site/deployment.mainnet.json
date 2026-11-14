@@ -1,0 +1,47 @@
+{
+  "network": "mainnet",
+  "owner": "takara-ai-hq.near",
+  "accounts": {
+    "treasury": "treasury.takara-ai-hq.near",
+    "agent": "agent.takara-ai-hq.near",
+    "signer": "signer.takara-ai-hq.near"
+  },
+  "payees": {
+    "payroll": "payroll.takara-ai-hq.near",
+    "ana": "ana.takara-ai-hq.near"
+  },
+  "asset": "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+  "asset_symbol": "USDC",
+  "asset_decimals": 6,
+  "outlayer": "outlayer.near",
+  "engine": {
+    "wasm_url": "https://main.fastfs.io/takara-ai-hq.near/outlayer.near/bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb.wasm",
+    "wasm_hash": "bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb",
+    "build_target": "wasm32-wasip1",
+    "public_key": "2ee6860b4b109484e50dd84ce3ee4e6479f1aff85bbbdadb3c7bbb1b38c17511"
+  },
+  "agent_payout_public_key": "e4f609babecd969452dec97b40b1dbc68d6bfdbdfbefa92f970656c752c8320d",
+  "policy_hash": "cbf814b46758686eab9055e27e948fdb9705555fb9db2410d6009b8f490474af",
+  "secret_for_hash": "bc7a4694e92381b384865734a045a15e6f5f7cb785b229f84e37a71ff823caeb",
+  "secret_rule": "agent-via-treasury",
+  "contract": {
+    "wasm": "dist/takara_treasury.wasm",
+    "wasm_sha256": "3f90a8e3c50e97454fa0905f0e0656cb89a45b74ffecaf2130162e322140745d",
+    "settle_moves_tokens": true
+  },
+  "settle_moves_tokens": true,
+  "max_payout": "1000000",
+  "profile": "min",
+  "fixtures_dir": "fixtures/mainnet-min",
+  "amount_scale_divisor": 1000,
+  "payee_map": {
+    "payroll.fixtureco.testnet": "payroll.takara-ai-hq.near",
+    "railway-pay.testnet": "payroll.takara-ai-hq.near",
+    "inkwell-pay.testnet": "payroll.takara-ai-hq.near",
+    "ana.fixtureco.testnet": "ana.takara-ai-hq.near",
+    "tinylogo.testnet": "ana.takara-ai-hq.near",
+    "bigagency.testnet": "ana.takara-ai-hq.near",
+    "railway-new-bank.testnet": "railway-new-bank.takara-ai-hq.near",
+    "attacker-wallet.testnet": "attacker-wallet.takara-ai-hq.near"
+  }
+}

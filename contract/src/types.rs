@@ -1,6 +1,7 @@
 //! Public, on-chain types. Nothing here carries an amount, a vendor name, a payee address or
 //! policy contents in readable form: those live only inside sealed blobs that the pinned engine
-//! (and the business owner) can open.
+//! (and the business owner) can open. (A NEAR-native settlement's amount and payee become
+//! public at payment time, as `settle` arguments and the `ft_transfer`; see `settle`.)
 
 use near_sdk::json_types::U64;
 use near_sdk::{near, AccountId};
@@ -163,7 +164,8 @@ pub struct PolicyProposal {
 
 /// Settlement authorization: produced by the pinned engine, recorded by this contract's own
 /// callback, verified field by field at settlement. Amount, destination and fee are salted
-/// commitments, never plaintext.
+/// commitments, never plaintext. A NEAR-native `settle` opens the amount and destination
+/// commitments with the plain values and the salt.
 #[near(serializers = [json, borsh])]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SettlementAuth {
@@ -281,4 +283,6 @@ pub struct Config {
     pub policy_expires_at: U64,
     pub ledger_state_hash: String,
     pub commitments: U64,
+    /// Hard ceiling (asset base units) for one NEAR-native payout.
+    pub max_payout: near_sdk::json_types::U128,
 }
