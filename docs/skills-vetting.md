@@ -91,3 +91,64 @@ Verdict key: **SAFE** means instruction-only, or scripts that were reviewed and 
 - **Network, process and credential access** (`curl`, `wget`, `fetch`, `requests`, `urllib`, `child_process`, `subprocess`, `exec`, `eval`, `process.env`, `os.environ`, `pip install`, `npm install`): the only matches in the recommended set are in unslop's optional scripts, which were reviewed and are benign.
 - **Symlinks**: none in any vetted copy.
 - **Hooks**: no recommended skill declares hooks. taste-skill does (a Stop hook) and is rejected for it.
+
+## Re-scan of installed skills (2026-11-14 05:30 UTC)
+
+Before the simplicity pass, every installed skill under `~/.claude/skills` was scanned statically (nothing executed):
+- Non-Markdown files were grepped for network calls, shell execution, `eval`, base64 decoding, credential paths and secret environment variables. The only hits were Anthropic's official document skills (they call LibreOffice via `subprocess`) and `webapp-testing/scripts/with_server.py`, which starts a server command the user passes. Both are expected and unused here.
+- Markdown was grepped for prompt-injection phrases. The three hits (`break-ui`, `find-animation-opportunities`, `improve-animations`) are defensive rules telling the agent to *ignore* injected instructions.
+- Hidden-Unicode scan: two hits, both benign. One is a zero-width joiner inside an emoji test string in `break-ui/CATALOG.md`; the other is zero-width spaces used to escape nested code fences in `improve-animations/PLAN-TEMPLATE.md`.
+
+Verdict: safe to read. No new skill, package or script was installed or downloaded for this pass.
+
+## Additional skills (2026-11-14)
+
+Goal: find at most 4 more skills for first-run onboarding and hints, progressive disclosure, plain-language copy, simpler dashboards, mobile usability and cognitive-load reviews. Same method as above: shallow clone with `--depth 1 --no-recurse-submodules -c core.hooksPath=/dev/null -c core.symlinks=false`, static inspection only, nothing executed or installed, nothing copied into any `.claude/skills` folder.
+
+Quarantine root: `C:\Users\Admin\AppData\Local\Temp\claude\a30c1ce7346a809f\fff47e11-6cfd-4037-8282-3e2fdab4e5a3\scratchpad\skills-quarantine-2\` (`repos\` = raw clones, `vetted\` = clean copies, `vetted-sha256.txt` = hashes).
+
+Repos chosen:
+- **pbakaus/impeccable**: about 110k stars, Apache-2.0, last commit 2026-11-13. Cloned at `5ffe90b8403424a0888e0575bc1fb90517c7af74`.
+- **Owl-Listener/designer-skills**: about 3.4k stars, MIT, last commit 2026-09-05. Cloned at `9a6930cf84a822eb458624bd11c61aac5bbdf224`.
+
+Considered and not cloned:
+- mastepanoski/claude-skills (`nielsen-heuristics-audit`, 73 stars) and dembrandt/dembrandt-skills (193 stars): too little reputation.
+- rampstackco/claude-skills (`onboarding-wizard-design`): built for multi-step signup wizards, not contextual hints.
+- jeremylongshore's bulk marketplace: same low-trust bulk-collection concern as alirezarezvani above.
+- Nothing relevant was found in anthropics/skills. Its design skills are already installed.
+
+| Skill | Source @ commit (path) | Size | Verdict | Evidence and notes |
+|---|---|---|---|---|
+| impeccable: full skill | pbakaus/impeccable @ 5ffe90b (`.claude/skills/impeccable`) | 63 files, about 1.9 MB | **UNSAFE as a whole (do not install)** | Setup step 1 in SKILL.md tells the agent to run `scripts/impeccable context` on every session. That launcher (`scripts/impeccable`, `impeccable.cmd`) downloads a compiled engine binary from `github.com/pbakaus/impeccable/releases` with `curl`/`wget`, then `chmod +x` and `exec`s it. The download is SHA-256-checked against `engine-checksums.txt` (engine 0.1.24), but a compiled binary cannot be reviewed statically. The skill also offers a design-detector hook that runs automatically after edits (`reference/hooks.md`), plus `live-browser.js` (565 KB, 40 fetch/WebSocket/localStorage hits, not reviewed line by line). Fails the "nothing runs unasked" rule. |
+| impeccable: four reference files (`onboard.md`, `clarify.md`, `distill.md`, `adapt.md`) | same @ 5ffe90b (`.claude/skills/impeccable/reference/`) | 7.8 / 4.5 / 5.5 / 11.0 KB | **SAFE (reference reading only)** | All four were read in full. They are plain Markdown and do not mention the launcher, scripts, network or credentials. The one grep hit, "still downloads" in `adapt.md`, is about CSS `display:none`. Each ends with a harmless "hand off to `/impeccable polish`" line that points at a command that won't exist here, so ignore it. Useful content: onboard covers time to first value, skippable tours of 3–7 steps, versioned "seen" keys, and five empty-state types. Clarify is a message hierarchy for UI text. Distill covers one primary action, progressive disclosure and cutting redundancy. Adapt covers 44 px targets, thumb zones, `pointer: coarse` and 16 px minimum text. Apache-2.0 `LICENSE` copied alongside. SKILL.md was **not** copied because it routes to the launcher. |
+| onboarding-design | Owl-Listener/designer-skills @ 9a6930c (`interaction-design/skills/onboarding-design`) | 4.5 KB, 1 file | **SAFE** | Read in full. Instruction-only: no frontmatter hooks, no tool or script references, no links. Covers a sample-data/demo mode (label it as sample data, make it easy to clear), "orient, don't educate", tours of 3–5 concepts that can be dismissed at any point, empty states as onboarding, and re-orientation for returning users. MIT `LICENSE` copied alongside. |
+| critique-information-density | same @ 9a6930c (`visual-critique/skills/critique-information-density`) | 3.5 KB, 1 file | **SAFE** | Read in full. Instruction-only. A four-part rubric (cognitive load, content priority, scanning pattern, progressive disclosure), each scored pass / minor / major with observation, problem and fix. Its failure patterns include "dashboards that show every available metric". MIT `LICENSE` copied alongside. |
+| heuristic-evaluation | same @ 9a6930c (`prototyping-testing/skills/heuristic-evaluation`) | 2.0 KB, 1 file | **NOT USEFUL** (safe) | Read in full. No red flags, but it only lists Nielsen's 10 heuristics and a 0–4 severity scale. The installed `design-critique` and `accessibility-review` already cover this, so not copied. |
+
+Scans run on the whole impeccable skill folder and the whole designer-skills repo:
+- **Symlinks**: 0 in either repo (no git mode-120000 entries).
+- **Submodules**: no `.gitmodules` in either repo.
+- **Hook declarations**: none in any of the four candidates' SKILL.md files. The full impeccable skill offers its hook through a command, which is part of the UNSAFE verdict above.
+- **Hidden Unicode** (zero-width, bidi, BOM, soft hyphen, tag characters), scanned with `LC_ALL=C.UTF-8`; the scan was first checked against a planted U+200B test file: no matches in any text file. The only non-ASCII characters in the copied files are `⌘ é ≠ → – —`.
+- **Long base64** (200+ characters): none.
+- **Prompt-injection phrases**: no hits in the copied files. Elsewhere, the only hits are harmless: "bypassed" design tokens in designer-skills, "inline" in impeccable's hooks.md, and minified code in `modern-screenshot.umd.js`.
+- **Network, exec and credentials** in designer-skills: only in its repo CI scripts (`scripts/*.py` run `git ls-remote` via `subprocess` and read `GITHUB_ACTIONS`). These are not part of any skill and were not copied.
+- **Magic bytes**: impeccable's only non-text-looking files (`scripts/data/font-index.json` 1.1 MB, `command-metadata.json`, `font-index-failures.json`) start with `{` or `[`, so they are JSON. designer-skills has no binaries.
+
+Vetted copies and SHA-256 (also in `vetted-sha256.txt`):
+
+```
+44cd4e5d26a18075c3a99484bf7b03240baf83a1d8e1b5837e78427e750f7cb6  vetted/impeccable-ux-refs/onboard.md
+ae344a11a75cb29cf09ad2325bbdf8caa2e7468a61b88f766a01c758b95bbd23  vetted/impeccable-ux-refs/clarify.md
+3cfd0f9156156cb4fe638c0f6cdf709e0b556c6601a9ad0f0548d4282853448a  vetted/impeccable-ux-refs/distill.md
+395f347b83c7323c4b10858ac9707c16d3fd996a062b3f901a0304be4157293c  vetted/impeccable-ux-refs/adapt.md
+fc0673369dae07c045c46869d3d4c9113678c77fcc7d3b4e3a39ac074cfa68b6  vetted/impeccable-ux-refs/LICENSE
+91ad39b03059baddc8027ff85436187d3c307ab9a6a2f0d9ac045e851049a2c2  vetted/onboarding-design/SKILL.md
+6514aed70fa2446f3159fdb088e984a0e2a360736d24d1fe6c8a80a865cd7064  vetted/onboarding-design/LICENSE
+94bb66b3594ed0bf08a5be2b227d382784c7ba903c82ce51767472d2156386e5  vetted/critique-information-density/SKILL.md
+6514aed70fa2446f3159fdb088e984a0e2a360736d24d1fe6c8a80a865cd7064  vetted/critique-information-density/LICENSE
+```
+
+Notes:
+- `impeccable-ux-refs` is a folder of reference documents, not a skill: it has no SKILL.md. Read it directly, or give it a small local SKILL.md wrapper later if you want it to trigger on its own.
+- What these skills would change in the owner app is in `docs/ux/skills-checklist-2026-11-14.md`.

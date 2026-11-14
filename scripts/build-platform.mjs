@@ -29,6 +29,8 @@ const PLATFORM_BAR = `<div style="background:#0f6b5c;color:#fff;text-align:cente
 if (!site.includes('href="/app"')) site = site.replace(/<body([^>]*)>/, `<body$1>
 ${PLATFORM_BAR}`);
 writeFileSync(join(P, "index.html"), site);
+// detail page: served at /how-it-works (vercel cleanUrls); the product page's flow diagram links into it
+copyFileSync(join(ROOT, "site", "how-it-works.html"), join(P, "how-it-works.html"));
 // owner dashboard: a byte-identical copy of web/index.html. The app detects hosted mode itself
 // (the token placeholder is left unreplaced) and renders its own demo banner.
 copyFileSync(join(ROOT, "web", "index.html"), join(P, "app", "index.html"));

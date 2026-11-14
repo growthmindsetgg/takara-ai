@@ -1,12 +1,22 @@
 # Takara AI
 
+```mermaid
+flowchart LR
+  A["1. A bill arrives<br/>by email"] --> B["2. Banto checks<br/>your signed rules<br/>(sealed TEE)"]
+  B --> C["3. You approve<br/>the big ones"]
+  C --> D["4. Money is set aside<br/>payroll first"]
+  D --> E["5. Paid, with a<br/>receipt on chain"]
+```
+
+Each step in plain English, with the technical detail: **[How it works](https://takara-ai.vercel.app/how-it-works)**. (On testnet, step 5 is recorded on chain but no tokens move.)
+
 Takara AI is a non-custodial treasury for small businesses: the business owns the treasury contract and its funds, and Takara is an AI agent with delegated execution authority inside a policy the business signs, revocable at any time without the agent's cooperation. The agent never holds the business's funds and can never widen its own authority; this is enforced by the contract, and the tests below prove it on NEAR testnet. Money for accepted bills is reserved, payments that would break those reservations are refused with a named reason, a changed vendor payout destination freezes payment until a human signer approves it and a cooling-off period passes, and the business's financial details stay sealed inside a TEE policy engine, never in readable public state.
 
 **Never spend tomorrow's payroll on today's expenses.**
 
 Built at NEAR HACKATHON (tracks: `privacy`, `business`, `realworld`).
 
-**Live app:** [takara-ai.vercel.app/app](https://takara-ai.vercel.app/app) (owner console over the fictional fixture treasury: live figures, commitments, policy diff preview, read-only chat, public ledger; signing is disabled on the hosted copy because a public site never holds a signer's key) · **Product page:** [takara-ai.vercel.app](https://takara-ai.vercel.app) · **Repo:** [github.com/growthmindsetgg/takara-ai](https://github.com/growthmindsetgg/takara-ai)
+**Live app:** [takara-ai.vercel.app/app](https://takara-ai.vercel.app/app) (owner console over the fictional fixture treasury: live figures, commitments, policy diff preview, read-only chat, public ledger; the site never holds a key; approvals and owner actions are signed in your own NEAR wallet, see "Connect a NEAR wallet" below) · **Product page:** [takara-ai.vercel.app](https://takara-ai.vercel.app) · **Repo:** [github.com/growthmindsetgg/takara-ai](https://github.com/growthmindsetgg/takara-ai)
 
 ## The problem
 

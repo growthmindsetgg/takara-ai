@@ -228,48 +228,34 @@
   @media (max-width: 420px) { .addr, .views > div { grid-template-columns: 1fr; } }
   .wait { font-size: 14px; color: var(--muted); }
 
-  /* ---------- how it works ---------- */
-  .how-intro { position: sticky; top: 104px; align-self: start; }
-  .how-intro .body2 { margin-top: 24px; }
-  .banto { display: flex; gap: 16px; align-items: flex-start; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
-  .avatar { flex: none; width: 40px; height: 40px; border-radius: 10px; background: var(--green); color: #fff; display: grid; place-items: center; font: 500 18px var(--sans); }
-  .banto p { font-size: 14px; color: var(--text2); }
-  .banto b { font-weight: 500; color: var(--ink); }
-  @media (max-width: 960px) { .how-intro { position: static; margin-bottom: 48px; } }
-  .steps { counter-reset: step; }
-  .steps > li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 0 16px; padding: 32px 0; border-top: 1px solid var(--line-2); }
-  .steps > li:first-child { border-top: 0; padding-top: 0; }
-  .steps > li::before { counter-increment: step; content: counter(step); font: 400 40px/1 var(--serif); color: var(--green); }
-  .steps .h3 + p { margin-top: 8px; }
-  .steps p { color: var(--text2); max-width: 36em; }
-  .kinds { margin-top: 20px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); }
-  .kinds > div { padding: 16px; border-left: 1px solid var(--line); min-width: 0; }
-  .kinds > div:first-child { border-left: 0; }
-  .kinds b { display: block; font-weight: 500; font-size: 14px; }
-  .kinds span { display: block; font-size: 13px; color: var(--muted); margin-top: 4px; }
-  .kinds-foot { margin-top: 8px; font-size: 13px; color: var(--muted); }
-  @media (max-width: 700px) { .kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kinds > div:nth-child(3) { border-left: 0; } .kinds > div:nth-child(n+3) { border-top: 1px solid var(--line); } }
-  .states { margin-top: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
-  .states li { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line-2); border-radius: var(--r-ctl); background: var(--surface); }
-  .states li.on { border-color: var(--green); color: var(--green); }
-  .states .arw { border: 0; background: none; padding: 0; color: var(--muted); }
-  .roles { margin-top: 24px; }
-  .roles-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
-  .roles table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
-  .roles th, .roles td { text-align: left; vertical-align: top; padding: 12px 16px 12px 0; border-top: 1px solid var(--line); }
-  .roles th { font-weight: 500; width: 120px; white-space: nowrap; }
-  .roles td { color: var(--text2); }
-  .roles .truth { margin-top: 16px; font-size: 14px; color: var(--text2); }
-  @media (max-width: 600px) { .roles th, .roles td { display: block; width: auto; padding: 0; border: 0; } .roles tr { display: block; padding: 12px 0; border-top: 1px solid var(--line); } .roles td { margin-top: 4px; } }
-  .arch { margin-top: 80px; }
-  .arch figcaption { margin-top: 16px; font-size: 14px; color: var(--muted); max-width: 48em; }
-  .arch svg { display: block; width: 100%; height: auto; }
-  .arch text { font-family: var(--sans); font-size: 14px; fill: var(--text2); }
-  .arch .t { fill: var(--ink); font-weight: 500; }
-  .arch .hd { fill: var(--muted); }
-  .arch .g { fill: var(--green); }
-  .arch .arch-m { display: none; }
-  @media (max-width: 760px) { .arch .arch-d { display: none; } .arch .arch-m { display: block; max-width: 400px; } }
+  /* ---------- the flow, bill to receipt ---------- */
+  /* One ordered list of five links. Desktop: a row joined by arrows. Phone: a column joined by a line. */
+  .jy { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); column-gap: 16px; }
+  .jy > li { position: relative; min-width: 0; }
+  .jy > li:not(:last-child)::before { content: ""; position: absolute; top: 24px; left: 64px; right: -8px; border-top: 1px solid var(--line-2); }
+  .jy > li:not(:last-child)::after { content: ""; position: absolute; top: 20px; right: -8px; width: 8px; height: 8px; border-top: 1.5px solid var(--muted); border-right: 1.5px solid var(--muted); transform: rotate(45deg); }
+  .jy a { display: flex; flex-direction: column; gap: 4px; height: 100%; padding: 0 8px 8px 0; color: var(--ink); text-decoration: none; border-radius: var(--r-ctl); touch-action: manipulation; }
+  .jy .ic { flex: none; width: 48px; height: 48px; margin-bottom: 12px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--green); box-shadow: inset 0 0 0 1px var(--line-2); transition: box-shadow 140ms var(--ease); }
+  .jy .ic svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .jy li.key .ic { background: var(--green); color: #fff; box-shadow: none; }
+  .jy .n { font: 400 13px var(--mono); color: var(--muted); }
+  .jy .t { font-size: 18px; line-height: 1.35; font-weight: 500; text-wrap: balance; }
+  .jy .d { font-size: 15px; line-height: 1.5; color: var(--text2); text-wrap: pretty; }
+  .jy a:hover .t { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  .jy a:hover .ic { box-shadow: inset 0 0 0 1.5px var(--green); }
+  .jy li.key a:hover .ic { box-shadow: none; }
+  .flow-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); }
+  .flow-foot .meta { max-width: 40em; }
+  @media (max-width: 860px) {
+    .jy { grid-template-columns: minmax(0, 1fr); row-gap: 0; }
+    .jy > li:not(:last-child)::before { top: 52px; bottom: 4px; left: 24px; right: auto; border-top: 0; border-left: 1px solid var(--line-2); }
+    .jy > li:not(:last-child)::after { display: none; }
+    .jy a { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 16px; padding: 0 0 24px; }
+    .jy .ic { grid-row: 1 / span 3; grid-column: 1; margin: 0; }
+    .jy .n, .jy .t, .jy .d { grid-column: 2; }
+    .jy .n { padding-top: 2px; }
+    .flow-foot { margin-top: 24px; }
+  }
 
   /* ---------- proof ---------- */
   .proof-top { row-gap: 24px; align-items: stretch; }
@@ -290,7 +276,6 @@
   .eq .res b { color: var(--green); }
   .caught .tests { margin-top: 16px; font-size: 14px; line-height: 1.5; color: var(--text2); }
   .chain { font: 400 12px var(--mono); color: var(--muted); }
-  .states .chain { display: block; margin-top: 2px; }
   .treas-foot { margin-top: 20px; font-size: 14px; }
   @media (max-width: 600px) { .treas { padding: 20px 16px; } .facts { grid-template-columns: 1fr; } .facts dd { border-top: 0; padding-top: 0; } }
   .caught { padding: 32px; display: flex; flex-direction: column; }
@@ -412,8 +397,8 @@
       Takara AI
     </a>
     <nav class="nav-links" id="navlinks" aria-label="Sections">
+      <a href="#flow">How it works</a>
       <a href="#guarantees">Guarantees</a>
-      <a href="#how">How it works</a>
       <a href="#proof">Proof</a>
       <a href="#pricing">Pricing</a>
       <a href="#verify">Verify</a>
@@ -430,7 +415,7 @@
     <div class="wrap g12">
       <div class="c5 hero-copy">
         <h1 class="h1">Never spend tomorrow’s payroll on today’s expenses.</h1>
-        <p class="lede">Takara AI keeps a small business’s money in a treasury the owner controls on NEAR. Its agent, Banto, sets money aside for every bill you accept and pays only inside the policy you sign. It can never take the money, and you can switch it off at any time.</p>
+        <p class="lede">Your business’s money stays in a treasury you own on NEAR. Its agent, Banto, sets money aside for every bill you accept and pays only inside the rules you sign. It can never take the money, and you can switch it off at any time.</p>
         <div class="ctas">
           <a class="btn btn-ink" href="/app">Open the app</a>
           <a class="btn btn-quiet" href="#proof">See the proof</a>
@@ -442,7 +427,7 @@
           <p class="meta" id="rs-cap"><b>Judge check 1</b> · state during the check</p>
           <p class="meta">Balance <span class="num" style="color:var(--ink)">1,000&thinsp;USDC</span></p>
         </div>
-        <div class="rs-stage" role="img" aria-label="Of a 1,000 USDC balance, 600 is reserved for payroll and 120 for Railway, so 280 is spendable. A 400 USDC request reaches the protected line and is refused, 120 USDC short.">
+        <div class="rs-stage" role="img" aria-label="Of a 1,000 USDC balance, 600 is reserved for payroll and 120 for Railway, so 280 is free to spend. A 400 USDC request reaches the protected line and is refused, 120 USDC short.">
           <div class="rs-track" aria-hidden="true">
             <span class="env env-pay"><span class="nm">Payroll</span><span class="amt">600</span></span>
             <span class="env env-rail"><span class="nm">Railway</span><span class="amt">120</span></span>
@@ -470,19 +455,57 @@
     </div>
   </div>
 
+  <!-- ================= the flow, bill to receipt ================= -->
+  <section id="flow" aria-labelledby="h-flow">
+    <div class="wrap">
+      <div class="g12 sec-head">
+        <div class="c8">
+          <h2 class="h2" id="h-flow">From bill to receipt</h2>
+          <p class="lede">Every bill takes the same five steps. Banto does the work. You keep the final say.</p>
+        </div>
+      </div>
+      <ol class="jy" aria-label="How a bill gets paid, in five steps">
+        <li><a href="how-it-works.html#step-1">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg></span>
+          <span class="n">1</span><span class="t">A bill arrives</span><span class="d">Forward it by email, as you do now.</span>
+        </a></li>
+        <li><a href="how-it-works.html#step-2">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.4-3 8.3-7 10-4-1.7-7-5.6-7-10V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></span>
+          <span class="n">2</span><span class="t">Banto checks your rules</span><span class="d">Against the policy you signed, in a sealed computer.</span>
+        </a></li>
+        <li><a href="how-it-works.html#step-3">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M14.5 4.5l5 5L10 19H5v-5z"/></svg></span>
+          <span class="n">3</span><span class="t">You approve the big ones</span><span class="d">Anything over your limits waits for a person.</span>
+        </a></li>
+        <li class="key"><a href="how-it-works.html#step-4">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+          <span class="n">4</span><span class="t">Money is set aside</span><span class="d">Reserved for that bill, payroll first.</span>
+        </a></li>
+        <li><a href="how-it-works.html#step-5">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
+          <span class="n">5</span><span class="t">Paid, with a receipt</span><span class="d">Recorded on chain, where anyone can check it.</span>
+        </a></li>
+      </ol>
+      <div class="flow-foot">
+        <a class="btn btn-quiet" href="how-it-works.html">See how it works in detail <span aria-hidden="true">→</span></a>
+        <p class="meta">On testnet a payment is recorded on chain, but no tokens move. Real payouts through NEAR Intents are planned for mainnet.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ================= four guarantees ================= -->
   <section id="guarantees" aria-labelledby="h-g">
     <div class="wrap">
       <div class="g12 sec-head">
         <div class="c8">
           <h2 class="h2" id="h-g">Four guarantees</h2>
-          <p class="lede">Each one is enforced by the treasury contract, not by a promise. The pictures below read this treasury as it is right now.</p>
+          <p class="lede">The treasury contract enforces each one. The pictures below read this treasury as it is right now.</p>
         </div>
       </div>
       <div class="quad">
         <article aria-labelledby="g1">
           <h3 class="h3" id="g1">Money for accepted bills is set aside first</h3>
-          <p class="body2">Spendable is what’s left after every accepted bill. Banto can’t spend past the protected line, however the request is worded.</p>
+          <p class="body2">Free to spend is what’s left after every accepted bill. Banto can’t spend past the protected line, however the request is worded.</p>
           <div class="vis" id="v-reserve"><p class="wait">Reading the treasury</p></div>
           <p class="proofref"><a href="#chk-1">Check 1: a 400 payment refused</a></p>
         </article>
@@ -508,158 +531,13 @@
     </div>
   </section>
 
-  <!-- ================= how it works ================= -->
-  <section id="how" aria-labelledby="h-how">
-    <div class="wrap g12">
-      <div class="c4 how-intro">
-        <h2 class="h2" id="h-how">How Banto works</h2>
-        <p class="body2">You set it up, you send it bills, it keeps the money for them aside, and it pays inside your rules. Nothing to pay until the first payout.</p>
-        <div class="banto">
-          <span class="avatar" aria-hidden="true"><svg viewBox="0 0 32 32" width="40" height="40" fill="none" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"><path d="M10 7.5h7.5a3 3 0 0 1 3 3V13a3 3 0 0 1-3 3H10z"/><path d="M10 16h9.5a3 3 0 0 1 3 3v2.5a3 3 0 0 1-3 3H10z"/></svg></span>
-          <p><b>Banto</b> (<span lang="ja">番頭</span>) was the head clerk of a Japanese merchant house. He kept the money and the books for the owner and never overruled them. Takara’s agent does the same job.</p>
-        </div>
-      </div>
-      <div class="c8">
-        <ol class="steps">
-          <li>
-            <div>
-              <h3 class="h3">Answer about ten questions</h3>
-              <p>Banto asks what the company does, who approves spending, the largest payment it may make without asking and how many days of runway to protect. Your answers become a policy you review and sign. Every field stays editable by hand.</p>
-            </div>
-          </li>
-          <li>
-            <div>
-              <h3 class="h3">Send bills the way you already do</h3>
-              <p>Forward an email, upload a file, tell Banto in chat or fill in a form. Four kinds of money look different to you and are one thing underneath: a commitment.</p>
-              <div class="kinds">
-                <div><b>Vendor invoice</b><span>One-off</span></div>
-                <div><b>Subscription</b><span>Monthly or annual</span></div>
-                <div><b>Payroll</b><span>Every cycle, critical</span></div>
-                <div><b>Reimbursement</b><span>One-off, raised by a member</span></div>
-              </div>
-            </div>
-          </li>
-          <li>
-            <div>
-              <h3 class="h3">Accepting a bill sets its money aside</h3>
-              <p>Receiving a document never creates an obligation, so nobody can create a bill by sending you an invoice. Only a bill you accept reserves money, and only reserved money lowers what Banto may spend.</p>
-              <ol class="states" aria-label="Commitment states">
-                <li><span>Received <span class="chain">claimed</span></span></li><li class="arw" aria-hidden="true">→</li>
-                <li class="on"><span class="dot green" aria-hidden="true"></span><span>Reserved <span class="chain">accepted</span></span></li><li class="arw" aria-hidden="true">→</li>
-                <li><span>Paid <span class="chain">settled</span></span></li><li class="arw" aria-hidden="true">→</li>
-                <li><span>Closed <span class="chain">closed</span></span></li>
-              </ol>
-            </div>
-          </li>
-          <li>
-            <div>
-              <h3 class="h3">Banto pays inside your policy</h3>
-              <p>Payments under your auto-pay limit go out on their own. Anything larger, a new vendor over the limit and every payout address change wait in one approvals queue, where a Signer approves or rejects in one click.</p>
-            </div>
-          </li>
-        </ol>
-
-        <div class="preview roles" aria-labelledby="h-roles">
-          <div class="roles-head">
-            <h3 class="h3" id="h-roles">Who sees what</h3>
-            <span class="preview-tag">Preview · after the hackathon</span>
-          </div>
-          <table>
-            <caption class="sr">Roles and what each one can see</caption>
-            <tbody>
-              <tr><th scope="row">Owner</th><td>Everything. Signs the policy, switches Banto off and recovers funds. A company needs at least two.</td></tr>
-              <tr><th scope="row">Signer</th><td>Approves bills and signs policy (the plan calls this role Manager). Sees salaries, because they approve them.</td></tr>
-              <tr><th scope="row">Member</th><td>Submits invoices and reimbursement claims and sets their own payout address. Sees only their own pay.</td></tr>
-              <tr><th scope="row">Auditor</th><td>Read-only, inside the date range you grant.</td></tr>
-              <tr><th scope="row">The public</th><td>Commitments, hashes and attestations. No names, amounts or destinations.</td></tr>
-            </tbody>
-          </table>
-          <p class="truth">Alerts reach Telegram or email with the amount, the deadline and one action. On chain today there are three authorities: owners, Signers and the agent.</p>
-        </div>
-
-        <figure class="arch" aria-labelledby="arch-cap">
-          <h3 class="h3">Under the hood</h3>
-          <svg class="arch-d" viewBox="0 0 776 452" role="img" aria-labelledby="arch-t arch-d" style="margin-top:24px">
-            <title id="arch-t">How Takara AI is built</title>
-            <desc id="arch-d">The owner, the Signer and Banto call the treasury contract on NEAR testnet. The contract asks the OutLayer policy engine, sealed in Intel TDX at a pinned build, and accepts only its answers. Banto reads invoices through NEAR AI Cloud. A 1Click payout on mainnet is a separate integration the testnet contract does not enforce.</desc>
-            <defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L8 4L0 8z" fill="#6B746F"/></marker></defs>
-            <text class="hd" x="0" y="16">People and the agent</text>
-            <text class="hd" x="272" y="16">NEAR testnet</text>
-            <text class="hd" x="560" y="16">Sealed in a TEE</text>
-            <g>
-              <rect x="0.5" y="32.5" width="216" height="96" rx="12" fill="#fff" stroke="rgba(14,26,22,.16)"/>
-              <text class="t" x="16" y="62">Owner</text><text x="16" y="86">Pauses, switches Banto off,</text><text x="16" y="106">recovers funds</text>
-              <rect x="0.5" y="144.5" width="216" height="96" rx="12" fill="#fff" stroke="rgba(14,26,22,.16)"/>
-              <text class="t" x="16" y="174">Signer</text><text x="16" y="198">Approves bills and signs</text><text x="16" y="218">policy</text>
-              <rect x="0.5" y="256.5" width="216" height="96" rx="12" fill="#fff" stroke="rgba(14,26,22,.16)"/>
-              <text class="t" x="16" y="286">Banto, the agent</text><text x="16" y="310">Asks for decisions, pays</text><text x="16" y="330">what was authorized</text>
-            </g>
-            <g>
-              <rect x="272.5" y="32.5" width="232" height="320" rx="12" fill="#fff" stroke="#0B5D4B" stroke-width="1.5"/>
-              <text class="t" x="288" y="62">Treasury contract</text>
-              <text x="288" y="86">Owned by the business</text>
-              <line x1="288" y1="104" x2="488" y2="104" stroke="rgba(14,26,22,.08)"/>
-              <text x="288" y="132">Holds the funds</text>
-              <text x="288" y="160">Reserves money for</text><text x="288" y="180">accepted bills</text>
-              <text x="288" y="208">Refuses with a named</text><text x="288" y="228">reason</text>
-              <text x="288" y="256">Stores hashes and sealed</text><text x="288" y="276">records, never amounts</text>
-              <rect x="288" y="304" width="112" height="28" rx="6" fill="none" stroke="#0B5D4B" stroke-dasharray="3 3"/>
-              <text class="g" x="298" y="323">Protected line</text>
-            </g>
-            <g>
-              <rect x="560.5" y="32.5" width="215" height="140" rx="12" fill="#fff" stroke="rgba(14,26,22,.16)"/>
-              <text class="t" x="576" y="62">Policy engine</text><text x="576" y="86">OutLayer, Intel TDX</text>
-              <text x="576" y="114">Runs only the pinned build</text><text x="576" y="134" style="font-family:var(--mono);font-size:13px">bc7a4694…caeb</text>
-              <text x="576" y="158">Every answer attested</text>
-              <rect x="560.5" y="188.5" width="215" height="84" rx="12" fill="none" stroke="rgba(14,26,22,.16)" stroke-dasharray="5 4"/>
-              <text class="t" x="576" y="216">1Click payout, mainnet</text><text x="576" y="240">Separate integration,</text><text x="576" y="260">not enforced on testnet</text>
-              <rect x="560.5" y="288.5" width="215" height="64" rx="12" fill="#fff" stroke="rgba(14,26,22,.16)"/>
-              <text class="t" x="576" y="316">NEAR AI Cloud</text><text x="576" y="338">Reads invoices, attested</text>
-            </g>
-            <g stroke="#6B746F" stroke-width="1.5" fill="none" marker-end="url(#ah)">
-              <path d="M218 80H270"/><path d="M218 192H270"/><path d="M218 304H270"/>
-              <path d="M506 72H558"/>
-              <path d="M558 108H506"/>
-              <path d="M108 354V420H668V354"/>
-            </g>
-            <text x="532" y="62" text-anchor="middle" style="font-size:13px" class="hd">asks</text>
-            <text x="532" y="128" text-anchor="middle" style="font-size:13px" class="hd">replies</text>
-            <text x="300" y="442">Banto sends each invoice to be read</text>
-          </svg>
-          <svg class="arch-m" viewBox="0 0 320 852" role="img" aria-labelledby="arch-mt" style="margin-top:24px">
-            <title id="arch-mt">How Takara AI is built: the owner, the signer and Banto call the treasury contract on NEAR testnet, which accepts answers only from the pinned policy engine sealed in a TEE. NEAR AI Cloud reads invoices. The 1Click mainnet payout is a separate integration.</title>
-            <defs><marker id="ahm" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L8 4L0 8z" fill="#6B746F"/></marker></defs>
-            <text class="hd" x="0" y="16">People and the agent</text>
-            <rect x="0.5" y="28.5" width="319" height="64" rx="12" fill="#fff" stroke="rgba(14,26,22,.16)"/><text class="t" x="16" y="54">Owner</text><text x="16" y="76">Pauses, switches Banto off, recovers</text>
-            <rect x="0.5" y="100.5" width="319" height="64" rx="12" fill="#fff" stroke="rgba(14,26,22,.16)"/><text class="t" x="16" y="126">Signer</text><text x="16" y="148">Approves bills and signs policy</text>
-            <rect x="0.5" y="172.5" width="319" height="64" rx="12" fill="#fff" stroke="rgba(14,26,22,.16)"/><text class="t" x="16" y="198">Banto, the agent</text><text x="16" y="220">Asks for decisions, pays what’s allowed</text>
-            <path d="M160 240V280" stroke="#6B746F" stroke-width="1.5" marker-end="url(#ahm)"/>
-            <text class="hd" x="0" y="308">NEAR testnet</text>
-            <rect x="0.5" y="320.5" width="319" height="196" rx="12" fill="#fff" stroke="#0B5D4B" stroke-width="1.5"/>
-            <text class="t" x="16" y="348">Treasury contract</text><text x="16" y="370">Owned by the business</text>
-            <text x="16" y="402">Holds the funds</text><text x="16" y="426">Reserves money for accepted bills</text><text x="16" y="450">Refuses with a named reason</text><text x="16" y="474">Stores hashes, never amounts</text>
-            <text class="g" x="16" y="500">Protected line</text>
-            <path d="M120 520V560" stroke="#6B746F" stroke-width="1.5" marker-end="url(#ahm)"/><path d="M200 560V520" stroke="#6B746F" stroke-width="1.5" marker-end="url(#ahm)"/>
-            <text class="hd" x="60" y="546" style="font-size:13px">asks</text><text class="hd" x="208" y="546" style="font-size:13px">replies</text>
-            <text class="hd" x="0" y="588">Sealed in a TEE</text>
-            <rect x="0.5" y="600.5" width="319" height="88" rx="12" fill="#fff" stroke="rgba(14,26,22,.16)"/>
-            <text class="t" x="16" y="626">Policy engine, OutLayer TDX</text><text x="16" y="648">Runs only the pinned build</text><text x="16" y="672" style="font-family:var(--mono);font-size:13px">bc7a4694…caeb</text>
-            <rect x="0.5" y="696.5" width="319" height="64" rx="12" fill="#fff" stroke="rgba(14,26,22,.16)"/><text class="t" x="16" y="722">NEAR AI Cloud</text><text x="16" y="744">Reads invoices for Banto, attested</text>
-            <rect x="0.5" y="776.5" width="319" height="72" rx="12" fill="none" stroke="rgba(14,26,22,.16)" stroke-dasharray="5 4"/><text class="t" x="16" y="802">1Click payout, mainnet</text><text x="16" y="826">Separate integration, not enforced</text>
-          </svg>
-          <figcaption id="arch-cap">The contract believes only answers to its own engine requests, for the exact build it pinned. Each answer’s Intel TDX attestation is public and can be checked with one command.</figcaption>
-        </figure>
-      </div>
-    </div>
-  </section>
-
   <!-- ================= proof ================= -->
   <section id="proof" aria-labelledby="h-proof">
     <div class="wrap">
       <div class="g12 sec-head">
         <div class="c8">
           <h2 class="h2" id="h-proof">Proof on NEAR testnet</h2>
-          <p class="lede">Ten checks ran as real transactions against this treasury, and each one links to the explorer. The panels below read the chain from your browser.</p>
+          <p class="lede">Ten checks ran as real transactions against this treasury. Each one links to the explorer, and the panels below read the chain from your browser.</p>
         </div>
         <div class="c4" style="align-self:end;justify-self:end">
           <p class="source" id="source"><span class="live-dot" aria-hidden="true"></span><span id="source-t">Reading NEAR testnet</span></p>
@@ -698,7 +576,7 @@
     <div class="wrap g12">
       <div class="c5">
         <h2 class="h2" id="h-price">Free until your first payout</h2>
-        <p class="body2" style="margin-top:16px">Set up the treasury, add your team and vendors, and forward a few invoices. You see your real reserved and spendable numbers before you pay anything, with no time limit.</p>
+        <p class="body2" style="margin-top:16px">You see what’s really set aside and free to spend before you pay anything, with no time limit.</p>
         <ol class="flow" aria-label="Setup steps">
           <li><span class="num">1</span>Connect or create a treasury you own</li>
           <li><span class="num">2</span>Answer Banto’s setup questions and sign the policy</li>
@@ -777,6 +655,7 @@ node backend/server.mjs   <span class="c"># owner dashboard on localhost:8787</s
     <div class="c4">
       <ul>
         <li><a href="/app">Open the app</a></li>
+        <li><a href="how-it-works.html">How it works</a></li>
         <li><a href="https://github.com/growthmindsetgg/takara-ai" target="_blank" rel="noopener">GitHub</a></li>
         <li><a href="#verify">Verify</a></li>
       </ul>
@@ -792,6 +671,8 @@ const short = (h) => (h ? `${String(h).slice(0, 8)}…${String(h).slice(-4)}` : 
 const nb = (tx) => `https://testnet.nearblocks.io/txns/${encodeURIComponent(tx)}`;
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const n0 = (v) => Number(v).toLocaleString("en-US");
+const n2 = (v) => Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // money in the live equations, as in the app
+const usdc2 = (v) => `<span class="num">${esc(n2(v))} USDC</span>`;
 const usdc = (v) => `<span class="num">${esc(n0(v))} USDC</span>`;
 // /api/* exists only on the hosted copy (takara-ai.vercel.app); a local static preview skips it instead of logging 404s
 const HOSTED = location.protocol.startsWith("http") && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -903,14 +784,14 @@ function miniStrip(envs, spendable) {
   const total = envs.reduce((a, e) => a + e.amount, 0) + spendable;
   const pct = (v) => (v / total) * 100;
   const seg = (cls, label, amt) => { const p = pct(amt); const txt = p >= 16 ? `${esc(label)} ${esc(n0(amt))}` : p >= 7 ? esc(n0(amt)) : ""; return `<span class="${cls}" style="flex:${amt} 1 0" title="${esc(label)} ${esc(n0(amt))} USDC">${txt}</span>`; };
-  return `<div class="mini-strip" aria-hidden="true">${envs.map((e) => seg("e", e.name, e.amount)).join("")}${seg("s", "Spendable", spendable)}</div>
-    <p class="mini-legend">${envs.map((e) => `<span><i aria-hidden="true"></i>${esc(e.name)} ${esc(n0(e.amount))}</span>`).join("")}<span><i class="s" aria-hidden="true"></i>Spendable ${esc(n0(spendable))}</span></p>
-    <p class="sr">${esc(envs.map((e) => `${e.name} ${n0(e.amount)} USDC reserved`).join(", "))}; ${esc(n0(spendable))} USDC spendable.</p>`;
+  return `<div class="mini-strip" aria-hidden="true">${envs.map((e) => seg("e", e.name, e.amount)).join("")}${seg("s", "Free to spend", spendable)}</div>
+    <p class="mini-legend">${envs.map((e) => `<span><i aria-hidden="true"></i>${esc(e.name)} ${esc(n2(e.amount))}</span>`).join("")}<span><i class="s" aria-hidden="true"></i>Free to spend ${esc(n2(spendable))}</span></p>
+    <p class="sr">${esc(envs.map((e) => `${e.name} ${n0(e.amount)} USDC reserved`).join(", "))}; ${esc(n0(spendable))} USDC free to spend.</p>`;
 }
 function renderGuarantees(rep, pub, pol, changes) {
   const f = rep.figures;
   const acc = rep.commitments.filter((c) => c.state === "accepted").map((c) => ({ name: vendorName(c.vendor, c.destination), amount: Number(c.amount) })).sort((a, b) => b.amount - a.amount);
-  $("#v-reserve").innerHTML = miniStrip(acc, Number(f.spendable)) + `<p class="small" style="margin-top:12px">${usdc(f.treasury_balance)} in treasury − ${usdc(f.settled_outflow)} settled − ${usdc(f.reserved)} reserved = ${usdc(f.spendable)} spendable. ${esc(f.runway_days)} days of runway.</p>`;
+  $("#v-reserve").innerHTML = miniStrip(acc, Number(f.spendable)) + `<p class="small" style="margin-top:12px">${usdc2(f.treasury_balance)} in treasury − ${usdc2(f.settled_outflow)} settled − ${usdc2(f.reserved)} set aside = ${usdc2(f.spendable)} free to spend. ${esc(f.runway_days)} days of runway.</p>`;
 
   const ch = rep.commitments.find((c) => c.proposed_destination);
   const hours = pol?.cooling_off_hours ?? 24;
@@ -968,7 +849,7 @@ function renderSealed(pubList, rep) {
     const f = rep.figures;
     live.innerHTML = `<p class="meta">Treasury balance, public</p>
       <p class="bal">${esc(n0(pub.balance))}<span class="unit"> USDC</span></p>
-      <div class="ownerline" style="display:block"><p class="meta" style="color:var(--text2);margin-bottom:8px">The owner also sees, with the ledger key <span class="sealed">SEALED · TEE</span></p><p class="eq"><span><b>${esc(n0(f.treasury_balance))}</b> in treasury</span>${Number(f.settled_outflow) ? `<span class="op">−</span><span><b>${esc(n0(f.settled_outflow))}</b> settled</span>` : ""}<span class="op">−</span><span><b>${esc(n0(f.reserved))}</b> reserved</span><span class="op">=</span><span class="res"><b>${esc(n0(f.spendable))}</b> spendable USDC</span></p><p class="meta" style="margin-top:8px">Settled: recorded as paid on the ledger, with the escrow released and a receipt on-chain. Testnet: no tokens move; payouts run through NEAR Intents on mainnet. Runway <span class="num">${esc(f.runway_days)}</span> days.</p></div>
+      <div class="ownerline" style="display:block"><p class="meta" style="color:var(--text2);margin-bottom:8px">The owner also sees, with the ledger key <span class="sealed">SEALED · TEE</span></p><p class="eq"><span><b>${esc(n2(f.treasury_balance))}</b> in treasury</span>${Number(f.settled_outflow) ? `<span class="op">−</span><span><b>${esc(n2(f.settled_outflow))}</b> settled</span>` : ""}<span class="op">−</span><span><b>${esc(n2(f.reserved))}</b> set aside</span><span class="op">=</span><span class="res"><b>${esc(n2(f.spendable))}</b> free to spend USDC</span></p><p class="meta" style="margin-top:8px">Settled: recorded as paid on the ledger, with a receipt on-chain. Testnet: no tokens move; payouts run through NEAR Intents on mainnet. Runway <span class="num">${esc(f.runway_days)}</span> days.</p></div>
       <dl class="facts">
         <dt>Banto, the agent</dt><dd><span class="st"><span class="dot ${pub.agent ? "green" : "red"}" aria-hidden="true"></span>${pub.agent ? "Active" : "Switched off"}</span> <code>${esc(pub.agent || "")}</code></dd>
         <dt>Treasury paused</dt><dd>${pub.paused ? "Yes" : "No"}</dd>
